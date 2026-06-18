@@ -11,6 +11,8 @@
 \usepackage{microtype}
 \usepackage{parskip}
 \usepackage{pdflscape}
+\usepackage{csquotes}
+\usepackage{xurl}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{array}
@@ -20,7 +22,8 @@
 \usepackage{colortbl}
 \usepackage{float}
 \usepackage{caption}
-\usepackage[colorlinks=true, linkcolor=black, urlcolor=black, citecolor=black]{hyperref}
+\usepackage[colorlinks=true, linkcolor=titleblue, urlcolor=titleblue, citecolor=titleblue]{hyperref}
+\usepackage{bookmark}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{tikz}
@@ -30,6 +33,20 @@
 \usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{lastpage}
+
+\hypersetup{
+  pdftitle={AITDR - Azure Intelligent Threat Detection and Response},
+  pdfauthor={Oussama Gammal},
+  pdfsubject={Rapport de Projet de Fin d'Annee},
+  pdfkeywords={SOC, Azure, SIEM, SOAR, Machine Learning, Cybersecurite, Terraform, Honeypot},
+  pdfcreator={LaTeX}
+}
+\urlstyle{same}
+\emergencystretch=2em
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
 
 % ============================================
 % COULEURS
@@ -39,6 +56,7 @@
 \definecolor{tabrowlight}{RGB}{248,250,252}
 \definecolor{tabrowdark}{RGB}{235,240,245}
 \definecolor{codegray}{RGB}{245,245,245}
+\definecolor{codeframe}{RGB}{210,220,230}
 \definecolor{codeblue}{RGB}{30,100,180}
 \definecolor{codegreen}{RGB}{0,128,0}
 \definecolor{codeorange}{RGB}{200,80,0}
@@ -81,7 +99,12 @@
   postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
   captionpos=b,
   frame=single,
-  rulecolor=\color{gray!40},
+  rulecolor=\color{codeframe},
+  framerule=0.6pt,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  framexleftmargin=0.4em,
+  framexrightmargin=0.4em,
   numbers=left,
   numberstyle=\tiny\color{gray},
   numbersep=8pt,
@@ -140,13 +163,22 @@
 % ============================================
 \pagestyle{fancy}
 \fancyhf{}
-\rhead{\small AITDR}
+\rhead{\small\bfseries AITDR}
 \lhead{\small \nouppercase{\leftmark}}
-\cfoot{\thepage}
+\cfoot{\small Page \thepage\ sur \pageref{LastPage}}
 \setlength{\headheight}{13pt}
 \renewcommand{\headrulewidth}{0.3pt}
-\titleformat{\chapter}[block]{\Large\bfseries\color{titleblue}}{\thechapter.}{0.8em}{}
-\titlespacing*{\chapter}{0pt}{16pt}{10pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \cfoot{\small Page \thepage\ sur \pageref{LastPage}}
+  \renewcommand{\headrulewidth}{0pt}
+}
+\titleformat{\chapter}[display]
+  {\Large\bfseries\color{titleblue}}
+  {\filright\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {0.4em}
+  {\titlerule[0.6pt]\vspace{0.6em}\filright}
+\titlespacing*{\chapter}{0pt}{8pt}{14pt}
 \titleformat{\section}[block]{\large\bfseries}{\thesection}{0.6em}{}
 \titlespacing*{\section}{0pt}{12pt}{5pt}
 \titleformat{\subsection}[block]{\normalsize\bfseries}{\thesubsection}{0.5em}{}
@@ -303,25 +335,45 @@
 % 1. PAGE DE GARDE
 % ============================================
 \begin{titlepage}
+\thispagestyle{empty}
 \centering
-\vspace*{1cm}
-{\color{titleblue}\rule{\textwidth}{2pt}}\\[0.8cm]
-{\Huge\bfseries\color{titleblue} AITDR - Azure Intelligent Threat Detection \& Response}\\[0.5cm]
-{\large\bfseries Plateforme SOC Cloud --- Détection Intelligente et Réponse Automatisée aux Cybermenaces}\\[0.3cm]
-{\color{titleblue}\rule{\textwidth}{0.5pt}}\\[1.5cm]
-{\Large Rapport de Projet de Fin d'Année}\\[0.5cm]
-{\large\bfseries Promotion 2025 --- 2026}\\[2cm]
-\begin{tabular}{@{}rl@{}}
-\textbf{Auteur} & Oussama Gammal \\[4pt]
-\textbf{Établissement} & EMSI --- École Marocaine des Sciences de l'Ingénieur \\[4pt]
-\textbf{Filière} & Ingénierie Informatique \& Réseaux (4IIR) \\[4pt]
-\textbf{Encadrant} & [Nom du superviseur] \\[4pt]
-\textbf{Date} & 16 juin 2026 \\[4pt]
-\textbf{Version} & Version 1.0 --- Final \\[4pt]
+\vspace*{0.8cm}
+{\Large\bfseries EMSI --- École Marocaine des Sciences de l'Ingénieur}\\[0.2cm]
+{\normalsize Filière : Ingénierie Informatique \& Réseaux (4IIR)}\\[1.2cm]
+
+{\color{titleblue}\rule{\textwidth}{1.8pt}}\\[0.75cm]
+{\Huge\bfseries\color{titleblue} AITDR}\\[0.35cm]
+{\Large\bfseries Azure Intelligent Threat Detection \& Response}\\[0.45cm]
+{\large Plateforme SOC Cloud --- Détection Intelligente et Réponse Automatisée aux Cybermenaces}\\[0.75cm]
+{\color{titleblue}\rule{0.72\textwidth}{0.7pt}}\\[1.0cm]
+
+{\Large\bfseries Rapport de Projet de Fin d'Année}\\[0.35cm]
+{\large\bfseries Promotion 2025 --- 2026}\\[1.5cm]
+
+\begin{mdframed}[
+  backgroundcolor=infobox,
+  linecolor=titleblue,
+  linewidth=0.8pt,
+  roundcorner=4pt,
+  innerleftmargin=18pt,
+  innerrightmargin=18pt,
+  innertopmargin=12pt,
+  innerbottommargin=12pt
+]
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{0.82\textwidth}{@{}L{3.5cm}Y@{}}
+\textbf{Auteur} & Oussama Gammal \\
+\textbf{Encadrant} & [Nom du superviseur] \\
+\textbf{Établissement} & EMSI --- École Marocaine des Sciences de l'Ingénieur \\
+\textbf{Filière} & Ingénierie Informatique \& Réseaux (4IIR) \\
+\textbf{Date} & 16 juin 2026 \\
+\textbf{Version} & Version 1.0 --- Final \\
 \textbf{Budget} & Budget : 100 USD \\
-\end{tabular}
+\end{tabularx}
+\end{mdframed}
 \vfill
-{\color{titleblue}\rule{\textwidth}{0.5pt}}
+{\color{titleblue}\rule{\textwidth}{0.5pt}}\\[0.25cm]
+{\small Rapport confidentiel --- Usage académique uniquement}
 \end{titlepage}
 
 % ============================================
