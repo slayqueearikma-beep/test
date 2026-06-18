@@ -11,6 +11,7 @@
 \usepackage{microtype}
 \usepackage{parskip}
 \usepackage{pdflscape}
+\usepackage{adjustbox}
 \usepackage{csquotes}
 \usepackage{xurl}
 \usepackage{graphicx}
@@ -196,13 +197,14 @@
 \begin{landscape}
 \thispagestyle{empty}
 \centering
-\vspace*{0.2cm}
+\vspace*{-0.2cm}
 \captionsetup{hypcap=false}
 \captionof{figure}{Business Model Canvas de AITDR}
 \label{fig:bmc}
-\vspace{0.25cm}
+\vspace{0.15cm}
 \begingroup
 \setlist[itemize]{leftmargin=*, itemsep=1pt, topsep=1pt, parsep=0pt, label=\textbullet}
+\noindent\begin{adjustbox}{max width=0.98\linewidth, max totalheight=0.90\textheight, center}
 \begin{tikzpicture}[font=\fontsize{7.4}{8.5}\selectfont]
 \def\colA{4.1}\def\colB{4.1}\def\colC{5.3}\def\colD{4.1}\def\colE{4.1}
 \def\rowTop{10.4}\def\rowHalf{5.2}\def\rowBottom{4.25}
@@ -329,6 +331,7 @@
   \item Formation, certification et consulting.
 \end{itemize}};
 \end{tikzpicture}
+\end{adjustbox}
 \endgroup
 \end{landscape}
 \clearpage}
