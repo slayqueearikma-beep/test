@@ -192,11 +192,15 @@
 % ============================================
 \newcommand{\bmctitle}[1]{{\bfseries\small\color{titleblue} #1}\\[2pt]}
 \newcommand{\AITDRBusinessModelCanvas}{%
+\clearpage
 \begin{landscape}
-\begin{figure}[p]
+\thispagestyle{empty}
 \centering
-\caption{Business Model Canvas de AITDR}
+\vspace*{0.2cm}
+\captionsetup{hypcap=false}
+\captionof{figure}{Business Model Canvas de AITDR}
 \label{fig:bmc}
+\vspace{0.25cm}
 \begingroup
 \setlist[itemize]{leftmargin=*, itemsep=1pt, topsep=1pt, parsep=0pt, label=\textbullet}
 \begin{tikzpicture}[font=\fontsize{7.4}{8.5}\selectfont]
@@ -326,8 +330,8 @@
 \end{itemize}};
 \end{tikzpicture}
 \endgroup
-\end{figure}
-\end{landscape}}
+\end{landscape}
+\clearpage}
 
 \begin{document}
 
