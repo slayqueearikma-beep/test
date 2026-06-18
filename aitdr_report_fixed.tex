@@ -83,9 +83,9 @@
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
-% Use \th{...} in every header cell so the full header row is white and bold.
+% Use \theadcell{...} in every header cell so the full header row is white and bold.
 \newcommand{\tableheader}{\rowcolor{tabheader}}
-\newcommand{\th}[1]{\textcolor{white}{\bfseries #1}}
+\newcommand{\theadcell}[1]{\textcolor{white}{\bfseries #1}}
 \newcommand{\rowlight}{\rowcolor{tabrowlight}}
 \newcommand{\rowdark}{\rowcolor{tabrowdark}}
 \newcommand{\rowgreen}{\rowcolor{tabgreen}}
@@ -436,7 +436,7 @@ La transformation numérique des organisations marocaines augmente la surface d'
 \begin{tabularx}{\textwidth}{@{}L{2.8cm}L{5.2cm}Y@{}}
 \toprule
 \tableheader
-\th{Segment} & \th{Frustrations identifiées} & \th{Verbatim représentatif} \\
+\theadcell{Segment} & \theadcell{Frustrations identifiées} & \theadcell{Verbatim représentatif} \\
 \midrule
 \rowlight
 Responsable Sécurité / RSSI &
@@ -476,7 +476,7 @@ Direction Générale &
 \begin{tabularx}{\textwidth}{@{}L{3.5cm}Y@{}}
 \toprule
 \tableheader
-\th{Dimension} & \th{Description} \\
+\theadcell{Dimension} & \theadcell{Description} \\
 \midrule
 \rowlight Intitulé & AITDR --- Azure Intelligent Threat Detection \& Response \\
 \rowdark Objectif général & Concevoir et déployer une plateforme SOC cloud-native, automatisée et intelligente sur Microsoft Azure. \\
@@ -507,7 +507,7 @@ Le tableau original du benchmark contenait six colonnes de données mais seuleme
 \begin{tabularx}{\textwidth}{@{}L{1.9cm}L{2.2cm}L{2.4cm}L{2.3cm}Y Y@{}}
 \toprule
 \tableheader
-\th{Solution} & \th{Type} & \th{Présence au Maroc} & \th{Prix mensuel (MAD)} & \th{Avantages} & \th{Faiblesses vs AITDR} \\
+\theadcell{Solution} & \theadcell{Type} & \theadcell{Présence au Maroc} & \theadcell{Prix mensuel (MAD)} & \theadcell{Avantages} & \theadcell{Faiblesses vs AITDR} \\
 \midrule
 \rowlight Microsoft Sentinel & Cloud Azure & Forte & 20 000+ selon volume & Intégration Azure native, IA intégrée. & Coût élevé et configuration complexe. \\
 \rowdark Splunk Enterprise Security & Cloud / On-prem & Partenaires & 80 000+ & Leader historique, écosystème riche. & Coût prohibitif, exploitation lourde. \\
@@ -536,7 +536,7 @@ Le Business Model Canvas existe dans cette version sous la commande \code{\textb
 \begin{tabularx}{\textwidth}{@{}L{2.2cm}R{2.4cm}Y L{2.7cm}L{2.2cm}@{}}
 \toprule
 \tableheader
-\th{Offre} & \th{Prix (MAD/mois)} & \th{Fonctionnalités} & \th{Cible} & \th{Modèle} \\
+\theadcell{Offre} & \theadcell{Prix (MAD/mois)} & \theadcell{Fonctionnalités} & \theadcell{Cible} & \theadcell{Modèle} \\
 \midrule
 \rowlight Discovery & Gratuit & Version open source auto-hébergée et documentation. & Étudiants, chercheurs, petites structures. & Freemium \\
 \rowdark Basic & 1 200 & Hébergement Azure, honeypot, Sentinel et règles KQL. & Micro-entreprises, start-ups. & SaaS \\
@@ -556,7 +556,7 @@ Le Business Model Canvas existe dans cette version sous la commande \code{\textb
 \begin{tabularx}{\textwidth}{@{}L{4.4cm}L{3.2cm}Y@{}}
 \toprule
 \tableheader
-\th{Paramètre} & \th{Valeur} & \th{Formule / détail} \\
+\theadcell{Paramètre} & \theadcell{Valeur} & \theadcell{Formule / détail} \\
 \midrule
 \rowlight Revenu moyen annuel (RMA) & 18 000 MAD & 1 500 MAD/mois $\times$ 12 mois. \\
 \rowdark Charges fixes (CF) & 126 000 MAD & Support, maintenance et marketing. \\
@@ -667,16 +667,16 @@ Cette version fournit une base LaTeX plus robuste pour le rapport AITDR. Les cor
 \caption{Résumé des corrections LaTeX}\\
 \toprule
 \tableheader
-\th{Élément} & \th{Correction} \\
+\theadcell{Élément} & \theadcell{Correction} \\
 \midrule
 \endfirsthead
 \toprule
 \tableheader
-\th{Élément} & \th{Correction} \\
+\theadcell{Élément} & \theadcell{Correction} \\
 \midrule
 \endhead
 \rowlight Business Model Canvas & Présent sous \code{\textbackslash AITDRBusinessModelCanvas}, rendu en paysage et dimensionné pour A4. \\
-\rowdark En-têtes de tableaux & Ajout de \code{\textbackslash th\{...\}} pour garantir un texte blanc et gras dans toutes les cellules. \\
+\rowdark En-têtes de tableaux & Ajout de \code{\textbackslash theadcell\{...\}} pour garantir un texte blanc et gras dans toutes les cellules. \\
 \rowlight Benchmark concurrentiel & Correction du nombre de colonnes : six cellules de données, six colonnes déclarées. \\
 \rowdark Listings & Ajout de retours à la ligne visibles et de styles communs pour Bash, Python, HCL et SQL. \\
 \rowlight Compilation & Ajout de \code{amssymb}, \code{pdflscape} et \code{adjustbox}; suppression des tirets Unicode problématiques dans le code. \\
