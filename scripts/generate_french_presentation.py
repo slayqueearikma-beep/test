@@ -24,6 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "presentation"
 OUT_PPTX = OUT_DIR / "AITDR_completed_after_slide_13_FR.pptx"
 OUT_PDF = OUT_DIR / "AITDR_completed_after_slide_13_FR.pdf"
+OUT_PDF_COMPAT = OUT_DIR / "AITDR_completed_after_slide_13.pdf"
+OUT_NOTES = OUT_DIR / "AITDR_conception_speaker_notes.md"
 
 SLIDE_W = 13.333333
 SLIDE_H = 7.5
@@ -73,7 +75,7 @@ SLIDES = [
         "subtitle": "Plan de la présentation",
         "items": [
             "Contexte, problématique et objectifs",
-            "Architecture globale AITDR",
+            "Conception et modélisation",
             "Infrastructure Azure et budget",
             "Collecte des logs, SIEM Sentinel et SOAR",
             "Machine Learning et visualisation Power BI",
@@ -138,6 +140,56 @@ SLIDES = [
             ("Répondre", ["Logic Apps SOAR", "Blocage IP automatique", "Alertes et confinement rapide"], "orange"),
             ("Analyser", ["Pipeline ETL", "SQL Database", "Machine Learning et Power BI"], "green"),
         ],
+    },
+    {
+        "type": "section",
+        "section": "Conception",
+        "title": "Conception et modélisation",
+        "subtitle": "Sous-titre : de l'architecture Azure aux interactions fonctionnelles",
+    },
+    {
+        "type": "architecture_detail",
+        "section": "Conception 1/4",
+        "title": "Architecture Azure AITDR",
+        "subtitle": "Vue logique de la plateforme SOC cloud-native",
+        "talk": (
+            "Cette slide présente l'architecture globale de AITDR. On retrouve une zone DMZ exposée avec le honeypot DVWA, "
+            "une zone Data pour stocker les logs, et une zone SIEM/SOAR pour analyser les événements et automatiser la réponse. "
+            "L'objectif est de séparer les composants sensibles et de garder une architecture sécurisée et reproductible avec Terraform."
+        ),
+    },
+    {
+        "type": "class_diagram",
+        "section": "Conception 2/4",
+        "title": "Diagramme de classes AITDR",
+        "subtitle": "Objets principaux de la plateforme",
+        "talk": (
+            "Ce diagramme de classes montre les principaux objets manipulés par la solution. L'AttackEvent représente l'événement collecté, "
+            "le LogPipeline assure la collecte et le parsing, le SIEMAlert génère les alertes, et le SOARPlaybook exécute les réponses automatiques. "
+            "Les modèles ML et le dashboard Power BI complètent la chaîne d'analyse et de visualisation."
+        ),
+    },
+    {
+        "type": "sequence_diagram",
+        "section": "Conception 3/4",
+        "title": "Diagramme de séquence",
+        "subtitle": "Flux de détection et de réponse automatique",
+        "talk": (
+            "Ce diagramme explique le déroulement d'un incident. L'attaquant génère une requête vers le honeypot, Suricata produit des événements, "
+            "le pipeline collecte et analyse les logs, puis Sentinel déclenche une alerte. Si l'incident est confirmé, Logic Apps bloque automatiquement "
+            "l'adresse IP via le NSG et les tableaux de bord sont rafraîchis."
+        ),
+    },
+    {
+        "type": "usecase_diagram",
+        "section": "Conception 4/4",
+        "title": "Diagramme de cas d'utilisation",
+        "subtitle": "Interactions entre attaquant, analyste SOC et administrateur",
+        "talk": (
+            "Ce diagramme présente les principaux utilisateurs du système. L'attaquant génère des événements, l'analyste SOC consulte les incidents "
+            "et les tableaux de bord, tandis que l'administrateur configure l'infrastructure, les règles KQL et les alertes Sentinel. "
+            "La plateforme relie donc la capture, la détection, la réponse et le reporting."
+        ),
     },
     {
         "type": "diagram",
@@ -647,6 +699,143 @@ def add_diagram_slide(slide, item: dict):
             fill_shape(arrow, MUTED)
 
 
+def add_architecture_detail_slide(slide, item: dict):
+    def component(title: str, body: str, x: float, y: float, w: float, h: float, color: RGBColor):
+        box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
+        fill_shape(box, color, color)
+        add_textbox(slide, title, x + 0.08, y + 0.12, w - 0.16, 0.28, size=11, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+        add_textbox(slide, body, x + 0.1, y + 0.48, w - 0.2, h - 0.55, size=8.5, color=WHITE, align=PP_ALIGN.CENTER)
+
+    def zone(title: str, x: float, y: float, w: float, h: float, color: RGBColor):
+        outer = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h))
+        outer.fill.background()
+        outer.line.color.rgb = color
+        outer.line.width = Pt(1.5)
+        add_textbox(slide, title, x + 0.12, y + 0.08, w - 0.24, 0.25, size=10, color=color, bold=True, align=PP_ALIGN.CENTER)
+
+    component("Internet / Attaquant", "Trafic HTTP/SSH", 5.35, 1.35, 2.2, 0.6, RED)
+    component("VPN Gateway", "IKEv2", 4.15, 2.15, 1.55, 0.55, NAVY_DARK)
+    component("Azure Firewall", "Key Vault + contrôle", 6.0, 2.15, 1.9, 0.55, NAVY_DARK)
+
+    zone("VNet1 - DMZ", 0.55, 3.05, 3.1, 2.45, BLUE)
+    component("VM1 WebServer", "Ubuntu 22.04\nDVWA + Suricata IDS", 0.85, 3.55, 2.5, 0.72, BLUE)
+    component("NSG-DMZ", "Allow 80/443\nDeny-All", 0.85, 4.38, 2.5, 0.58, ORANGE)
+    component("Public IP", "Exposition VM1", 0.85, 5.05, 2.5, 0.4, RED)
+
+    zone("VNet2 - Data", 4.05, 3.05, 3.1, 2.45, TEAL)
+    component("Azure SQL Database", "attack_logs + anomalies", 4.35, 3.55, 2.5, 0.58, TEAL)
+    component("Azure Blob Storage", "Logs bruts / rapports", 4.35, 4.23, 2.5, 0.58, TEAL)
+    component("Azure Data Factory", "Pipeline ETL", 4.35, 4.91, 2.5, 0.58, TEAL)
+
+    zone("VNet3 - SIEM/SOAR", 7.55, 3.05, 3.55, 2.45, NAVY)
+    component("Microsoft Sentinel", "SIEM + KQL + AMA", 7.9, 3.48, 2.85, 0.58, NAVY)
+    component("Azure Logic Apps", "SOAR + Playbooks", 7.9, 4.18, 2.85, 0.58, NAVY)
+    component("VM2 ML Engine", "Isolation Forest + DBSCAN", 7.9, 4.88, 2.85, 0.58, NAVY)
+
+    component("Log Analytics Workspace", "Azure Monitor + DCR", 4.5, 5.75, 2.4, 0.55, NAVY_DARK)
+    component("Power BI", "Dashboards + DAX", 8.0, 5.75, 2.6, 0.55, ORANGE)
+    add_textbox(slide, "Flux clés : HTTP/SSH -> logs -> SQL/Log Analytics -> Sentinel -> Logic Apps -> NSG", 1.0, 6.35, 11.2, 0.3, size=10, color=MUTED, align=PP_ALIGN.CENTER)
+
+
+def add_class_diagram_slide(slide, item: dict):
+    classes = [
+        ("AttackEvent", ["event_id", "timestamp", "src_ip", "attack_type"], ["detect()", "classify()", "toJSON()"], RED, 0.65, 1.55),
+        ("HoneypotVM", ["vm_id", "public_ip", "vnet", "dvwa_enabled"], ["captureTraffic()", "sendLogs()", "getStatus()"], BLUE, 0.65, 3.55),
+        ("LogPipeline", ["pipeline_id", "blob_url", "schedule", "status"], ["collectLogs()", "parseLogs()", "storeSQL()"], NAVY, 3.7, 1.55),
+        ("MLModel", ["model_type", "threshold", "features"], ["fit()", "predict()", "flagAnomaly()"], NAVY, 3.7, 3.55),
+        ("SIEMAlert", ["alert_id", "rule_name", "severity", "kql_query"], ["evaluate()", "createIncident()", "triggerSOAR()"], TEAL, 6.75, 1.55),
+        ("SOARPlaybook", ["playbook_id", "trigger", "actions", "status"], ["execute()", "blockIP()", "sendAlert()"], TEAL, 6.75, 3.55),
+        ("NSGRule", ["rule_id", "priority", "src_ip", "action"], ["block()", "allow()", "delete()"], ORANGE, 9.8, 2.25),
+        ("PowerBIDashboard", ["dataset", "refresh_schedule", "visuals"], ["refresh()", "exportReport()"], NAVY_DARK, 9.8, 4.45),
+    ]
+
+    def cls(name, attrs, methods, color, x, y):
+        box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(2.35), Inches(1.55))
+        fill_shape(box, color, color)
+        add_textbox(slide, name, x + 0.05, y + 0.08, 2.25, 0.22, size=10.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+        add_textbox(slide, "\n".join(f"- {a}" for a in attrs), x + 0.12, y + 0.38, 2.1, 0.52, size=6.8, color=WHITE)
+        add_textbox(slide, "\n".join(f"+ {m}" for m in methods), x + 0.12, y + 0.96, 2.1, 0.45, size=6.8, color=WHITE)
+
+    for klass in classes:
+        cls(*klass)
+    add_textbox(slide, "Relations principales : AttackEvent -> LogPipeline -> SIEMAlert -> SOARPlaybook -> NSGRule", 1.0, 6.35, 11.2, 0.3, size=10, color=MUTED, align=PP_ALIGN.CENTER)
+
+
+def add_sequence_diagram_slide(slide, item: dict):
+    actors = [
+        ("Attaquant", RED),
+        ("DVWA\nHoneypot", BLUE),
+        ("Suricata\nIDS/IPS", BLUE),
+        ("Pipeline\nETL / ML", NAVY),
+        ("Sentinel\nSIEM", TEAL),
+        ("Logic Apps\nSOAR", TEAL),
+        ("NSG", ORANGE),
+    ]
+    x0 = 0.65
+    gap = 1.72
+    top = 1.65
+    bottom = 6.15
+    xs = []
+    for idx, (name, color) in enumerate(actors):
+        x = x0 + idx * gap
+        xs.append(x + 0.55)
+        head = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(x), Inches(top), Inches(1.25), Inches(0.5))
+        fill_shape(head, color, color)
+        add_textbox(slide, name, x + 0.05, top + 0.08, 1.15, 0.3, size=8.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+        line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x + 0.58), Inches(top + 0.6), Inches(0.02), Inches(bottom - top - 0.55))
+        fill_shape(line, LIGHT, LIGHT)
+
+    steps = [
+        (0, 1, "1. Attaque HTTP/SSH", 2.55, RED),
+        (1, 2, "2. EVE JSON", 3.05, BLUE),
+        (1, 3, "3. Logs Apache/auth", 3.45, BLUE),
+        (3, 4, "4. Syslogs via AMA", 4.1, TEAL),
+        (3, 4, "5. Anomalies ML", 4.55, TEAL),
+        (4, 5, "6. Déclenche Logic App", 5.05, TEAL),
+        (5, 6, "7. Bloquer IP NSG", 5.45, ORANGE),
+        (6, 5, "8. Confirmation", 5.85, ORANGE),
+    ]
+    for src, dst, label, y, color in steps:
+        x1, x2 = xs[src], xs[dst]
+        arrow = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(min(x1, x2)), Inches(y), Inches(abs(x2 - x1)), Inches(0.12))
+        fill_shape(arrow, color)
+        add_textbox(slide, label, min(x1, x2) + 0.08, y - 0.18, abs(x2 - x1) + 0.2, 0.2, size=7.5, color=NAVY_DARK)
+
+
+def add_usecase_diagram_slide(slide, item: dict):
+    add_textbox(slide, "Plateforme AITDR", 5.25, 1.45, 2.7, 0.3, size=13, color=MUTED, bold=True, align=PP_ALIGN.CENTER)
+    boundary = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(2.8), Inches(1.7), Inches(7.4), Inches(4.45))
+    boundary.fill.background()
+    boundary.line.color.rgb = LIGHT
+
+    def actor(label: str, x: float, y: float):
+        head = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x + 0.22), Inches(y), Inches(0.35), Inches(0.35))
+        head.fill.background()
+        head.line.color.rgb = MUTED
+        body = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x + 0.38), Inches(y + 0.35), Inches(0.03), Inches(0.7))
+        fill_shape(body, MUTED)
+        add_textbox(slide, label, x - 0.15, y + 1.08, 0.95, 0.25, size=8.5, color=MUTED, align=PP_ALIGN.CENTER)
+
+    def usecase(text: str, x: float, y: float, w: float, color: RGBColor):
+        oval = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y), Inches(w), Inches(0.48))
+        fill_shape(oval, color, color)
+        add_textbox(slide, text, x + 0.08, y + 0.14, w - 0.16, 0.2, size=8.8, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+    actor("Attaquant", 0.8, 2.1)
+    actor("Analyste SOC", 0.7, 4.55)
+    actor("Admin", 11.25, 3.35)
+    usecase("Capturer des attaques", 3.35, 2.0, 3.2, BLUE)
+    usecase("Collecter les logs", 3.35, 2.85, 3.2, BLUE)
+    usecase("Détecter anomalies (ML)", 3.35, 3.7, 3.2, BLUE)
+    usecase("Générer alertes SIEM", 3.35, 4.55, 3.2, TEAL)
+    usecase("Réponse auto. SOAR", 3.35, 5.4, 3.2, TEAL)
+    usecase("Visualiser tableau bord", 6.9, 2.35, 3.0, NAVY)
+    usecase("Consulter incidents", 6.9, 3.25, 3.0, NAVY)
+    usecase("Configurer règles KQL", 6.9, 4.15, 3.0, NAVY)
+    usecase("Déployer infrastructure", 6.9, 5.05, 3.0, ORANGE)
+    add_textbox(slide, "Honeypot / VM        SIEM / SOAR        Visualisation        Administration", 3.2, 6.32, 7.2, 0.25, size=9, color=MUTED, align=PP_ALIGN.CENTER)
+
+
 def add_timeline_slide(slide, item: dict):
     y = 3.32
     line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.1), Inches(y + 0.21), Inches(10.9), Inches(0.04))
@@ -751,6 +940,14 @@ def build_pptx():
             add_metrics_slide(slide, item)
         elif kind == "diagram":
             add_diagram_slide(slide, item)
+        elif kind == "architecture_detail":
+            add_architecture_detail_slide(slide, item)
+        elif kind == "class_diagram":
+            add_class_diagram_slide(slide, item)
+        elif kind == "sequence_diagram":
+            add_sequence_diagram_slide(slide, item)
+        elif kind == "usecase_diagram":
+            add_usecase_diagram_slide(slide, item)
         elif kind == "timeline":
             add_timeline_slide(slide, item)
         elif kind == "bmc":
@@ -878,6 +1075,76 @@ def render_pdf_slide(item: dict, idx: int) -> Image.Image:
             by = y + 65
             for bullet in bullets:
                 by = draw_wrapped(draw, f"- {bullet}", (x + 32, by), int(cw - 60), font(16), PIL_COLORS["navy_dark"], spacing=3)
+    elif item["type"] in {"architecture_detail", "class_diagram", "sequence_diagram", "usecase_diagram"}:
+        if item["type"] == "architecture_detail":
+            zones = [
+                ("VNet1 - DMZ", ["VM1 WebServer", "NSG-DMZ", "Public IP"], "blue", 90, 300),
+                ("VNet2 - Data", ["Azure SQL", "Blob Storage", "Data Factory"], "teal", 560, 300),
+                ("VNet3 - SIEM/SOAR", ["Sentinel", "Logic Apps", "VM2 ML"], "navy", 1030, 300),
+            ]
+            draw.rounded_rectangle((620, 165, 975, 245), radius=18, fill=PIL_COLORS["red"])
+            draw.text((797, 190), "Internet / Attaquant", font=font(20, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+            for title, comps, color_name, x, y in zones:
+                draw.rounded_rectangle((x, y, x + 380, y + 300), radius=20, outline=PIL_COLORS[color_name], width=3)
+                draw.text((x + 190, y + 25), title, font=font(19, bold=True), fill=PIL_COLORS[color_name], anchor="ma")
+                for i, comp in enumerate(comps):
+                    yy = y + 70 + i * 68
+                    draw.rounded_rectangle((x + 45, yy, x + 335, yy + 48), radius=12, fill=PIL_COLORS[color_name])
+                    draw.text((x + 190, yy + 14), comp, font=font(16, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+            draw.rounded_rectangle((600, 645, 950, 700), radius=15, fill=PIL_COLORS["black"])
+            draw.text((775, 662), "Log Analytics Workspace", font=font(17, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+            draw.rounded_rectangle((1080, 645, 1395, 700), radius=15, fill=PIL_COLORS["orange"])
+            draw.text((1237, 662), "Power BI", font=font(18, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+        elif item["type"] == "class_diagram":
+            names = ["AttackEvent", "HoneypotVM", "LogPipeline", "MLModel", "SIEMAlert", "SOARPlaybook", "NSGRule", "PowerBIDashboard"]
+            colors = ["red", "blue", "navy", "navy", "teal", "teal", "orange", "black"]
+            for i, name in enumerate(names):
+                col, row = i % 4, i // 4
+                x, y = 110 + col * 370, 220 + row * 230
+                draw.rounded_rectangle((x, y, x + 300, y + 170), radius=18, fill=PIL_COLORS[colors[i]])
+                draw.text((x + 150, y + 20), name, font=font(19, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+                draw.line((x + 20, y + 58, x + 280, y + 58), fill=PIL_COLORS["white"])
+                draw_wrapped(draw, "- attributs principaux\n+ méthodes principales", (x + 28, y + 78), 245, font(15), PIL_COLORS["white"], spacing=6)
+            draw.text((800, 725), "Chaîne logique : événement -> pipeline -> alerte -> réponse -> visualisation", font=font(18), fill=PIL_COLORS["muted"], anchor="ma")
+        elif item["type"] == "sequence_diagram":
+            actors = ["Attaquant", "DVWA", "Suricata", "Pipeline", "Sentinel", "Logic Apps", "NSG"]
+            xs = [150 + i * 210 for i in range(len(actors))]
+            for x, actor in zip(xs, actors):
+                draw.rounded_rectangle((x - 70, 185, x + 70, 235), radius=12, fill=PIL_COLORS["navy"])
+                draw.text((x, 200), actor, font=font(15, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+                draw.line((x, 250, x, 690), fill=PIL_COLORS["light"], width=3)
+            steps = [
+                (0, 1, "1. Attaque HTTP/SSH", 285),
+                (1, 2, "2. EVE JSON", 340),
+                (1, 3, "3. Logs Apache/auth", 395),
+                (3, 4, "4. Alerte SIEM", 470),
+                (4, 5, "5. Déclenche SOAR", 540),
+                (5, 6, "6. Bloquer IP", 610),
+            ]
+            for src, dst, label, y in steps:
+                draw.line((xs[src], y, xs[dst], y), fill=PIL_COLORS["teal"], width=4)
+                draw.polygon([(xs[dst], y), (xs[dst] - 12, y - 7), (xs[dst] - 12, y + 7)], fill=PIL_COLORS["teal"])
+                draw.text(((xs[src] + xs[dst]) / 2, y - 25), label, font=font(15), fill=PIL_COLORS["navy_dark"], anchor="ma")
+        elif item["type"] == "usecase_diagram":
+            draw.rounded_rectangle((355, 165, 1245, 695), radius=24, outline=PIL_COLORS["light"], width=4)
+            draw.text((800, 190), "Plateforme AITDR", font=font(20, bold=True), fill=PIL_COLORS["muted"], anchor="ma")
+            usecases = [
+                ("Capturer des attaques", 450, 260, "blue"),
+                ("Collecter les logs", 450, 350, "blue"),
+                ("Détecter anomalies (ML)", 450, 440, "blue"),
+                ("Générer alertes SIEM", 450, 530, "teal"),
+                ("Réponse auto. SOAR", 450, 620, "teal"),
+                ("Visualiser tableau bord", 840, 305, "navy"),
+                ("Consulter incidents", 840, 405, "navy"),
+                ("Configurer règles KQL", 840, 505, "navy"),
+                ("Déployer infrastructure", 840, 605, "orange"),
+            ]
+            for text, x, y, color_name in usecases:
+                draw.ellipse((x, y, x + 320, y + 58), fill=PIL_COLORS[color_name])
+                draw.text((x + 160, y + 18), text, font=font(16, bold=True), fill=PIL_COLORS["white"], anchor="ma")
+            draw.text((160, 370), "Attaquant", font=font(19), fill=PIL_COLORS["muted"], anchor="ma")
+            draw.text((165, 610), "Analyste SOC", font=font(19), fill=PIL_COLORS["muted"], anchor="ma")
+            draw.text((1415, 480), "Admin", font=font(19), fill=PIL_COLORS["muted"], anchor="ma")
     else:
         # Compact fallback for PDF rendering.
         y = 215
@@ -924,14 +1191,39 @@ def build_pdf():
     images = [render_pdf_slide(item, idx) for idx, item in enumerate(SLIDES, start=1)]
     first, rest = images[0], images[1:]
     first.save(OUT_PDF, save_all=True, append_images=rest, resolution=144.0)
+    first.save(OUT_PDF_COMPAT, save_all=True, append_images=rest, resolution=144.0)
+
+
+def build_notes():
+    lines = [
+        "# Notes de présentation - Partie Conception AITDR",
+        "",
+        "Ces notes sont prévues pour être collées dans les notes du présentateur.",
+        "",
+    ]
+    for idx, item in enumerate(SLIDES, start=1):
+        if "talk" not in item:
+            continue
+        lines.extend(
+            [
+                f"## Slide {idx} - {item['title']}",
+                "",
+                item["talk"],
+                "",
+            ]
+        )
+    OUT_NOTES.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     build_pptx()
     build_pdf()
+    build_notes()
     print(f"Generated {OUT_PPTX}")
     print(f"Generated {OUT_PDF}")
+    print(f"Generated {OUT_PDF_COMPAT}")
+    print(f"Generated {OUT_NOTES}")
     print(f"Slides: {len(SLIDES)}")
 
 
