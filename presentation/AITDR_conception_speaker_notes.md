@@ -8,7 +8,7 @@ Cette slide présente l'architecture globale de AITDR. On retrouve une zone DMZ 
 
 ## Slide 9 - Diagramme de classes AITDR
 
-Ce diagramme de classes montre les principaux objets manipulés par la solution. L'AttackEvent représente l'événement collecté, le LogPipeline assure la collecte et le parsing, le SIEMAlert génère les alertes, et le SOARPlaybook exécute les réponses automatiques. Les modèles ML et le dashboard Power BI complètent la chaîne d'analyse et de visualisation.
+Ce diagramme de classes montre les principaux objets manipulés par la solution et leurs relations. Le HoneypotVM capture plusieurs AttackEvent, puis le LogPipeline collecte ces événements, les parse et les envoie vers l'analyse. Le MLModel analyse les données pour détecter les anomalies, le SIEMAlert crée l'incident, le SOARPlaybook déclenche la réponse automatique, et le NSGRule applique le blocage. Enfin, Power BI visualise les incidents et les anomalies.
 
 ## Slide 10 - Diagramme de séquence
 

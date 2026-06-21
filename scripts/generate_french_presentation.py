@@ -23,6 +23,7 @@ from pptx.util import Inches, Pt
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "presentation"
 OUT_PPTX = OUT_DIR / "AITDR_completed_after_slide_13_FR.pptx"
+OUT_PPTX_COMPAT = OUT_DIR / "AITDR_completed_after_slide_13.pptx"
 OUT_PDF = OUT_DIR / "AITDR_completed_after_slide_13_FR.pdf"
 OUT_PDF_COMPAT = OUT_DIR / "AITDR_completed_after_slide_13.pdf"
 OUT_NOTES = OUT_DIR / "AITDR_conception_speaker_notes.md"
@@ -164,9 +165,9 @@ SLIDES = [
         "title": "Diagramme de classes AITDR",
         "subtitle": "Objets principaux de la plateforme",
         "talk": (
-            "Ce diagramme de classes montre les principaux objets manipulés par la solution. L'AttackEvent représente l'événement collecté, "
-            "le LogPipeline assure la collecte et le parsing, le SIEMAlert génère les alertes, et le SOARPlaybook exécute les réponses automatiques. "
-            "Les modèles ML et le dashboard Power BI complètent la chaîne d'analyse et de visualisation."
+            "Ce diagramme de classes montre les principaux objets manipulés par la solution et leurs relations. Le HoneypotVM capture plusieurs AttackEvent, "
+            "puis le LogPipeline collecte ces événements, les parse et les envoie vers l'analyse. Le MLModel analyse les données pour détecter les anomalies, "
+            "le SIEMAlert crée l'incident, le SOARPlaybook déclenche la réponse automatique, et le NSGRule applique le blocage. Enfin, Power BI visualise les incidents et les anomalies."
         ),
     },
     {
@@ -756,9 +757,33 @@ def add_class_diagram_slide(slide, item: dict):
         add_textbox(slide, "\n".join(f"- {a}" for a in attrs), x + 0.12, y + 0.38, 2.1, 0.52, size=6.8, color=WHITE)
         add_textbox(slide, "\n".join(f"+ {m}" for m in methods), x + 0.12, y + 0.96, 2.1, 0.45, size=6.8, color=WHITE)
 
+    def relation(shape_type, x, y, w, h, label, lx, ly, lw=1.15):
+        arrow = slide.shapes.add_shape(shape_type, Inches(x), Inches(y), Inches(w), Inches(h))
+        fill_shape(arrow, MUTED, MUTED)
+        add_textbox(slide, label, lx, ly, lw, 0.18, size=6.4, color=MUTED, bold=True, align=PP_ALIGN.CENTER)
+
+    # Relation arrows are placed before the classes so the boxes remain readable.
+    relation(MSO_SHAPE.UP_ARROW, 1.72, 3.08, 0.18, 0.42, "capture 1..*", 1.16, 3.16, 1.2)
+    relation(MSO_SHAPE.RIGHT_ARROW, 3.04, 2.24, 0.58, 0.14, "collecte", 3.05, 2.0, 0.55)
+    relation(MSO_SHAPE.DOWN_ARROW, 4.75, 3.1, 0.18, 0.38, "analyse", 4.35, 3.18, 0.95)
+    relation(MSO_SHAPE.RIGHT_ARROW, 6.1, 2.24, 0.58, 0.14, "alimente", 6.1, 2.0, 0.6)
+    relation(MSO_SHAPE.DOWN_ARROW, 7.82, 3.1, 0.18, 0.38, "déclenche", 7.35, 3.18, 0.95)
+    relation(MSO_SHAPE.RIGHT_ARROW, 9.15, 4.16, 0.55, 0.14, "crée règle", 9.1, 3.92, 0.75)
+    relation(MSO_SHAPE.RIGHT_ARROW, 9.15, 5.02, 0.55, 0.14, "alimente", 9.12, 5.2, 0.65)
+
     for klass in classes:
         cls(*klass)
-    add_textbox(slide, "Relations principales : AttackEvent -> LogPipeline -> SIEMAlert -> SOARPlaybook -> NSGRule", 1.0, 6.35, 11.2, 0.3, size=10, color=MUTED, align=PP_ALIGN.CENTER)
+    add_textbox(
+        slide,
+        "Relations : HoneypotVM capture AttackEvent ; LogPipeline collecte/analyse ; SIEMAlert déclenche SOARPlaybook ; SOARPlaybook crée NSGRule ; PowerBI visualise.",
+        0.8,
+        6.35,
+        11.8,
+        0.3,
+        size=9,
+        color=MUTED,
+        align=PP_ALIGN.CENTER,
+    )
 
 
 def add_sequence_diagram_slide(slide, item: dict):
@@ -960,6 +985,7 @@ def build_pptx():
             add_thanks_slide(slide, item)
 
     prs.save(OUT_PPTX)
+    prs.save(OUT_PPTX_COMPAT)
 
 
 def font(size: int, bold: bool = False, italic: bool = False):
@@ -1098,14 +1124,35 @@ def render_pdf_slide(item: dict, idx: int) -> Image.Image:
         elif item["type"] == "class_diagram":
             names = ["AttackEvent", "HoneypotVM", "LogPipeline", "MLModel", "SIEMAlert", "SOARPlaybook", "NSGRule", "PowerBIDashboard"]
             colors = ["red", "blue", "navy", "navy", "teal", "teal", "orange", "black"]
+            positions = []
             for i, name in enumerate(names):
                 col, row = i % 4, i // 4
                 x, y = 110 + col * 370, 220 + row * 230
+                positions.append((x, y))
                 draw.rounded_rectangle((x, y, x + 300, y + 170), radius=18, fill=PIL_COLORS[colors[i]])
                 draw.text((x + 150, y + 20), name, font=font(19, bold=True), fill=PIL_COLORS["white"], anchor="ma")
                 draw.line((x + 20, y + 58, x + 280, y + 58), fill=PIL_COLORS["white"])
                 draw_wrapped(draw, "- attributs principaux\n+ méthodes principales", (x + 28, y + 78), 245, font(15), PIL_COLORS["white"], spacing=6)
-            draw.text((800, 725), "Chaîne logique : événement -> pipeline -> alerte -> réponse -> visualisation", font=font(18), fill=PIL_COLORS["muted"], anchor="ma")
+
+            def pil_arrow(x1, y1, x2, y2, label):
+                draw.line((x1, y1, x2, y2), fill=PIL_COLORS["muted"], width=4)
+                angle = math.atan2(y2 - y1, x2 - x1)
+                size = 12
+                p1 = (x2, y2)
+                p2 = (x2 - size * math.cos(angle - 0.45), y2 - size * math.sin(angle - 0.45))
+                p3 = (x2 - size * math.cos(angle + 0.45), y2 - size * math.sin(angle + 0.45))
+                draw.polygon([p1, p2, p3], fill=PIL_COLORS["muted"])
+                draw.text(((x1 + x2) / 2, (y1 + y2) / 2 - 20), label, font=font(13, bold=True), fill=PIL_COLORS["muted"], anchor="ma")
+
+            # Same relationships as the editable PPTX slide.
+            pil_arrow(480, 305, 410, 305, "capture")
+            pil_arrow(410, 305, 850, 305, "collecte")
+            pil_arrow(1000, 390, 1000, 450, "analyse")
+            pil_arrow(1000, 390, 260, 450, "alimente")
+            pil_arrow(410, 535, 480, 535, "déclenche")
+            pil_arrow(780, 535, 850, 535, "crée règle")
+            pil_arrow(1150, 535, 1220, 535, "visualise")
+            draw.text((800, 725), "Relations : capture -> collecte/analyse -> alerte -> SOAR -> règle NSG -> visualisation", font=font(18), fill=PIL_COLORS["muted"], anchor="ma")
         elif item["type"] == "sequence_diagram":
             actors = ["Attaquant", "DVWA", "Suricata", "Pipeline", "Sentinel", "Logic Apps", "NSG"]
             xs = [150 + i * 210 for i in range(len(actors))]
@@ -1221,6 +1268,7 @@ def main():
     build_pdf()
     build_notes()
     print(f"Generated {OUT_PPTX}")
+    print(f"Generated {OUT_PPTX_COMPAT}")
     print(f"Generated {OUT_PDF}")
     print(f"Generated {OUT_PDF_COMPAT}")
     print(f"Generated {OUT_NOTES}")
