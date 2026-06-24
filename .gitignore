@@ -9,3 +9,9 @@ __pycache__/
 data/
 *.db
 *.sqlite
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+!terraform.tfvars.example

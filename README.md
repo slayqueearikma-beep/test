@@ -72,6 +72,44 @@ python3 bot.py
 Tournament data is stored at `data/tournaments.db` by default. You can override
 that with `DATABASE_PATH` in `.env`.
 
+## Low-budget cloud hosting with Terraform
+
+This repo includes Terraform for hosting the bot on Azure Container Apps using a
+small consumption-profile container:
+
+- 0.25 CPU / 0.5 GiB memory by default
+- 1 always-on replica so the Discord gateway connection stays online
+- no public ingress
+- Basic Azure Container Registry
+- a 1 GiB Azure Files share mounted at `/app/data` for the SQLite database
+
+Deploy it:
+
+```bash
+az login
+az account set --subscription "<subscription-id-or-name>"
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars`:
+
+```hcl
+discord_token = "your-discord-bot-token"
+```
+
+Then run:
+
+```bash
+terraform init
+terraform apply
+```
+
+Terraform builds the Docker image with `az acr build`, pushes it to Azure
+Container Registry, and deploys it to Container Apps. See
+[`infra/terraform/README.md`](infra/terraform/README.md) for update and cost
+notes.
+
 ## Commands
 
 ### Tournament commands
