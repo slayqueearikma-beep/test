@@ -40,6 +40,7 @@ coin flips, dice rolls, option picking, and an enrollment leaderboard.
    - Embed Links
    - Read Message History
    - Use Slash Commands
+   - Mute Members, if you want to use the optional voice mute on enroll power
 
 The visible bot name is controlled in the Discord Developer Portal. The code is
 configured to run the 7amidelmath tournament features.
@@ -118,6 +119,8 @@ notes.
   - Posts a message with **Enroll** and **Withdraw** buttons.
   - `mode` can be `1 vs 1` or `5 vs 5`.
   - `max_players` is optional.
+  - `mute_on_enroll` is optional. When enabled, players who click **Enroll**
+    while they are in a voice channel are server-muted in voice.
 - `/tournament list status`
   - Lists recent tournaments in the server.
 - `/tournament start tournament_id`
@@ -150,6 +153,16 @@ number of players, one player receives a bye.
 Players are shuffled into teams of five. Teams are paired into first-round
 matches. If there is an odd number of teams, one team receives a bye. Extra
 players who cannot fill a full team are listed as reserves.
+
+## Optional voice mute on enroll
+
+When creating a tournament, set `mute_on_enroll` to `true` if you want the bot to
+voice-mute players as soon as they click **Enroll**. This only affects players
+who are already connected to a voice channel when they enroll.
+
+The bot needs the Discord **Mute Members** permission for this. It does not
+automatically unmute players on withdraw, because that could override a manual
+moderation mute.
 
 ## Tests
 

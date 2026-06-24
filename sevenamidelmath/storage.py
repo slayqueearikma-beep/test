@@ -35,6 +35,7 @@ class TournamentStore:
                     name TEXT NOT NULL,
                     mode TEXT NOT NULL CHECK (mode IN ('1v1', '5v5')),
                     max_players INTEGER,
+                    mute_on_enroll INTEGER NOT NULL DEFAULT 0,
                     status TEXT NOT NULL DEFAULT 'open'
                         CHECK (status IN ('open', 'started', 'cancelled')),
                     bracket_json TEXT,
@@ -61,6 +62,7 @@ class TournamentStore:
                     ON participants(user_id);
                 """
             )
+            self._ensure_column("tournaments", "mute_on_enroll", "INTEGER NOT NULL DEFAULT 0")
 
     def create_tournament(
         self,
@@ -71,16 +73,25 @@ class TournamentStore:
         name: str,
         mode: str,
         max_players: int | None,
+        mute_on_enroll: bool = False,
     ) -> int:
         with self._connection:
             cursor = self._connection.execute(
                 """
                 INSERT INTO tournaments (
-                    guild_id, channel_id, creator_id, name, mode, max_players
+                    guild_id, channel_id, creator_id, name, mode, max_players, mute_on_enroll
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (guild_id, channel_id, creator_id, name, mode, max_players),
+                (
+                    guild_id,
+                    channel_id,
+                    creator_id,
+                    name,
+                    mode,
+                    max_players,
+                    int(mute_on_enroll),
+                ),
             )
         return int(cursor.lastrowid)
 
@@ -250,3 +261,10 @@ class TournamentStore:
     @staticmethod
     def _many(cursor: sqlite3.Cursor) -> list[dict[str, Any]]:
         return [dict(row) for row in cursor.fetchall()]
+
+    def _ensure_column(self, table: str, column: str, definition: str) -> None:
+        cursor = self._connection.execute(f"PRAGMA table_info({table})")
+        existing_columns = {row["name"] for row in cursor.fetchall()}
+        if column in existing_columns:
+            return
+        self._connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

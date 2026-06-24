@@ -23,6 +23,7 @@ logging.basicConfig(
 class SevenAmidelMathBot(commands.Bot):
     def __init__(self, settings: Settings) -> None:
         intents = discord.Intents.default()
+        intents.voice_states = True
         super().__init__(
             command_prefix="!",
             intents=intents,

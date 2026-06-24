@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import discord
 
 from .presentation import enrollment_embed
@@ -50,6 +52,8 @@ class EnrollmentView(discord.ui.View):
 
         if added:
             message = f"You are enrolled in **{tournament['name']}**."
+            if tournament.get("mute_on_enroll"):
+                message += " " + await self._mute_member_in_voice(interaction, tournament)
         else:
             message = f"You were already enrolled in **{tournament['name']}**."
         await interaction.followup.send(message, ephemeral=True)
@@ -91,7 +95,7 @@ class EnrollmentView(discord.ui.View):
     def _tournament_for_interaction(
         self,
         interaction: discord.Interaction,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         if interaction.message is None:
             return None
         return self.store.get_tournament_by_message(interaction.message.id)
@@ -103,3 +107,30 @@ class EnrollmentView(discord.ui.View):
             return
         participants = self.store.list_participants(tournament_id)
         await interaction.message.edit(embed=enrollment_embed(tournament, participants), view=self)
+
+    async def _mute_member_in_voice(
+        self,
+        interaction: discord.Interaction,
+        tournament: dict[str, Any],
+    ) -> str:
+        member = interaction.user if isinstance(interaction.user, discord.Member) else None
+        if member is None and interaction.guild is not None:
+            member = interaction.guild.get_member(interaction.user.id)
+
+        if member is None:
+            return "I could not find your server member record to voice-mute you."
+
+        if member.voice is None or member.voice.channel is None:
+            return "You are not in a voice channel, so no voice mute was applied."
+
+        try:
+            await member.edit(
+                mute=True,
+                reason=f"7amidelmath tournament #{tournament['id']} mute on enroll",
+            )
+        except discord.Forbidden:
+            return "I tried to voice-mute you, but I need the **Mute Members** permission."
+        except discord.HTTPException:
+            return "I tried to voice-mute you, but Discord rejected the request."
+
+        return "You were voice-muted for this tournament."

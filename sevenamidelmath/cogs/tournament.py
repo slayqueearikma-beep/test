@@ -27,6 +27,7 @@ class TournamentCog(commands.Cog):
         mode="Choose 1v1 for solo matches or 5v5 for team matches.",
         name="Tournament name shown on embeds.",
         max_players="Optional enrollment cap.",
+        mute_on_enroll="Voice-mute players who enroll while they are in a voice channel.",
     )
     @app_commands.choices(
         mode=[
@@ -40,6 +41,7 @@ class TournamentCog(commands.Cog):
         mode: app_commands.Choice[str],
         name: str = "Random Tournament",
         max_players: int | None = None,
+        mute_on_enroll: bool = False,
     ) -> None:
         if interaction.guild_id is None or interaction.channel_id is None:
             await interaction.response.send_message(
@@ -64,6 +66,7 @@ class TournamentCog(commands.Cog):
             name=clean_name,
             mode=mode.value,
             max_players=max_players,
+            mute_on_enroll=mute_on_enroll,
         )
         tournament = self.store.get_tournament(tournament_id)
         if tournament is None:

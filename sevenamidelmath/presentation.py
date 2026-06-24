@@ -38,6 +38,8 @@ def enrollment_embed(
     capacity = f"{len(participants)}/{max_players}" if max_players else str(len(participants))
     embed.add_field(name="Enrolled", value=capacity, inline=True)
     embed.add_field(name="Created by", value=f"<@{tournament['creator_id']}>", inline=True)
+    mute_status = "Voice mute on enroll" if tournament.get("mute_on_enroll") else "Off"
+    embed.add_field(name="Mute power", value=mute_status, inline=True)
 
     if participants:
         players = "\n".join(
