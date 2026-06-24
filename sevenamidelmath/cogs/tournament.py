@@ -7,7 +7,6 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..bracket import NotEnoughPlayersError, generate_bracket, minimum_players_for_mode
-from ..bracket_image import bracket_image_filename, render_bracket_png
 from ..presentation import bracket_embed, bracket_to_text, chunk_text, enrollment_embed
 from ..storage import TournamentStore
 from ..views import EnrollmentView
@@ -246,19 +245,14 @@ class TournamentCog(commands.Cog):
     ) -> None:
         chunks = chunk_text(bracket_to_text(bracket))
         total_pages = len(chunks)
-        filename = bracket_image_filename(tournament)
-        file = discord.File(render_bracket_png(tournament, bracket), filename=filename)
         for index, chunk in enumerate(chunks, start=1):
-            image_url = f"attachment://{filename}" if index == 1 else None
             await interaction.followup.send(
                 embed=bracket_embed(
                     tournament,
                     chunk,
                     page=index,
                     total_pages=total_pages,
-                    image_url=image_url,
-                ),
-                file=file if index == 1 else None,
+                )
             )
 
     async def _edit_enrollment_message(
