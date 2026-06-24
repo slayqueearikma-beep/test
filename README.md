@@ -17,6 +17,7 @@ coin flips, dice rolls, option picking, and an enrollment leaderboard.
 - Persistent SQLite storage for tournaments, enrollment messages, participants,
   and generated brackets.
 - Restart-safe enrollment buttons using stable Discord component IDs.
+- Styled PNG bracket images plus text backup output.
 - Random seeding for fair first-round matchups.
 - 5 vs 5 team generation with reserves when the player count is not a multiple
   of five.
@@ -139,6 +140,10 @@ notes.
 - `/activity leaderboard` - shows the most active enrolled players.
 
 ## Bracket behavior
+
+When a tournament starts, the bot sends a styled PNG bracket image in Discord.
+The same message also includes the text bracket so people can copy mentions or
+read it if image previews are disabled.
 
 ### 1 vs 1
 
