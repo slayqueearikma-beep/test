@@ -8,10 +8,11 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from sevenamidelmath.cogs.activities import ActivitiesCog
+from sevenamidelmath.cogs.lol import LeagueCog
 from sevenamidelmath.cogs.tournament import TournamentCog
 from sevenamidelmath.config import Settings
 from sevenamidelmath.storage import TournamentStore
-from sevenamidelmath.views import EnrollmentView
+from sevenamidelmath.views import EnrollmentView, MatchResultView
 
 
 logging.basicConfig(
@@ -43,7 +44,9 @@ class SevenAmidelMathBot(commands.Bot):
     async def setup_hook(self) -> None:
         self.store.setup()
         self.add_view(EnrollmentView(self.store))
+        self.add_view(MatchResultView(self.store))
         await self.add_cog(TournamentCog(self, self.store))
+        await self.add_cog(LeagueCog(self, self.store))
         await self.add_cog(ActivitiesCog(self, self.store))
 
         if self.settings.auto_sync_commands:

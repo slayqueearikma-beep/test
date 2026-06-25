@@ -7,9 +7,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from ..bracket import NotEnoughPlayersError, generate_bracket, minimum_players_for_mode
+from ..lol import generate_lol_bracket
 from ..presentation import bracket_embed, bracket_to_text, chunk_text, enrollment_embed
 from ..storage import TournamentStore
-from ..views import EnrollmentView
+from ..views import EnrollmentView, MatchResultView
 
 
 class TournamentCog(commands.Cog):
@@ -153,9 +154,9 @@ class TournamentCog(commands.Cog):
             )
             return
 
-        participants = self.store.list_participants(tournament["id"])
+        participants = self._participants_for_start(tournament)
         try:
-            bracket = generate_bracket(mode=tournament["mode"], participants=participants)
+            bracket = self._generate_bracket(tournament, participants)
         except NotEnoughPlayersError as error:
             await interaction.response.send_message(str(error), ephemeral=True)
             return
@@ -165,6 +166,7 @@ class TournamentCog(commands.Cog):
         tournament = self.store.get_tournament(tournament["id"]) or tournament
         await self._edit_enrollment_message(tournament, remove_buttons=True)
         await self._send_bracket(interaction, tournament, bracket)
+        await self._create_lol_match_threads(interaction, tournament, bracket)
 
     @tournament.command(name="bracket", description="Show an already-generated bracket.")
     @app_commands.describe(tournament_id="Tournament ID to display.")
@@ -240,6 +242,24 @@ class TournamentCog(commands.Cog):
         permissions = getattr(interaction.user, "guild_permissions", None)
         return bool(permissions and permissions.manage_guild)
 
+    def _participants_for_start(self, tournament: dict[str, Any]) -> list[dict[str, Any]]:
+        if tournament.get("game") != "league_of_legends":
+            return self.store.list_participants(tournament["id"])
+
+        participants = self.store.list_lol_participants(tournament["id"])
+        if tournament.get("check_in_required"):
+            participants = [participant for participant in participants if participant.get("checked_in")]
+        return participants
+
+    def _generate_bracket(
+        self,
+        tournament: dict[str, Any],
+        participants: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if tournament.get("game") == "league_of_legends":
+            return generate_lol_bracket(mode=tournament["mode"], participants=participants)
+        return generate_bracket(mode=tournament["mode"], participants=participants)
+
     async def _send_bracket(
         self,
         interaction: discord.Interaction,
@@ -274,9 +294,83 @@ class TournamentCog(commands.Cog):
                 channel = await self.bot.fetch_channel(tournament["channel_id"])
             message = await channel.fetch_message(message_id)
             participants = self.store.list_participants(tournament["id"])
+            if tournament.get("game") == "league_of_legends":
+                participants = self.store.list_lol_participants(tournament["id"])
             await message.edit(
                 embed=enrollment_embed(tournament, participants),
                 view=None if remove_buttons else EnrollmentView(self.store),
             )
         except (discord.DiscordException, AttributeError):
             return
+
+    async def _create_lol_match_threads(
+        self,
+        interaction: discord.Interaction,
+        tournament: dict[str, Any],
+        bracket: dict[str, Any],
+    ) -> None:
+        if tournament.get("game") != "league_of_legends" or interaction.channel is None:
+            return
+
+        round_one = bracket["rounds"][0]
+        for match in round_one["matches"]:
+            team_a_name, team_b_name = self._match_names(match)
+            thread = None
+            try:
+                if hasattr(interaction.channel, "create_thread"):
+                    thread = await interaction.channel.create_thread(
+                        name=f"T{tournament['id']} Match {match['match_number']}: {team_a_name} vs {team_b_name}",
+                        type=discord.ChannelType.public_thread,
+                    )
+            except discord.DiscordException:
+                thread = None
+
+            target = thread or interaction.channel
+            message = await target.send(
+                embed=self._match_embed(tournament, match),
+                view=MatchResultView(self.store),
+            )
+            self.store.register_match_message(
+                message_id=message.id,
+                tournament_id=tournament["id"],
+                match_number=match["match_number"],
+                thread_id=thread.id if thread else None,
+                team_a_name=team_a_name,
+                team_b_name=team_b_name,
+            )
+
+    def _match_embed(self, tournament: dict[str, Any], match: dict[str, Any]) -> discord.Embed:
+        team_a_name, team_b_name = self._match_names(match)
+        embed = discord.Embed(
+            title=f"LoL Match {match['match_number']}",
+            description=(
+                f"**{team_a_name}** vs **{team_b_name}**\n"
+                "Report the winner with the buttons below. A second player can confirm it."
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="Tournament", value=f"#{tournament['id']} {tournament['name']}", inline=False)
+        embed.add_field(name=team_a_name, value=self._team_roster(match, "team_a"), inline=True)
+        embed.add_field(name=team_b_name, value=self._team_roster(match, "team_b"), inline=True)
+        embed.set_footer(text="Use Dispute if the reported result is wrong.")
+        return embed
+
+    def _match_names(self, match: dict[str, Any]) -> tuple[str, str]:
+        if "team_a" in match:
+            return match["team_a"]["name"], match["team_b"]["name"]
+        return self._player_name(match["player_a"]), self._player_name(match["player_b"])
+
+    def _team_roster(self, match: dict[str, Any], key: str) -> str:
+        if key in match and "players" in match[key]:
+            return "\n".join(f"<@{player['user_id']}>" for player in match[key]["players"])
+        player_key = "player_a" if key == "team_a" else "player_b"
+        if player_key in match:
+            return f"<@{match[player_key]['user_id']}>"
+        return "Unknown"
+
+    def _player_name(self, player: dict[str, Any]) -> str:
+        riot_name = player.get("riot_name")
+        tag_line = player.get("tag_line")
+        if riot_name and tag_line:
+            return f"{riot_name}#{tag_line}"
+        return player.get("display_name") or f"Player {player['user_id']}"

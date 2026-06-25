@@ -20,6 +20,8 @@ coin flips, dice rolls, option picking, and an enrollment leaderboard.
 - Random seeding for fair first-round matchups.
 - 5 vs 5 team generation with reserves when the player count is not a multiple
   of five.
+- League of Legends profile linking, role/rank tracking, check-ins, balanced
+  5v5 teams, match threads, and result buttons.
 - Rotating Discord presence activities.
 
 ## Requirements
@@ -141,6 +143,67 @@ notes.
 - `/activity pick options` - picks from comma-separated options.
 - `/activity leaderboard` - shows the most active enrolled players.
 
+### League of Legends commands
+
+- `/lol link riot_name tag_line region rank role account_level`
+  - Links a Riot ID, rank, region, and preferred role to your Discord account.
+  - This is manual/self-entered today, so no Riot API key is required.
+- `/lol profile member`
+  - Shows a linked Riot profile.
+- `/lol role role`
+  - Updates your preferred role: Top, Jungle, Mid, ADC, Support, or Fill.
+- `/lol create mode name region map_name rank_min rank_max min_account_level max_players check_in_required mute_on_enroll`
+  - Posts a League-specific enrollment message with the green **Enroll** button.
+  - Enrolling players must have `/lol link` set up first.
+  - Optional region and rank limits are enforced at enrollment.
+  - Optional account-level limits can help discourage obvious smurf accounts.
+- `/lol checkin tournament_id`
+  - Checks you in for a League tournament that requires check-in.
+  - The enrollment message also has a **Check In** button.
+- `/lol checkins tournament_id`
+  - Shows checked-in count.
+- `/lol leaderboard`
+  - Shows linked League players ordered by tournament activity.
+- `/lol player member`
+  - Shows a quick player scouting card.
+- `/lol result tournament_id match_number winner`
+  - Manually reports or confirms a match result.
+- `/lol rules`
+  - Shows recommended League tournament rules.
+- `/lol draft team_a team_b`
+  - Coinflips side selection and gives a simple pick/ban helper prompt.
+
+## League of Legends workflow
+
+1. Players link profiles:
+
+   ```text
+   /lol link riot_name: Faker tag_line: KR1 region: KR rank: Challenger role: Mid
+   ```
+
+2. Admin creates a LoL lobby:
+
+   ```text
+   /lol create mode: 5 vs 5 name: Friday Rift Cup region: EUW check_in_required: true
+   ```
+
+3. Players click **Enroll** on the visible channel message.
+4. Players click **Check In** before start, if check-in is required.
+5. Admin starts the tournament:
+
+   ```text
+   /tournament start tournament_id: 1
+   ```
+
+6. The bot generates rank/role-balanced teams for 5v5 and posts the bracket.
+7. For League tournaments, the bot also creates match threads when possible.
+   Each match thread contains:
+   - team rosters
+   - result buttons
+   - dispute button
+8. A player reports the winner. A second player can click the same winner to
+   confirm it. If players disagree, click **Dispute** for admin review.
+
 ## Bracket behavior
 
 ### 1 vs 1
@@ -153,6 +216,15 @@ number of players, one player receives a bye.
 Players are shuffled into teams of five. Teams are paired into first-round
 matches. If there is an odd number of teams, one team receives a bye. Extra
 players who cannot fill a full team are listed as reserves.
+
+### League 5 vs 5
+
+League 5v5 tournaments use Riot profile data from `/lol link`. The bot tries to:
+
+- keep teams near the same average rank
+- spread Top, Jungle, Mid, ADC, and Support across teams
+- use Fill players where needed
+- keep extra players as reserves
 
 ## Optional voice mute on enroll
 
