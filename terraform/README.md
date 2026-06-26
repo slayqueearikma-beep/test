@@ -9,7 +9,7 @@ flowchart LR
   players[Players] -->|TCP 25565| pip[Static Public IP]
   admins[Admins] -->|SSH 22| pip
   pip --> nic[Network Interface]
-  nic --> vm[Ubuntu 24.04 VM<br/>Standard_D2as_v5 default]
+  nic --> vm[Ubuntu 24.04 VM<br/>Standard_D2as_v4 default]
   vm --> osdisk[OS Disk<br/>Standard SSD 64 GiB]
   vm --> datadisk[Managed Data Disk<br/>Premium SSD 128 GiB<br/>/opt/minecraft]
   vm --> kv[Key Vault<br/>RCON password + pack URL]
@@ -89,7 +89,7 @@ location = "swedencentral"
 
 ## VM sizing decision
 
-Default: `Standard_D2as_v5`.
+Default: `Standard_D2as_v4`.
 
 Why:
 
@@ -101,7 +101,7 @@ Why:
 Scale path:
 
 ```hcl
-vm_size               = "Standard_D4as_v5"
+vm_size               = "Standard_D4as_v4"
 minecraft_memory_mb   = 10240
 minecraft_max_players = 20
 ```
@@ -307,7 +307,7 @@ Approximate pay-as-you-go monthly cost at 730 hours:
 
 | Component | Default | Estimate |
 | --- | --- | --- |
-| VM compute | `Standard_D2as_v5` Linux | about USD 70-90/month |
+| VM compute | `Standard_D2as_v4` Linux | about USD 70-90/month |
 | OS disk | 64 GiB Standard SSD | about USD 3-5/month |
 | Data disk | 128 GiB Premium SSD | about USD 18-22/month |
 | Static public IP | Standard IPv4 | about USD 3-5/month |
@@ -395,7 +395,7 @@ Low TPS:
 - Pregenerate chunks.
 - Reduce `view-distance` from 8 to 6.
 - Reduce `simulation-distance` from 6 to 4.
-- Resize to `Standard_D4as_v5` before raising heap too far.
+- Resize to `Standard_D4as_v4` before raising heap too far.
 - Keep backups scheduled during low-player hours.
 
 ## Upgrade server pack

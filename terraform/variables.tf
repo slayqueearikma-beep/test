@@ -97,9 +97,9 @@ variable "minecraft_rcon_port" {
 }
 
 variable "vm_size" {
-  description = "Azure VM size. Default is the recommended performance-per-dollar size for 8 modded players; use Standard_D4as_v5 for about 20 players."
+  description = "Azure VM size. Default uses the DASv4 family, which commonly has starter quota in Sweden Central; use Standard_D4as_v4 for about 20 players if quota allows."
   type        = string
-  default     = "Standard_D2as_v5"
+  default     = "Standard_D2as_v4"
 }
 
 variable "os_disk_size_gb" {
