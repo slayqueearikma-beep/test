@@ -23,7 +23,7 @@ variable "environment" {
 variable "location" {
   description = "Azure region. Choose the region closest to the players for lower latency."
   type        = string
-  default     = "eastus"
+  default     = "swedencentral"
 }
 
 variable "tags" {

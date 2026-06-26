@@ -2,7 +2,7 @@
 
 project_name = "superior-rpg"
 environment  = "prod"
-location     = "eastus"
+location     = "swedencentral"
 
 # Recommended default for 8 modded players. For roughly 20 players, change to Standard_D4as_v5
 # and increase minecraft_memory_mb to 10240 or 12288.
