@@ -75,3 +75,13 @@ module "compute" {
   data_disk_caching            = var.data_disk_caching
   custom_data                  = local.cloud_init
 }
+
+resource "azurerm_role_assignment" "vm_self_deallocate" {
+  count = var.enable_idle_shutdown ? 1 : 0
+
+  scope                            = module.compute.virtual_machine_id
+  role_definition_name             = "Virtual Machine Contributor"
+  principal_id                     = module.security.managed_identity_principal_id
+  principal_type                   = "ServicePrincipal"
+  skip_service_principal_aad_check = true
+}

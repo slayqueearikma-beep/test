@@ -33,6 +33,16 @@ output "key_vault_name" {
   value       = module.security.key_vault_name
 }
 
+output "virtual_machine_id" {
+  description = "Azure VM resource ID."
+  value       = module.compute.virtual_machine_id
+}
+
+output "virtual_machine_name" {
+  description = "Azure VM resource name."
+  value       = module.compute.virtual_machine_name
+}
+
 output "generated_amp_admin_password_secret_name" {
   description = "Key Vault secret name containing the AMP admin password."
   value       = module.security.amp_admin_password_secret_name

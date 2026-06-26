@@ -13,6 +13,11 @@ output "managed_identity_client_id" {
   value       = azurerm_user_assigned_identity.vm.client_id
 }
 
+output "managed_identity_principal_id" {
+  description = "User-assigned managed identity principal ID."
+  value       = azurerm_user_assigned_identity.vm.principal_id
+}
+
 output "key_vault_name" {
   description = "Key Vault name."
   value       = azurerm_key_vault.this.name

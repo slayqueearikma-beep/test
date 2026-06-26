@@ -30,6 +30,8 @@ superior_rpg_server_pack_url = "https://example.com/superior-rpg-server-pack.zip
 
 data_disk_size_gb = 128
 backup_retention_days = 14
+enable_idle_shutdown = true
+idle_shutdown_grace_minutes = 5
 timezone = "UTC"
 
 tags = {

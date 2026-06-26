@@ -23,6 +23,8 @@ MINECRAFT_INSTANCE_NAME="${minecraft_instance_name}"
 MINECRAFT_MEMORY_MB="${minecraft_memory_mb}"
 MINECRAFT_MAX_PLAYERS="${minecraft_max_players}"
 BACKUP_RETENTION_DAYS="${backup_retention_days}"
+ENABLE_IDLE_SHUTDOWN="${enable_idle_shutdown}"
+IDLE_SHUTDOWN_GRACE_MINUTES="${idle_shutdown_grace_minutes}"
 TIMEZONE="${timezone}"
 
 DATA_MOUNT="/opt/minecraft"
@@ -462,10 +464,13 @@ install_backup_and_monitoring() {
 
   cat >/etc/minecraft-monitor.conf <<EOF_MONITOR_CONF
 RCON_PASSWORD_B64="$rcon_password_b64"
+MANAGED_IDENTITY_CLIENT_ID="$MANAGED_IDENTITY_CLIENT_ID"
 MINECRAFT_RCON_PORT="$MINECRAFT_RCON_PORT"
 MINECRAFT_INSTANCE_NAME="$MINECRAFT_INSTANCE_NAME"
 MINECRAFT_DIR="$MINECRAFT_DIR"
 LOG_ROOT="$LOG_ROOT"
+ENABLE_IDLE_SHUTDOWN="$ENABLE_IDLE_SHUTDOWN"
+IDLE_SHUTDOWN_GRACE_MINUTES="$IDLE_SHUTDOWN_GRACE_MINUTES"
 EOF_MONITOR_CONF
   chmod 0600 /etc/minecraft-monitor.conf
 
@@ -531,6 +536,94 @@ printf '[%s] cpu=%s%% ram="%s" disk="%s" amp_pids="%s" minecraft_pids="%s" tps="
 EOF_HEALTH
   chmod 0750 /usr/local/sbin/minecraft-health.sh
 
+  cat >/usr/local/sbin/minecraft-idle-shutdown.sh <<'EOF_IDLE_SHUTDOWN'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source /etc/minecraft-monitor.conf
+
+LOG_FILE="$LOG_ROOT/idle-shutdown.log"
+mkdir -p "$LOG_ROOT"
+
+log_idle() {
+  printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*" >>"$LOG_FILE"
+}
+
+player_count() {
+  local rcon_password output count
+  rcon_password="$(printf '%s' "$RCON_PASSWORD_B64" | base64 -d)"
+
+  if ! output="$(/usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$rcon_password" "list" 2>&1)"; then
+    log_idle "Skipping idle shutdown check because RCON list failed: $output"
+    return 1
+  fi
+
+  count="$(printf '%s\n' "$output" | sed -nE 's/.*There are ([0-9]+) of a max.*/\1/p' | tail -n 1)"
+  if [ -z "$count" ]; then
+    log_idle "Skipping idle shutdown check because player count was not parseable: $output"
+    return 1
+  fi
+
+  printf '%s\n' "$count"
+}
+
+metadata_value() {
+  local path="$1"
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/instance/$path?api-version=2021-02-01&format=text"
+}
+
+management_token() {
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F&client_id=$MANAGED_IDENTITY_CLIENT_ID" \
+    | jq -r '.access_token'
+}
+
+deallocate_vm() {
+  local subscription_id resource_group vm_name token
+  subscription_id="$(metadata_value compute/subscriptionId)"
+  resource_group="$(metadata_value compute/resourceGroupName)"
+  vm_name="$(metadata_value compute/name)"
+  token="$(management_token)"
+
+  log_idle "No players remained online after grace period. Stopping AMP instances, taking a final backup, and deallocating VM $resource_group/$vm_name."
+  runuser -u amp -- ampinstmgr -q "$MINECRAFT_INSTANCE_NAME" >>"$LOG_FILE" 2>&1 || true
+  runuser -u amp -- ampinstmgr -q ADS01 >>"$LOG_FILE" 2>&1 || true
+  systemctl start minecraft-backup.service >>"$LOG_FILE" 2>&1 || true
+
+  curl -fsS -X POST \
+    -H "Authorization: Bearer $token" \
+    -H "Content-Length: 0" \
+    "https://management.azure.com/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Compute/virtualMachines/$vm_name/deallocate?api-version=2024-03-01" \
+    >/dev/null
+  log_idle "Azure VM deallocate request submitted."
+}
+
+if [ "$${ENABLE_IDLE_SHUTDOWN:-false}" != "true" ]; then
+  log_idle "Idle shutdown is disabled."
+  exit 0
+fi
+
+initial_count="$(player_count)" || exit 0
+if [ "$initial_count" -gt 0 ]; then
+  log_idle "Idle shutdown skipped: $initial_count player(s) online."
+  exit 0
+fi
+
+log_idle "Server is empty. Waiting $${IDLE_SHUTDOWN_GRACE_MINUTES:-5} minute(s) before re-checking."
+sleep "$(($${IDLE_SHUTDOWN_GRACE_MINUTES:-5} * 60))"
+
+final_count="$(player_count)" || exit 0
+if [ "$final_count" -gt 0 ]; then
+  log_idle "Idle shutdown cancelled: $final_count player(s) joined during grace period."
+  exit 0
+fi
+
+deallocate_vm
+EOF_IDLE_SHUTDOWN
+  chmod 0750 /usr/local/sbin/minecraft-idle-shutdown.sh
+
   cat >/etc/systemd/system/minecraft-backup.service <<'EOF_BACKUP_SERVICE'
 [Unit]
 Description=Superior RPG Minecraft compressed backup
@@ -575,6 +668,30 @@ AccuracySec=30s
 WantedBy=timers.target
 EOF_HEALTH_TIMER
 
+  cat >/etc/systemd/system/minecraft-idle-shutdown.service <<'EOF_IDLE_SHUTDOWN_SERVICE'
+[Unit]
+Description=Deallocate Azure VM when Superior RPG Minecraft is empty
+After=network-online.target amp-startboot.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-idle-shutdown.sh
+EOF_IDLE_SHUTDOWN_SERVICE
+
+  cat >/etc/systemd/system/minecraft-idle-shutdown.timer <<'EOF_IDLE_SHUTDOWN_TIMER'
+[Unit]
+Description=Check for empty Superior RPG Minecraft server
+
+[Timer]
+OnBootSec=20m
+OnUnitActiveSec=5m
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
+EOF_IDLE_SHUTDOWN_TIMER
+
   cat >/etc/systemd/system/amp-startboot.service <<EOF_AMP_STARTBOOT
 [Unit]
 Description=Start AMP boot-enabled instances
@@ -594,6 +711,11 @@ EOF_AMP_STARTBOOT
 
   systemctl daemon-reload
   systemctl enable --now minecraft-backup.timer minecraft-health.timer amp-startboot.service
+  if [ "$ENABLE_IDLE_SHUTDOWN" = "true" ]; then
+    systemctl enable --now minecraft-idle-shutdown.timer
+  else
+    systemctl disable --now minecraft-idle-shutdown.timer >/dev/null 2>&1 || true
+  fi
 }
 
 start_amp_instances() {

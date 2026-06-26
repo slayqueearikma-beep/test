@@ -209,6 +209,23 @@ variable "backup_retention_days" {
   default     = 14
 }
 
+variable "enable_idle_shutdown" {
+  description = "Enable automatic VM deallocation when the Minecraft server remains empty after the idle grace period."
+  type        = bool
+  default     = true
+}
+
+variable "idle_shutdown_grace_minutes" {
+  description = "Minutes to wait and re-check after the server first appears empty before deallocating the VM."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.idle_shutdown_grace_minutes >= 1 && var.idle_shutdown_grace_minutes <= 120
+    error_message = "idle_shutdown_grace_minutes must be between 1 and 120."
+  }
+}
+
 variable "timezone" {
   description = "Linux timezone for scheduled backup and monitoring logs."
   type        = string

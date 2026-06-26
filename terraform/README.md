@@ -205,6 +205,49 @@ Collected signals:
 
 This avoids Azure Monitor workspace ingestion charges. For production alerting, forward these logs to your preferred monitoring system or add Azure Monitor later.
 
+## Idle shutdown budget control
+
+Automatic idle shutdown is enabled by default:
+
+```hcl
+enable_idle_shutdown        = true
+idle_shutdown_grace_minutes = 5
+```
+
+Installed components:
+
+- Script: `/usr/local/sbin/minecraft-idle-shutdown.sh`
+- Service: `minecraft-idle-shutdown.service`
+- Timer: `minecraft-idle-shutdown.timer`
+- Log: `/opt/minecraft/logs/idle-shutdown.log`
+
+Behavior:
+
+1. The timer starts checking after the VM has been up for 20 minutes.
+2. Every 5 minutes, it queries local RCON with the Minecraft `list` command.
+3. If at least one player is online, it logs the count and does nothing.
+4. If zero players are online, it waits `idle_shutdown_grace_minutes`.
+5. It queries RCON again.
+6. If the server is still empty, it stops the AMP Minecraft instance, stops ADS, starts a final local backup, and calls the Azure Compute API to deallocate the VM.
+
+The VM's user-assigned managed identity receives `Virtual Machine Contributor` only on the VM resource when idle shutdown is enabled. This is the narrowest built-in role that can reliably deallocate the VM without granting subscription-wide permissions.
+
+Important operational note: a deallocated VM stops compute charges, but it cannot accept Minecraft connections until an administrator or external automation starts it again.
+
+Start it again with Azure CLI:
+
+```bash
+az vm start \
+  --resource-group "$(terraform output -raw resource_group_name)" \
+  --name "$(terraform output -raw virtual_machine_name)"
+```
+
+Disable idle shutdown by setting:
+
+```hcl
+enable_idle_shutdown = false
+```
+
 ## Estimated monthly cost
 
 Approximate pay-as-you-go monthly cost at 730 hours. Prices vary by region and date; verify with the Azure Pricing Calculator for your selected region.
@@ -222,7 +265,7 @@ Expected default total: about USD 95-125/month.
 
 Cost optimizations:
 
-- Stop/deallocate the VM when not in use if the server is not always online.
+- Keep `enable_idle_shutdown = true` so the VM deallocates after the server stays empty for the configured grace period.
 - Use Azure savings plans or reservations for always-on hosting.
 - Keep backups local and compressed unless offsite retention is required.
 - Resize to `D4as_v5` only when player count or profiling justifies it.
@@ -251,6 +294,7 @@ Edit `terraform.tfvars`:
 - Set `amp_panel_source_cidrs` to your public IP/CIDR
 - Set `amp_license_key`
 - Set `superior_rpg_server_pack_url`
+- Leave `enable_idle_shutdown = true` for budget protection, or set it to `false` if the server must stay online 24/7
 - Choose the Azure region closest to players
 
 Deploy:
@@ -377,6 +421,34 @@ Manual backup:
 
 ```bash
 sudo systemctl start minecraft-backup.service
+```
+
+### VM stopped unexpectedly
+
+If `enable_idle_shutdown = true`, this is expected when the Minecraft server stays empty after the grace period.
+
+Check before the VM deallocates:
+
+```bash
+systemctl status minecraft-idle-shutdown.timer
+systemctl status minecraft-idle-shutdown.service
+tail -n 100 /opt/minecraft/logs/idle-shutdown.log
+```
+
+Start the VM again:
+
+```bash
+az vm start \
+  --resource-group "$(terraform output -raw resource_group_name)" \
+  --name "$(terraform output -raw virtual_machine_name)"
+```
+
+If deallocation fails, confirm the role assignment exists:
+
+```bash
+az role assignment list \
+  --scope "$(terraform output -raw virtual_machine_id)" \
+  --query "[?roleDefinitionName=='Virtual Machine Contributor']"
 ```
 
 ## Upgrade guide

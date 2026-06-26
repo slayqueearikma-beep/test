@@ -33,6 +33,8 @@ locals {
     minecraft_memory_mb            = var.minecraft_memory_mb
     minecraft_max_players          = var.minecraft_max_players
     backup_retention_days          = var.backup_retention_days
+    enable_idle_shutdown           = var.enable_idle_shutdown
+    idle_shutdown_grace_minutes    = var.idle_shutdown_grace_minutes
     timezone                       = var.timezone
   })
 
