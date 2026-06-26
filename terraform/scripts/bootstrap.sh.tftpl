@@ -1,0 +1,632 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+KEY_VAULT_NAME="${key_vault_name}"
+MANAGED_IDENTITY_CLIENT_ID="${managed_identity_client_id}"
+AMP_LICENSE_SECRET_NAME="${amp_license_secret_name}"
+AMP_ADMIN_USERNAME_SECRET_NAME="${amp_admin_username_secret_name}"
+AMP_ADMIN_PASSWORD_SECRET_NAME="${amp_admin_password_secret_name}"
+RCON_PASSWORD_SECRET_NAME="${rcon_password_secret_name}"
+SERVER_PACK_URL_SECRET_NAME="${server_pack_url_secret_name}"
+
+SSH_SOURCE_CIDRS='${admin_ssh_source_cidrs_json}'
+AMP_PANEL_SOURCE_CIDRS='${amp_panel_source_cidrs_json}'
+MINECRAFT_SOURCE_CIDRS='${minecraft_source_cidrs_json}'
+ENABLE_HTTP_HTTPS="${enable_http_https}"
+AMP_PANEL_PORT="${amp_panel_port}"
+AMP_INSTANCE_PORT="${amp_instance_port}"
+MINECRAFT_PORT="${minecraft_port}"
+MINECRAFT_RCON_PORT="${minecraft_rcon_port}"
+MINECRAFT_INSTANCE_NAME="${minecraft_instance_name}"
+MINECRAFT_MEMORY_MB="${minecraft_memory_mb}"
+MINECRAFT_MAX_PLAYERS="${minecraft_max_players}"
+BACKUP_RETENTION_DAYS="${backup_retention_days}"
+TIMEZONE="${timezone}"
+
+DATA_MOUNT="/opt/minecraft"
+AMP_HOME="/home/amp"
+AMP_DATA="$AMP_HOME/.ampdata"
+AMP_DATA_TARGET="$DATA_MOUNT/ampdata"
+BACKUP_ROOT="$DATA_MOUNT/backups"
+LOG_ROOT="$DATA_MOUNT/logs"
+MINECRAFT_DIR="$AMP_DATA/instances/$MINECRAFT_INSTANCE_NAME/Minecraft"
+BOOTSTRAP_MARKER="/var/lib/amp-minecraft-bootstrap.done"
+PACK_MARKER="/var/lib/amp-superior-rpg-pack-installed.done"
+JVM_FLAGS="-Xms$${MINECRAFT_MEMORY_MB}M -Xmx$${MINECRAFT_MEMORY_MB}M -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https://mcflags.emc.gs -Daikars.new.flags=true"
+
+log() {
+  printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*" >&2
+}
+
+retry() {
+  local attempts="$1"
+  local delay="$2"
+  shift 2
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$@"; then
+      return 0
+    fi
+    log "Command failed on attempt $attempt/$attempts: $*"
+    sleep "$delay"
+  done
+  return 1
+}
+
+get_identity_token() {
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net&client_id=$MANAGED_IDENTITY_CLIENT_ID" \
+    | jq -r '.access_token'
+}
+
+get_secret() {
+  local secret_name="$1"
+  local token
+  token="$(get_identity_token)"
+  curl -fsS \
+    -H "Authorization: Bearer $token" \
+    "https://$KEY_VAULT_NAME.vault.azure.net/secrets/$secret_name?api-version=7.4" \
+    | jq -r '.value'
+}
+
+install_packages() {
+  log "Installing operating system packages"
+  apt-get update
+  apt-get install -y --no-install-recommends \
+    acl \
+    ca-certificates \
+    chrony \
+    curl \
+    fail2ban \
+    htop \
+    iotop \
+    jq \
+    lsof \
+    net-tools \
+    openjdk-21-jre-headless \
+    openssl \
+    python3 \
+    rsync \
+    sysstat \
+    tar \
+    unattended-upgrades \
+    unzip \
+    ufw \
+    wget \
+    zstd
+}
+
+configure_timezone_and_updates() {
+  log "Configuring timezone and automatic security updates"
+  timedatectl set-timezone "$TIMEZONE"
+  systemctl enable --now chrony
+
+  cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF_AUTO_UPGRADES'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF_AUTO_UPGRADES
+
+  cat >/etc/apt/apt.conf.d/51unattended-upgrades-minecraft <<'EOF_UNATTENDED'
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+EOF_UNATTENDED
+
+  systemctl enable --now unattended-upgrades
+}
+
+configure_sshd() {
+  log "Hardening SSH daemon"
+  install -d -m 0755 /etc/ssh/sshd_config.d
+  cat >/etc/ssh/sshd_config.d/99-minecraft-hardening.conf <<'EOF_SSHD'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+X11Forwarding no
+AllowTcpForwarding yes
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF_SSHD
+  systemctl reload ssh || systemctl reload sshd
+}
+
+configure_firewall() {
+  log "Configuring UFW host firewall"
+  ufw --force reset
+  ufw default deny incoming
+  ufw default allow outgoing
+
+  jq -r '.[]' <<<"$SSH_SOURCE_CIDRS" | while read -r cidr; do
+    ufw allow from "$cidr" to any port 22 proto tcp comment "SSH admin"
+  done
+
+  jq -r '.[]' <<<"$AMP_PANEL_SOURCE_CIDRS" | while read -r cidr; do
+    ufw allow from "$cidr" to any port "$AMP_PANEL_PORT" proto tcp comment "AMP ADS admin"
+    ufw allow from "$cidr" to any port "$AMP_INSTANCE_PORT" proto tcp comment "AMP Minecraft admin"
+  done
+
+  jq -r '.[]' <<<"$MINECRAFT_SOURCE_CIDRS" | while read -r cidr; do
+    ufw allow from "$cidr" to any port "$MINECRAFT_PORT" proto tcp comment "Minecraft public"
+  done
+
+  if [ "$ENABLE_HTTP_HTTPS" = "true" ]; then
+    ufw allow 80/tcp comment "Optional HTTP"
+    ufw allow 443/tcp comment "Optional HTTPS"
+  fi
+
+  ufw --force enable
+
+  cat >/etc/fail2ban/jail.d/sshd-local.conf <<'EOF_FAIL2BAN'
+[sshd]
+enabled = true
+mode = aggressive
+maxretry = 5
+findtime = 10m
+bantime = 1h
+EOF_FAIL2BAN
+  systemctl enable --now fail2ban
+}
+
+configure_kernel_and_limits() {
+  log "Applying Minecraft-oriented kernel and process limits"
+  cat >/etc/sysctl.d/99-minecraft-performance.conf <<'EOF_SYSCTL'
+# Keep anonymous memory resident and avoid swap-induced TPS stalls.
+vm.swappiness = 10
+vm.dirty_background_ratio = 5
+vm.dirty_ratio = 15
+
+# Provide headroom for AMP, Java, RCON, and backup file handles.
+fs.file-max = 1048576
+
+# Small TCP latency and queue improvements for game traffic.
+net.core.somaxconn = 4096
+net.core.netdev_max_backlog = 16384
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_keepalive_time = 600
+EOF_SYSCTL
+  sysctl --system
+
+  cat >/etc/security/limits.d/99-minecraft.conf <<'EOF_LIMITS'
+amp soft nofile 1048576
+amp hard nofile 1048576
+amp soft nproc 65535
+amp hard nproc 65535
+EOF_LIMITS
+
+  cat >/etc/systemd/system/disable-transparent-huge-pages.service <<'EOF_THP'
+[Unit]
+Description=Disable transparent huge pages for latency-sensitive Java workloads
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'test -f /sys/kernel/mm/transparent_hugepage/enabled && echo never > /sys/kernel/mm/transparent_hugepage/enabled || true; test -f /sys/kernel/mm/transparent_hugepage/defrag && echo never > /sys/kernel/mm/transparent_hugepage/defrag || true'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF_THP
+  systemctl daemon-reload
+  systemctl enable --now disable-transparent-huge-pages.service
+}
+
+mount_data_disk() {
+  log "Preparing Minecraft data disk"
+  local disk="/dev/disk/azure/scsi1/lun0"
+  local uuid
+
+  for _ in $(seq 1 60); do
+    [ -b "$disk" ] && break
+    sleep 5
+  done
+
+  if [ ! -b "$disk" ]; then
+    log "Data disk $disk was not attached"
+    exit 1
+  fi
+
+  if ! blkid "$disk" >/dev/null 2>&1; then
+    mkfs.ext4 -F -L minecraft-data "$disk"
+  fi
+
+  install -d -m 0755 "$DATA_MOUNT"
+  uuid="$(blkid -s UUID -o value "$disk")"
+  if ! grep -q "$uuid" /etc/fstab; then
+    printf 'UUID=%s %s ext4 defaults,noatime,nofail 0 2\n' "$uuid" "$DATA_MOUNT" >>/etc/fstab
+  fi
+  mount "$DATA_MOUNT"
+  install -d -o root -g root -m 0755 "$BACKUP_ROOT" "$LOG_ROOT"
+}
+
+install_amp() {
+  log "Installing CubeCoders AMP"
+  local amp_admin_username="$1"
+  local amp_admin_password="$2"
+  local amp_system_password
+  amp_system_password="$(openssl rand -base64 36)"
+
+  if ! command -v ampinstmgr >/dev/null 2>&1; then
+    USE_ANSWERS=y \
+    ANSWER_AMPUSER="$amp_admin_username" \
+    ANSWER_AMPPASS="$amp_admin_password" \
+    ANSWER_SYSPASSWORD="$amp_system_password" \
+    ANSWER_INSTALLJAVA=n \
+    ANSWER_INSTALLSRCDSLIBS=n \
+    ANSWER_INSTALLDOCKER=n \
+    ANSWER_HTTPS=n \
+      bash <(wget -qO- getamp.sh)
+  fi
+
+  if ! id amp >/dev/null 2>&1; then
+    useradd --system --create-home --home-dir "$AMP_HOME" --shell /bin/bash amp
+  fi
+
+  if ! runuser -u amp -- ampinstmgr -l 2>/dev/null | awk '{print $1}' | grep -qx "ADS01"; then
+    runuser -u amp -- ampinstmgr --strict -quick "$amp_admin_username" "$amp_admin_password" 0.0.0.0 "$AMP_PANEL_PORT"
+  fi
+
+  runuser -u amp -- ampinstmgr RebindInstance ADS01 0.0.0.0 "$AMP_PANEL_PORT" || true
+}
+
+move_amp_data_to_data_disk() {
+  log "Ensuring AMP data lives on the managed data disk"
+  install -d -o amp -g amp -m 0750 "$AMP_HOME"
+  install -d -o amp -g amp -m 0750 "$AMP_DATA_TARGET"
+
+  if mountpoint -q "$AMP_DATA"; then
+    return
+  fi
+
+  runuser -u amp -- ampinstmgr -q ADS01 || true
+
+  if [ -d "$AMP_DATA" ] && [ -n "$(find "$AMP_DATA" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+    rsync -a "$AMP_DATA"/ "$AMP_DATA_TARGET"/
+    mv "$AMP_DATA" "$AMP_DATA.pre-data-disk.$(date +%Y%m%d%H%M%S)"
+  fi
+
+  install -d -o amp -g amp -m 0750 "$AMP_DATA"
+  if ! grep -q " $AMP_DATA " /etc/fstab; then
+    printf '%s %s none bind,nofail 0 0\n' "$AMP_DATA_TARGET" "$AMP_DATA" >>/etc/fstab
+  fi
+  mount "$AMP_DATA"
+  chown -R amp:amp "$AMP_DATA_TARGET" "$AMP_DATA"
+}
+
+create_amp_minecraft_instance() {
+  log "Creating or verifying AMP Minecraft instance"
+  local amp_license_key="$1"
+  local amp_admin_username="$2"
+  local amp_admin_password="$3"
+  local create_script="/tmp/create-amp-minecraft-instance.sh"
+
+  if runuser -u amp -- ampinstmgr -l 2>/dev/null | awk '{print $1}' | grep -qx "$MINECRAFT_INSTANCE_NAME"; then
+    log "AMP instance $MINECRAFT_INSTANCE_NAME already exists"
+  else
+    cat >"$create_script" <<'EOF_CREATE_INSTANCE'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ampinstmgr --strict -c Minecraft "$MINECRAFT_INSTANCE_NAME" 0.0.0.0 "$AMP_INSTANCE_PORT" "$AMP_LICENSE_KEY" "$AMP_ADMIN_USERNAME" "$AMP_ADMIN_PASSWORD" \
+  +Core.Login.AuthServerURL "http://127.0.0.1:$AMP_PANEL_PORT" \
+  +MinecraftModule.Minecraft.EULA "true" \
+  +MinecraftModule.Minecraft.PortNumber "$MINECRAFT_PORT" \
+  +MinecraftModule.Minecraft.MaxUsers "$MINECRAFT_MAX_PLAYERS" \
+  +MinecraftModule.Minecraft.JavaPath "/usr/bin/java" \
+  +MinecraftModule.Minecraft.JavaArgs "$JVM_FLAGS" \
+  +MinecraftModule.Minecraft.RAM "$MINECRAFT_MEMORY_MB"
+EOF_CREATE_INSTANCE
+    chmod 0700 "$create_script"
+    chown amp:amp "$create_script"
+    runuser -u amp -- env \
+      MINECRAFT_INSTANCE_NAME="$MINECRAFT_INSTANCE_NAME" \
+      AMP_INSTANCE_PORT="$AMP_INSTANCE_PORT" \
+      AMP_LICENSE_KEY="$amp_license_key" \
+      AMP_ADMIN_USERNAME="$amp_admin_username" \
+      AMP_ADMIN_PASSWORD="$amp_admin_password" \
+      AMP_PANEL_PORT="$AMP_PANEL_PORT" \
+      MINECRAFT_PORT="$MINECRAFT_PORT" \
+      MINECRAFT_MAX_PLAYERS="$MINECRAFT_MAX_PLAYERS" \
+      MINECRAFT_MEMORY_MB="$MINECRAFT_MEMORY_MB" \
+      JVM_FLAGS="$JVM_FLAGS" \
+      "$create_script"
+    rm -f "$create_script"
+  fi
+}
+
+set_property() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  touch "$file"
+  if grep -q "^$key=" "$file"; then
+    sed -i "s|^$key=.*|$key=$value|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >>"$file"
+  fi
+}
+
+install_superior_rpg_pack() {
+  log "Installing Superior RPG server pack if needed"
+  local server_pack_url="$1"
+  local rcon_password="$2"
+  local temp_dir
+  local zip_file
+  local source_dir
+  local top_level_count
+
+  install -d -o amp -g amp -m 0750 "$MINECRAFT_DIR"
+
+  if [ ! -f "$PACK_MARKER" ]; then
+    temp_dir="$(mktemp -d)"
+    zip_file="$temp_dir/superior-rpg-server-pack.zip"
+    curl -fsSL "$server_pack_url" -o "$zip_file"
+    unzip -q -o "$zip_file" -d "$temp_dir/extracted"
+
+    top_level_count="$(find "$temp_dir/extracted" -mindepth 1 -maxdepth 1 | wc -l)"
+    if [ "$top_level_count" = "1" ] && [ -d "$(find "$temp_dir/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]; then
+      source_dir="$(find "$temp_dir/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    else
+      source_dir="$temp_dir/extracted"
+    fi
+
+    rsync -a "$source_dir"/ "$MINECRAFT_DIR"/
+    chown -R amp:amp "$MINECRAFT_DIR"
+    rm -rf "$temp_dir"
+    touch "$PACK_MARKER"
+  fi
+
+  cat >"$MINECRAFT_DIR/eula.txt" <<'EOF_EULA'
+eula=true
+EOF_EULA
+
+  set_property "$MINECRAFT_DIR/server.properties" "server-port" "$MINECRAFT_PORT"
+  set_property "$MINECRAFT_DIR/server.properties" "max-players" "$MINECRAFT_MAX_PLAYERS"
+  set_property "$MINECRAFT_DIR/server.properties" "view-distance" "8"
+  set_property "$MINECRAFT_DIR/server.properties" "simulation-distance" "6"
+  set_property "$MINECRAFT_DIR/server.properties" "sync-chunk-writes" "false"
+  set_property "$MINECRAFT_DIR/server.properties" "network-compression-threshold" "256"
+  set_property "$MINECRAFT_DIR/server.properties" "enable-rcon" "true"
+  set_property "$MINECRAFT_DIR/server.properties" "rcon.port" "$MINECRAFT_RCON_PORT"
+  set_property "$MINECRAFT_DIR/server.properties" "rcon.password" "$rcon_password"
+  set_property "$MINECRAFT_DIR/server.properties" "enable-query" "false"
+  set_property "$MINECRAFT_DIR/server.properties" "use-native-transport" "true"
+  chown -R amp:amp "$MINECRAFT_DIR"
+}
+
+install_rcon_client() {
+  log "Installing local lightweight RCON client"
+  cat >/usr/local/bin/minecraft-rcon <<'EOF_RCON'
+#!/usr/bin/env python3
+import socket
+import struct
+import sys
+
+
+def packet(request_id, packet_type, payload):
+    data = payload.encode("utf-8") + b"\x00\x00"
+    return struct.pack("<iii", len(data) + 8, request_id, packet_type) + data
+
+
+def recv_packet(sock):
+    header = sock.recv(4)
+    if len(header) != 4:
+        raise RuntimeError("short RCON length header")
+    length = struct.unpack("<i", header)[0]
+    body = b""
+    while len(body) < length:
+        chunk = sock.recv(length - len(body))
+        if not chunk:
+            break
+        body += chunk
+    if len(body) != length:
+        raise RuntimeError("short RCON body")
+    request_id, packet_type = struct.unpack("<ii", body[:8])
+    payload = body[8:-2].decode("utf-8", errors="replace")
+    return request_id, packet_type, payload
+
+
+def main():
+    if len(sys.argv) < 5:
+        print("usage: minecraft-rcon HOST PORT PASSWORD COMMAND", file=sys.stderr)
+        return 2
+    host, port, password, command = sys.argv[1], int(sys.argv[2]), sys.argv[3], " ".join(sys.argv[4:])
+    with socket.create_connection((host, port), timeout=5) as sock:
+        sock.sendall(packet(1, 3, password))
+        auth_id, _, _ = recv_packet(sock)
+        if auth_id == -1:
+            print("RCON authentication failed", file=sys.stderr)
+            return 1
+        sock.sendall(packet(2, 2, command))
+        _, _, response = recv_packet(sock)
+        print(response)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF_RCON
+  chmod 0755 /usr/local/bin/minecraft-rcon
+}
+
+install_backup_and_monitoring() {
+  log "Installing backup and lightweight monitoring timers"
+  local rcon_password="$1"
+  local rcon_password_b64
+  rcon_password_b64="$(printf '%s' "$rcon_password" | base64 -w0)"
+
+  cat >/etc/minecraft-monitor.conf <<EOF_MONITOR_CONF
+RCON_PASSWORD_B64="$rcon_password_b64"
+MINECRAFT_RCON_PORT="$MINECRAFT_RCON_PORT"
+MINECRAFT_INSTANCE_NAME="$MINECRAFT_INSTANCE_NAME"
+MINECRAFT_DIR="$MINECRAFT_DIR"
+LOG_ROOT="$LOG_ROOT"
+EOF_MONITOR_CONF
+  chmod 0600 /etc/minecraft-monitor.conf
+
+  cat >/usr/local/sbin/minecraft-backup.sh <<EOF_BACKUP
+#!/usr/bin/env bash
+set -Eeuo pipefail
+BACKUP_ROOT="$BACKUP_ROOT"
+AMP_DATA="$AMP_DATA"
+RETENTION_DAYS="$BACKUP_RETENTION_DAYS"
+LOG_FILE="$LOG_ROOT/backup.log"
+timestamp="\$(date +%Y%m%d-%H%M%S)"
+archive="\$BACKUP_ROOT/superior-rpg-\$timestamp.tar.zst"
+mkdir -p "\$BACKUP_ROOT" "$(dirname "$LOG_ROOT/backup.log")"
+{
+  echo "[\$(date --iso-8601=seconds)] Starting backup \$archive"
+  set +e
+  nice -n 10 ionice -c2 -n7 tar --zstd -cpf "\$archive" -C "$(dirname "$AMP_DATA")" "$(basename "$AMP_DATA")"
+  rc=\$?
+  set -e
+  if [ "\$rc" -gt 1 ]; then
+    echo "[\$(date --iso-8601=seconds)] Backup failed with tar exit code \$rc"
+    exit "\$rc"
+  fi
+  find "\$BACKUP_ROOT" -type f -name 'superior-rpg-*.tar.zst' -mtime "+\$RETENTION_DAYS" -delete
+  echo "[\$(date --iso-8601=seconds)] Backup complete: \$archive"
+} >>"\$LOG_FILE" 2>&1
+EOF_BACKUP
+  chmod 0750 /usr/local/sbin/minecraft-backup.sh
+
+  cat >/usr/local/sbin/minecraft-health.sh <<'EOF_HEALTH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source /etc/minecraft-monitor.conf
+RCON_PASSWORD="$(printf '%s' "$RCON_PASSWORD_B64" | base64 -d)"
+LOG_FILE="$LOG_ROOT/health.log"
+mkdir -p "$LOG_ROOT"
+
+cpu_idle="$(mpstat 1 1 | awk '/Average/ && $NF ~ /^[0-9.]+$/ {print $NF}' | tail -n 1)"
+cpu_used="$(awk -v idle="$cpu_idle" 'BEGIN { printf "%.1f", 100 - idle }')"
+ram_line="$(free -m | awk '/Mem:/ { printf "%sMiB used / %sMiB total", $3, $2 }')"
+disk_line="$(df -h /opt/minecraft | awk 'NR==2 { printf "%s used, %s free (%s)", $3, $4, $5 }')"
+amp_pids="$(pgrep -u amp -f 'AMP|ampinstmgr' | tr '\n' ' ' || true)"
+mc_pids="$(pgrep -u amp -f 'java.*(minecraft|forge|neoforge|server|jar)' | tr '\n' ' ' || true)"
+
+if [ -n "$mc_pids" ]; then
+  for pid in $mc_pids; do
+    renice -n -5 -p "$pid" >/dev/null 2>&1 || true
+    ionice -c2 -n0 -p "$pid" >/dev/null 2>&1 || true
+  done
+fi
+
+tps_output="unavailable"
+if /usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$RCON_PASSWORD" "forge tps" >/tmp/minecraft-tps.out 2>/tmp/minecraft-tps.err; then
+  tps_output="$(tr '\n' ' ' </tmp/minecraft-tps.out)"
+elif /usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$RCON_PASSWORD" "tps" >/tmp/minecraft-tps.out 2>/tmp/minecraft-tps.err; then
+  tps_output="$(tr '\n' ' ' </tmp/minecraft-tps.out)"
+elif [ -f "$MINECRAFT_DIR/logs/latest.log" ]; then
+  tps_output="$(tail -n 50 "$MINECRAFT_DIR/logs/latest.log" | grep -i 'tps\|mspt\|can.t keep up' | tail -n 3 | tr '\n' ' ' || true)"
+fi
+
+printf '[%s] cpu=%s%% ram="%s" disk="%s" amp_pids="%s" minecraft_pids="%s" tps="%s"\n' \
+  "$(date --iso-8601=seconds)" "$cpu_used" "$ram_line" "$disk_line" "$amp_pids" "$mc_pids" "$tps_output" >>"$LOG_FILE"
+EOF_HEALTH
+  chmod 0750 /usr/local/sbin/minecraft-health.sh
+
+  cat >/etc/systemd/system/minecraft-backup.service <<'EOF_BACKUP_SERVICE'
+[Unit]
+Description=Superior RPG Minecraft compressed backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-backup.sh
+EOF_BACKUP_SERVICE
+
+  cat >/etc/systemd/system/minecraft-backup.timer <<'EOF_BACKUP_TIMER'
+[Unit]
+Description=Run Superior RPG Minecraft backup daily
+
+[Timer]
+OnCalendar=*-*-* 04:10:00
+Persistent=true
+RandomizedDelaySec=20m
+
+[Install]
+WantedBy=timers.target
+EOF_BACKUP_TIMER
+
+  cat >/etc/systemd/system/minecraft-health.service <<'EOF_HEALTH_SERVICE'
+[Unit]
+Description=Superior RPG Minecraft lightweight health sample
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-health.sh
+EOF_HEALTH_SERVICE
+
+  cat >/etc/systemd/system/minecraft-health.timer <<'EOF_HEALTH_TIMER'
+[Unit]
+Description=Run Superior RPG Minecraft health sample every five minutes
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=5m
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
+EOF_HEALTH_TIMER
+
+  cat >/etc/systemd/system/amp-startboot.service <<EOF_AMP_STARTBOOT
+[Unit]
+Description=Start AMP boot-enabled instances
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=amp
+Group=amp
+ExecStart=/bin/bash -lc '/usr/bin/ampinstmgr -s ADS01 || true; /usr/bin/ampinstmgr -s "$MINECRAFT_INSTANCE_NAME" || true'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF_AMP_STARTBOOT
+
+  systemctl daemon-reload
+  systemctl enable --now minecraft-backup.timer minecraft-health.timer amp-startboot.service
+}
+
+start_amp_instances() {
+  log "Starting AMP instances"
+  runuser -u amp -- ampinstmgr -s ADS01 || true
+  runuser -u amp -- ampinstmgr -s "$MINECRAFT_INSTANCE_NAME" || true
+}
+
+main() {
+  install_packages
+  configure_timezone_and_updates
+  configure_sshd
+  configure_firewall
+  configure_kernel_and_limits
+  mount_data_disk
+
+  log "Fetching bootstrap secrets from Azure Key Vault"
+  AMP_LICENSE_KEY="$(retry 30 10 get_secret "$AMP_LICENSE_SECRET_NAME")"
+  AMP_ADMIN_USERNAME="$(retry 30 10 get_secret "$AMP_ADMIN_USERNAME_SECRET_NAME")"
+  AMP_ADMIN_PASSWORD="$(retry 30 10 get_secret "$AMP_ADMIN_PASSWORD_SECRET_NAME")"
+  RCON_PASSWORD="$(retry 30 10 get_secret "$RCON_PASSWORD_SECRET_NAME")"
+  SERVER_PACK_URL="$(retry 30 10 get_secret "$SERVER_PACK_URL_SECRET_NAME")"
+
+  install_amp "$AMP_ADMIN_USERNAME" "$AMP_ADMIN_PASSWORD"
+  move_amp_data_to_data_disk
+  create_amp_minecraft_instance "$AMP_LICENSE_KEY" "$AMP_ADMIN_USERNAME" "$AMP_ADMIN_PASSWORD"
+  install_superior_rpg_pack "$SERVER_PACK_URL" "$RCON_PASSWORD"
+  install_rcon_client
+  install_backup_and_monitoring "$RCON_PASSWORD"
+  start_amp_instances
+
+  touch "$BOOTSTRAP_MARKER"
+  log "Bootstrap completed successfully"
+}
+
+main "$@"

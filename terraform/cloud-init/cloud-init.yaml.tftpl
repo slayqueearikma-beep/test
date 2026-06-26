@@ -1,0 +1,15 @@
+#cloud-config
+package_update: false
+package_upgrade: false
+
+write_files:
+  - path: /usr/local/sbin/bootstrap-amp-minecraft.sh
+    owner: root:root
+    permissions: '0700'
+    encoding: b64
+    content: ${bootstrap_script_b64}
+
+runcmd:
+  - [ bash, -lc, "/usr/local/sbin/bootstrap-amp-minecraft.sh > /var/log/amp-minecraft-bootstrap.log 2>&1" ]
+
+final_message: "AMP Superior RPG Minecraft bootstrap finished after $UPTIME seconds."
