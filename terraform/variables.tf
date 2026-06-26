@@ -61,7 +61,7 @@ variable "ssh_public_key" {
   sensitive   = true
 
   validation {
-    condition     = can(regex("^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp[0-9]+) ", var.ssh_public_key))
+    condition     = can(regex("^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp[0-9]+) ", trimspace(var.ssh_public_key)))
     error_message = "ssh_public_key must be a valid OpenSSH public key."
   }
 }

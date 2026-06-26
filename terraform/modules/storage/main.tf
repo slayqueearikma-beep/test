@@ -41,12 +41,11 @@ resource "azurerm_storage_container" "server_pack" {
 resource "azurerm_storage_blob" "server_pack" {
   count = var.server_pack_local_path == null ? 0 : 1
 
-  name                   = var.server_pack_blob_name
-  storage_account_name   = azurerm_storage_account.server_pack[0].name
-  storage_container_name = azurerm_storage_container.server_pack[0].name
-  type                   = "Block"
-  source                 = var.server_pack_local_path
-  content_type           = "application/zip"
+  name                 = var.server_pack_blob_name
+  storage_container_id = azurerm_storage_container.server_pack[0].id
+  type                 = "Block"
+  source               = var.server_pack_local_path
+  content_type         = "application/zip"
 }
 
 data "azurerm_storage_account_blob_container_sas" "server_pack" {
