@@ -35,34 +35,8 @@ resource "azurerm_network_security_group" "this" {
   }
 
   security_rule {
-    name                       = "Allow-AMP-ADS-Admin"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = tostring(var.amp_panel_port)
-    source_address_prefixes    = var.amp_panel_source_cidrs
-    destination_address_prefix = "*"
-    description                = "CubeCoders AMP ADS web panel. Restrict to administrators."
-  }
-
-  security_rule {
-    name                       = "Allow-AMP-Minecraft-Admin"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = tostring(var.amp_instance_port)
-    source_address_prefixes    = var.amp_panel_source_cidrs
-    destination_address_prefix = "*"
-    description                = "AMP management endpoint for the Minecraft instance. Restrict to administrators."
-  }
-
-  security_rule {
     name                       = "Allow-Minecraft-Public"
-    priority                   = 130
+    priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
@@ -78,7 +52,7 @@ resource "azurerm_network_security_group" "this" {
 
     content {
       name                       = "Allow-Web-${security_rule.value}"
-      priority                   = security_rule.value == "80" ? 140 : 150
+      priority                   = security_rule.value == "80" ? 120 : 130
       direction                  = "Inbound"
       access                     = "Allow"
       protocol                   = "Tcp"
@@ -86,7 +60,7 @@ resource "azurerm_network_security_group" "this" {
       destination_port_range     = security_rule.value
       source_address_prefix      = "*"
       destination_address_prefix = "*"
-      description                = "Optional HTTP/HTTPS reverse proxy traffic."
+      description                = "Optional HTTP/HTTPS traffic."
     }
   }
 }
@@ -133,32 +107,11 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
-resource "azurerm_key_vault_secret" "amp_license_key" {
-  name         = "amp-license-key"
-  value        = var.amp_license_key
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "CubeCoders AMP license key"
-}
-
-resource "azurerm_key_vault_secret" "amp_admin_username" {
-  name         = "amp-admin-username"
-  value        = var.amp_admin_username
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "CubeCoders AMP administrator username"
-}
-
-resource "azurerm_key_vault_secret" "amp_admin_password" {
-  name         = "amp-admin-password"
-  value        = var.amp_admin_password
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "CubeCoders AMP administrator password"
-}
-
 resource "azurerm_key_vault_secret" "minecraft_rcon_password" {
   name         = "minecraft-rcon-password"
   value        = var.minecraft_rcon_password
   key_vault_id = azurerm_key_vault.this.id
-  content_type = "Local-only Minecraft RCON password for health checks"
+  content_type = "Local-only Minecraft RCON password for health and idle checks"
 }
 
 resource "azurerm_key_vault_secret" "server_pack_url" {

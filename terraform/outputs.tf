@@ -4,7 +4,7 @@ output "resource_group_name" {
 }
 
 output "public_ip_address" {
-  description = "Static public IP address for AMP and Minecraft."
+  description = "Static public IP address for Minecraft."
   value       = module.network.public_ip_address
 }
 
@@ -13,23 +13,13 @@ output "ssh_command" {
   value       = "ssh ${var.admin_username}@${module.network.public_ip_address}"
 }
 
-output "amp_panel_url" {
-  description = "AMP ADS web panel URL."
-  value       = "http://${module.network.public_ip_address}:${var.amp_panel_port}"
-}
-
-output "amp_minecraft_instance_url" {
-  description = "AMP Minecraft instance management URL."
-  value       = "http://${module.network.public_ip_address}:${var.amp_instance_port}"
-}
-
 output "minecraft_server_address" {
   description = "Minecraft multiplayer server address."
   value       = "${module.network.public_ip_address}:${var.minecraft_port}"
 }
 
 output "key_vault_name" {
-  description = "Key Vault containing AMP bootstrap secrets."
+  description = "Key Vault containing Minecraft bootstrap secrets."
   value       = module.security.key_vault_name
 }
 
@@ -43,12 +33,7 @@ output "virtual_machine_name" {
   value       = module.compute.virtual_machine_name
 }
 
-output "generated_amp_admin_password_secret_name" {
-  description = "Key Vault secret name containing the AMP admin password."
-  value       = module.security.amp_admin_password_secret_name
-}
-
 output "data_disk_id" {
-  description = "Managed data disk containing AMP and Minecraft state."
+  description = "Managed data disk containing Minecraft state."
   value       = module.storage.data_disk_id
 }

@@ -72,12 +72,6 @@ variable "admin_ssh_source_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "amp_panel_source_cidrs" {
-  description = "CIDR ranges allowed to reach the AMP web panel."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
 variable "minecraft_source_cidrs" {
   description = "CIDR ranges allowed to reach the public Minecraft server port."
   type        = list(string)
@@ -85,21 +79,9 @@ variable "minecraft_source_cidrs" {
 }
 
 variable "enable_http_https" {
-  description = "Open HTTP/HTTPS in NSG and UFW for an optional reverse proxy. AMP is deployed directly on its panel port by default."
+  description = "Open HTTP/HTTPS in NSG and UFW for an optional reverse proxy or status page."
   type        = bool
   default     = false
-}
-
-variable "amp_panel_port" {
-  description = "Public AMP ADS web panel TCP port."
-  type        = number
-  default     = 8080
-}
-
-variable "amp_instance_port" {
-  description = "Local/public AMP Minecraft instance management TCP port. Restrict this to admin CIDRs."
-  type        = number
-  default     = 8081
 }
 
 variable "minecraft_port" {
@@ -133,13 +115,13 @@ variable "os_disk_storage_account_type" {
 }
 
 variable "data_disk_size_gb" {
-  description = "Minecraft and AMP data disk size in GiB."
+  description = "Minecraft data disk size in GiB."
   type        = number
   default     = 128
 }
 
 variable "data_disk_storage_account_type" {
-  description = "Minecraft and AMP data disk storage type."
+  description = "Minecraft data disk storage type."
   type        = string
   default     = "Premium_LRS"
 }
@@ -155,25 +137,6 @@ variable "data_disk_caching" {
   }
 }
 
-variable "amp_license_key" {
-  description = "CubeCoders AMP license key used to create the Minecraft AMP instance."
-  type        = string
-  sensitive   = true
-}
-
-variable "amp_admin_username" {
-  description = "Initial AMP administrator username."
-  type        = string
-  default     = "ampadmin"
-}
-
-variable "amp_admin_password" {
-  description = "Initial AMP administrator password. Leave null to generate one and store it in Key Vault."
-  type        = string
-  sensitive   = true
-  default     = null
-}
-
 variable "superior_rpg_server_pack_url" {
   description = "HTTPS URL to the Superior RPG server pack zip. The VM downloads and installs this during first boot."
   type        = string
@@ -186,7 +149,7 @@ variable "superior_rpg_server_pack_url" {
 }
 
 variable "minecraft_instance_name" {
-  description = "AMP instance name for the Superior RPG server."
+  description = "Friendly instance name for the Superior RPG server."
   type        = string
   default     = "SuperiorRPG01"
 }

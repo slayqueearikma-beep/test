@@ -33,11 +33,6 @@ variable "admin_ssh_source_cidrs" {
   type        = list(string)
 }
 
-variable "amp_panel_source_cidrs" {
-  description = "CIDRs allowed to reach AMP web ports."
-  type        = list(string)
-}
-
 variable "minecraft_source_cidrs" {
   description = "CIDRs allowed to reach Minecraft."
   type        = list(string)
@@ -48,36 +43,9 @@ variable "enable_http_https" {
   type        = bool
 }
 
-variable "amp_panel_port" {
-  description = "AMP ADS panel port."
-  type        = number
-}
-
-variable "amp_instance_port" {
-  description = "AMP Minecraft instance management port."
-  type        = number
-}
-
 variable "minecraft_port" {
   description = "Minecraft server port."
   type        = number
-}
-
-variable "amp_license_key" {
-  description = "CubeCoders AMP license key."
-  type        = string
-  sensitive   = true
-}
-
-variable "amp_admin_username" {
-  description = "AMP administrator username."
-  type        = string
-}
-
-variable "amp_admin_password" {
-  description = "AMP administrator password."
-  type        = string
-  sensitive   = true
 }
 
 variable "minecraft_rcon_password" {

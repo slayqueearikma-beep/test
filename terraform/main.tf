@@ -17,16 +17,10 @@ module "security" {
   tags                = local.common_tags
 
   admin_ssh_source_cidrs = var.admin_ssh_source_cidrs
-  amp_panel_source_cidrs = var.amp_panel_source_cidrs
   minecraft_source_cidrs = var.minecraft_source_cidrs
   enable_http_https      = var.enable_http_https
-  amp_panel_port         = var.amp_panel_port
-  amp_instance_port      = var.amp_instance_port
   minecraft_port         = var.minecraft_port
 
-  amp_license_key              = var.amp_license_key
-  amp_admin_username           = var.amp_admin_username
-  amp_admin_password           = local.amp_admin_password
   minecraft_rcon_password      = random_password.minecraft_rcon_password.result
   superior_rpg_server_pack_url = var.superior_rpg_server_pack_url
 }

@@ -23,21 +23,6 @@ output "key_vault_name" {
   value       = azurerm_key_vault.this.name
 }
 
-output "amp_license_secret_name" {
-  description = "AMP license Key Vault secret name."
-  value       = azurerm_key_vault_secret.amp_license_key.name
-}
-
-output "amp_admin_username_secret_name" {
-  description = "AMP username Key Vault secret name."
-  value       = azurerm_key_vault_secret.amp_admin_username.name
-}
-
-output "amp_admin_password_secret_name" {
-  description = "AMP password Key Vault secret name."
-  value       = azurerm_key_vault_secret.amp_admin_password.name
-}
-
 output "rcon_password_secret_name" {
   description = "Minecraft RCON Key Vault secret name."
   value       = azurerm_key_vault_secret.minecraft_rcon_password.name

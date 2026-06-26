@@ -6,24 +6,18 @@ location     = "swedencentral"
 
 # Recommended default for 8 modded players. For roughly 20 players, change to Standard_D4as_v5
 # and increase minecraft_memory_mb to 10240 or 12288.
-vm_size             = "Standard_D2as_v5"
+vm_size              = "Standard_D2as_v5"
 minecraft_memory_mb = 6144
 minecraft_max_players = 8
 
 admin_username = "azureadmin"
 ssh_public_key = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"
 
-# Replace with your public IP/CIDR. Avoid leaving SSH and AMP open to the internet.
+# Replace with your public IP/CIDR. Avoid leaving SSH open to the internet.
 admin_ssh_source_cidrs = ["203.0.113.10/32"]
-amp_panel_source_cidrs = ["203.0.113.10/32"]
 
 # Minecraft is intentionally public.
 minecraft_source_cidrs = ["0.0.0.0/0"]
-
-amp_license_key    = "REPLACE_WITH_CUBECODERS_AMP_LICENSE_KEY"
-amp_admin_username = "ampadmin"
-# Optional. If omitted, Terraform generates one and stores it in Key Vault.
-# amp_admin_password = "REPLACE_WITH_STRONG_PASSWORD"
 
 # Direct HTTPS URL to the Superior RPG server pack zip.
 superior_rpg_server_pack_url = "https://example.com/superior-rpg-server-pack.zip"
