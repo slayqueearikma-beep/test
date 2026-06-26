@@ -42,6 +42,7 @@ flowchart LR
 - Ubuntu Server 24.04 LTS VM
 - OS managed disk
 - Dedicated managed data disk
+- Optional private Storage Account/container/blob for uploading the server pack zip from your local machine
 - Boot diagnostics using Azure managed storage
 - User-assigned managed identity
 - Key Vault for bootstrap secrets
@@ -62,7 +63,16 @@ Minimum required values:
 
 ```hcl
 ssh_public_key = "ssh-ed25519 YOUR_PUBLIC_KEY"
+server_pack_local_path = "../server-packs/superior-rpg-server-pack.zip"
+```
+
+`server_pack_local_path` points to the Superior RPG server pack `.zip` on the machine where you run Terraform. Terraform uploads it to a private Azure Blob container and gives the VM a read-only SAS URL through Key Vault.
+
+If you already have a direct HTTPS download URL, use this instead:
+
+```hcl
 superior_rpg_server_pack_url = "https://example.com/superior-rpg-server-pack.zip"
+# leave server_pack_local_path unset
 ```
 
 Strongly recommended:
@@ -118,6 +128,34 @@ Backups live at:
 ```text
 /opt/minecraft/backups
 ```
+
+## Server pack upload with Azure Blob Storage
+
+Recommended folder layout on your computer:
+
+```text
+project-root/
+  terraform/
+  server-packs/
+    superior-rpg-server-pack.zip
+```
+
+Then set:
+
+```hcl
+server_pack_local_path = "../server-packs/superior-rpg-server-pack.zip"
+```
+
+Terraform will:
+
+1. Create a private Azure Storage Account only when `server_pack_local_path` is set.
+2. Create a private `serverpacks` container.
+3. Upload the local `.zip` as a Block Blob.
+4. Generate a read-only SAS URL.
+5. Store that SAS URL in Key Vault.
+6. Let the VM download the pack during first boot.
+
+This avoids GitHub/Discord file size limits and avoids making the pack public. Do not commit the zip file to git.
 
 ## Network rules
 
@@ -274,10 +312,17 @@ Approximate pay-as-you-go monthly cost at 730 hours:
 | Data disk | 128 GiB Premium SSD | about USD 18-22/month |
 | Static public IP | Standard IPv4 | about USD 3-5/month |
 | Key Vault | Standard, low transactions | usually under USD 1/month |
+| Server pack blob storage | Only when `server_pack_local_path` is set | usually under USD 1/month plus tiny transaction cost |
 
-Idle shutdown can significantly reduce VM compute cost if the server is not used 24/7. Disks, public IP, and Key Vault continue to incur small charges while the VM is deallocated.
+Idle shutdown can significantly reduce VM compute cost if the server is not used 24/7. Disks, public IP, Key Vault, and optional blob storage continue to incur small charges while the VM is deallocated.
 
 ## Deploy
+
+If using `server_pack_local_path`, make sure the zip exists before planning:
+
+```bash
+test -f ../server-packs/superior-rpg-server-pack.zip
+```
 
 ```bash
 cd terraform
@@ -292,6 +337,7 @@ Useful outputs:
 terraform output ssh_command
 terraform output minecraft_server_address
 terraform output virtual_machine_name
+terraform output server_pack_storage_account_name
 ```
 
 ## Destroy
@@ -373,12 +419,21 @@ Low TPS:
    sudo systemctl start minecraft.service
    ```
 
-If you update `superior_rpg_server_pack_url` and want bootstrap to reinstall the pack:
+If you use `server_pack_local_path`, replace the local zip and run Terraform again so the blob is updated:
+
+```bash
+terraform plan -out tfplan
+terraform apply tfplan
+```
+
+Then on the VM, remove the install marker and re-run bootstrap:
 
 ```bash
 sudo rm -f /var/lib/superior-rpg-pack-installed.done
 sudo /usr/local/sbin/bootstrap-minecraft.sh
 ```
+
+If you use `superior_rpg_server_pack_url`, update the URL in `terraform.tfvars`, apply Terraform, then run the same marker/bootstrap commands.
 
 ## Security notes
 

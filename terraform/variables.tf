@@ -138,14 +138,33 @@ variable "data_disk_caching" {
 }
 
 variable "superior_rpg_server_pack_url" {
-  description = "HTTPS URL to the Superior RPG server pack zip. The VM downloads and installs this during first boot."
+  description = "Optional existing HTTPS URL to the Superior RPG server pack zip. Leave null when using server_pack_local_path."
   type        = string
   sensitive   = true
+  default     = null
 
   validation {
-    condition     = can(regex("^https://", var.superior_rpg_server_pack_url))
-    error_message = "superior_rpg_server_pack_url must be an HTTPS URL."
+    condition     = var.superior_rpg_server_pack_url == null || can(regex("^https://", var.superior_rpg_server_pack_url))
+    error_message = "superior_rpg_server_pack_url must be null or an HTTPS URL."
   }
+}
+
+variable "server_pack_local_path" {
+  description = "Optional local path to the Superior RPG server pack zip. Terraform uploads it to a private Azure Blob and passes a SAS URL to the VM."
+  type        = string
+  default     = null
+}
+
+variable "server_pack_blob_name" {
+  description = "Blob name used when uploading server_pack_local_path."
+  type        = string
+  default     = "superior-rpg-server-pack.zip"
+}
+
+variable "server_pack_sas_expiry" {
+  description = "Read-only SAS expiry for the uploaded server pack blob, in ISO-8601 UTC format."
+  type        = string
+  default     = "2036-01-01T00:00:00Z"
 }
 
 variable "minecraft_instance_name" {

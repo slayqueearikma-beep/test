@@ -37,3 +37,13 @@ output "data_disk_id" {
   description = "Managed data disk containing Minecraft state."
   value       = module.storage.data_disk_id
 }
+
+output "server_pack_storage_account_name" {
+  description = "Storage account name used when server_pack_local_path uploads the server pack."
+  value       = module.storage.server_pack_storage_account_name
+}
+
+output "server_pack_blob_url" {
+  description = "Private blob URL for the uploaded server pack, without SAS."
+  value       = module.storage.server_pack_blob_url
+}

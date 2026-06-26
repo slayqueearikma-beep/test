@@ -1,6 +1,8 @@
 locals {
   name_prefix = lower(replace("${var.project_name}-${var.environment}", "/[^a-z0-9-]/", "-"))
 
+  server_pack_download_url = var.server_pack_local_path == null ? var.superior_rpg_server_pack_url : module.storage.server_pack_blob_sas_url
+
   common_tags = merge(
     {
       Application = "Superior RPG Minecraft"

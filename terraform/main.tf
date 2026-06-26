@@ -22,7 +22,7 @@ module "security" {
   minecraft_port         = var.minecraft_port
 
   minecraft_rcon_password      = random_password.minecraft_rcon_password.result
-  superior_rpg_server_pack_url = var.superior_rpg_server_pack_url
+  superior_rpg_server_pack_url = local.server_pack_download_url
 }
 
 module "network" {
@@ -48,6 +48,9 @@ module "storage" {
 
   data_disk_size_gb              = var.data_disk_size_gb
   data_disk_storage_account_type = var.data_disk_storage_account_type
+  server_pack_local_path         = var.server_pack_local_path
+  server_pack_blob_name          = var.server_pack_blob_name
+  server_pack_sas_expiry         = var.server_pack_sas_expiry
 }
 
 module "compute" {
