@@ -290,7 +290,7 @@ install_superior_rpg_pack() {
     touch "$PACK_MARKER"
   fi
 
-  find "$SERVER_DIR" -maxdepth 2 -type f -name '*.sh' -exec chmod +x {} \;
+  find "$SERVER_DIR" -maxdepth 5 -type f -name '*.sh' -exec chmod +x {} \;
 
   cat >"$SERVER_DIR/eula.txt" <<'EOF_EULA'
 eula=true
@@ -384,14 +384,50 @@ EOF_SERVER_CONF
 #!/usr/bin/env bash
 set -Eeuo pipefail
 source /etc/minecraft-server.conf
-cd "$MINECRAFT_SERVER_DIR"
 
-if [ ! -f "$MINECRAFT_SERVER_DIR/.server-installer.done" ]; then
-  installer="$(find . -maxdepth 2 -type f \( -iname '*forge*installer*.jar' -o -iname '*neoforge*installer*.jar' \) | sort | head -n 1 || true)"
+find_server_root() {
+  local match
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 5 -type f \( -iname 'run.sh' -o -iname 'start.sh' -o -iname 'startserver.sh' -o -iname 'serverstart.sh' \) | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    dirname "$match"
+    return 0
+  fi
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 8 -type f \( -path '*/minecraftforge/*/unix_args.txt' -o -path '*/neoforged/*/unix_args.txt' \) | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    case "$match" in
+      */libraries/*) printf '%s\n' "$${match%%/libraries/*}" ;;
+      *) dirname "$match" ;;
+    esac
+    return 0
+  fi
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 5 -type f -name '*.jar' ! -iname '*installer*.jar' ! -iname '*sources*.jar' ! -iname '*javadoc*.jar' | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    dirname "$match"
+    return 0
+  fi
+
+  return 1
+}
+
+SERVER_ROOT="$(find_server_root || true)"
+if [ -z "$SERVER_ROOT" ]; then
+  echo "No runnable server jar, run.sh, start script, or unix_args.txt found under $MINECRAFT_SERVER_DIR" >&2
+  echo "Top-level contents:" >&2
+  find "$MINECRAFT_SERVER_DIR" -maxdepth 3 -mindepth 1 -printf '%y %p\n' | sort >&2 || true
+  exit 1
+fi
+
+cd "$SERVER_ROOT"
+
+if [ ! -f "$SERVER_ROOT/.server-installer.done" ]; then
+  installer="$(find "$SERVER_ROOT" -maxdepth 5 -type f \( -iname '*forge*installer*.jar' -o -iname '*neoforge*installer*.jar' \) | sort | head -n 1 || true)"
   if [ -n "$installer" ]; then
     /usr/bin/java -jar "$installer" --installServer
   fi
-  touch "$MINECRAFT_SERVER_DIR/.server-installer.done"
+  touch "$SERVER_ROOT/.server-installer.done"
 fi
 
 for script in run.sh start.sh startserver.sh serverstart.sh; do
@@ -400,20 +436,28 @@ for script in run.sh start.sh startserver.sh serverstart.sh; do
   fi
 done
 
-unix_args="$(find libraries -type f -path '*/minecraftforge/*/unix_args.txt' -o -path '*/neoforged/*/unix_args.txt' 2>/dev/null | sort | head -n 1 || true)"
+script="$(find "$SERVER_ROOT" -maxdepth 5 -type f \( -iname 'run.sh' -o -iname 'start.sh' -o -iname 'startserver.sh' -o -iname 'serverstart.sh' \) | sort | head -n 1 || true)"
+if [ -n "$script" ]; then
+  cd "$(dirname "$script")"
+  exec /bin/bash "./$(basename "$script")" nogui
+fi
+
+unix_args="$(find "$SERVER_ROOT" -maxdepth 8 -type f \( -path '*/minecraftforge/*/unix_args.txt' -o -path '*/neoforged/*/unix_args.txt' \) 2>/dev/null | sort | head -n 1 || true)"
 if [ -n "$unix_args" ]; then
   read -r -a java_args <<< "$MINECRAFT_JVM_FLAGS"
   exec /usr/bin/java "$${java_args[@]}" @"$unix_args" nogui
 fi
 
-jar="$(find . -maxdepth 2 -type f -name '*.jar' ! -iname '*installer*.jar' ! -iname '*sources*.jar' ! -iname '*javadoc*.jar' | sort | head -n 1 || true)"
+jar="$(find "$SERVER_ROOT" -maxdepth 5 -type f -name '*.jar' ! -iname '*installer*.jar' ! -iname '*sources*.jar' ! -iname '*javadoc*.jar' | sort | head -n 1 || true)"
 if [ -z "$jar" ]; then
-  echo "No runnable server jar, run.sh, or unix_args.txt found in $MINECRAFT_SERVER_DIR" >&2
+  echo "No runnable server jar, run.sh, start script, or unix_args.txt found under $MINECRAFT_SERVER_DIR" >&2
+  find "$MINECRAFT_SERVER_DIR" -maxdepth 3 -mindepth 1 -printf '%y %p\n' | sort >&2 || true
   exit 1
 fi
 
+cd "$(dirname "$jar")"
 read -r -a java_args <<< "$MINECRAFT_JVM_FLAGS"
-exec /usr/bin/java "$${java_args[@]}" -jar "$jar" nogui
+exec /usr/bin/java "$${java_args[@]}" -jar "./$(basename "$jar")" nogui
 EOF_START
   chmod 0755 /usr/local/sbin/minecraft-start.sh
 
