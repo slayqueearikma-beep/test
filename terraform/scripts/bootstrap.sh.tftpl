@@ -125,7 +125,15 @@ AllowTcpForwarding yes
 ClientAliveInterval 300
 ClientAliveCountMax 2
 EOF_SSHD
-  systemctl reload ssh || systemctl reload sshd
+  if systemctl list-unit-files ssh.service >/dev/null 2>&1; then
+    systemctl enable --now ssh.service
+    systemctl reload-or-restart ssh.service
+  elif systemctl list-unit-files sshd.service >/dev/null 2>&1; then
+    systemctl enable --now sshd.service
+    systemctl reload-or-restart sshd.service
+  else
+    log "No ssh.service or sshd.service unit found; continuing because the OpenSSH package may be socket-activated on this image"
+  fi
 }
 
 configure_firewall() {
