@@ -340,6 +340,32 @@ terraform output virtual_machine_name
 terraform output server_pack_storage_account_name
 ```
 
+## Start and stop the lab VM
+
+From the repository root, after you are logged in with Azure CLI:
+
+```bash
+python scripts/start-lab.py
+python scripts/stop-lab.py
+```
+
+PowerShell examples:
+
+```powershell
+python .\scripts\start-lab.py
+python .\scripts\stop-lab.py
+```
+
+`start-lab.py` starts the VM and prints the Minecraft address.
+
+`stop-lab.py` runs:
+
+```bash
+az vm deallocate
+```
+
+Deallocation stops VM compute billing. Disks, the static public IP, Key Vault, and optional blob storage remain so the server can be started again later.
+
 ## Destroy
 
 ```bash

@@ -5,6 +5,8 @@
 *.tfplan
 crash.log
 crash.*.log
+__pycache__/
+*.py[cod]
 override.tf
 override.tf.json
 *_override.tf
