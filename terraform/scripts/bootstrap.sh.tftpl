@@ -1,0 +1,762 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+KEY_VAULT_NAME="${key_vault_name}"
+MANAGED_IDENTITY_CLIENT_ID="${managed_identity_client_id}"
+RCON_PASSWORD_SECRET_NAME="${rcon_password_secret_name}"
+SERVER_PACK_URL_SECRET_NAME="${server_pack_url_secret_name}"
+
+SSH_SOURCE_CIDRS='${admin_ssh_source_cidrs_json}'
+MINECRAFT_SOURCE_CIDRS='${minecraft_source_cidrs_json}'
+ENABLE_HTTP_HTTPS="${enable_http_https}"
+MINECRAFT_PORT="${minecraft_port}"
+MINECRAFT_RCON_PORT="${minecraft_rcon_port}"
+MINECRAFT_INSTANCE_NAME="${minecraft_instance_name}"
+MINECRAFT_MEMORY_MB="${minecraft_memory_mb}"
+MINECRAFT_MAX_PLAYERS="${minecraft_max_players}"
+BACKUP_RETENTION_DAYS="${backup_retention_days}"
+ENABLE_IDLE_SHUTDOWN="${enable_idle_shutdown}"
+IDLE_SHUTDOWN_GRACE_MINUTES="${idle_shutdown_grace_minutes}"
+TIMEZONE="${timezone}"
+
+DATA_MOUNT="/opt/minecraft"
+SERVER_DIR="$DATA_MOUNT/server"
+BACKUP_ROOT="$DATA_MOUNT/backups"
+LOG_ROOT="$DATA_MOUNT/logs"
+BOOTSTRAP_MARKER="/var/lib/minecraft-bootstrap.done"
+PACK_MARKER="/var/lib/superior-rpg-pack-installed.done"
+JVM_FLAGS="-Xms$${MINECRAFT_MEMORY_MB}M -Xmx$${MINECRAFT_MEMORY_MB}M -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https://mcflags.emc.gs -Daikars.new.flags=true"
+
+log() {
+  printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*" >&2
+}
+
+retry() {
+  local attempts="$1"
+  local delay="$2"
+  shift 2
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$@"; then
+      return 0
+    fi
+    log "Command failed on attempt $attempt/$attempts: $*"
+    sleep "$delay"
+  done
+  return 1
+}
+
+get_vault_token() {
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net&client_id=$MANAGED_IDENTITY_CLIENT_ID" \
+    | jq -r '.access_token'
+}
+
+get_secret() {
+  local secret_name="$1"
+  local token
+  token="$(get_vault_token)"
+  curl -fsS \
+    -H "Authorization: Bearer $token" \
+    "https://$KEY_VAULT_NAME.vault.azure.net/secrets/$secret_name?api-version=7.4" \
+    | jq -r '.value'
+}
+
+install_packages() {
+  log "Installing operating system packages"
+  apt-get update
+  apt-get install -y --no-install-recommends \
+    acl \
+    ca-certificates \
+    chrony \
+    curl \
+    fail2ban \
+    htop \
+    iotop \
+    jq \
+    lsof \
+    net-tools \
+    openjdk-21-jre-headless \
+    openssl \
+    python3 \
+    rsync \
+    sysstat \
+    tar \
+    unattended-upgrades \
+    unzip \
+    ufw \
+    wget \
+    zstd
+}
+
+configure_timezone_and_updates() {
+  log "Configuring timezone and automatic security updates"
+  timedatectl set-timezone "$TIMEZONE"
+  systemctl enable --now chrony
+
+  cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF_AUTO_UPGRADES'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF_AUTO_UPGRADES
+
+  cat >/etc/apt/apt.conf.d/51unattended-upgrades-minecraft <<'EOF_UNATTENDED'
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+EOF_UNATTENDED
+
+  systemctl enable --now unattended-upgrades
+}
+
+configure_sshd() {
+  log "Hardening SSH daemon"
+  install -d -m 0755 /etc/ssh/sshd_config.d
+  cat >/etc/ssh/sshd_config.d/99-minecraft-hardening.conf <<'EOF_SSHD'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+X11Forwarding no
+AllowTcpForwarding yes
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF_SSHD
+  if systemctl list-unit-files ssh.service >/dev/null 2>&1; then
+    systemctl enable --now ssh.service
+    systemctl reload-or-restart ssh.service
+  elif systemctl list-unit-files sshd.service >/dev/null 2>&1; then
+    systemctl enable --now sshd.service
+    systemctl reload-or-restart sshd.service
+  else
+    log "No ssh.service or sshd.service unit found; continuing because the OpenSSH package may be socket-activated on this image"
+  fi
+}
+
+configure_firewall() {
+  log "Configuring UFW host firewall"
+  ufw --force reset
+  ufw default deny incoming
+  ufw default allow outgoing
+
+  jq -r '.[]' <<<"$SSH_SOURCE_CIDRS" | while read -r cidr; do
+    ufw allow from "$cidr" to any port 22 proto tcp comment "SSH admin"
+  done
+
+  jq -r '.[]' <<<"$MINECRAFT_SOURCE_CIDRS" | while read -r cidr; do
+    ufw allow from "$cidr" to any port "$MINECRAFT_PORT" proto tcp comment "Minecraft public"
+  done
+
+  if [ "$ENABLE_HTTP_HTTPS" = "true" ]; then
+    ufw allow 80/tcp comment "Optional HTTP"
+    ufw allow 443/tcp comment "Optional HTTPS"
+  fi
+
+  ufw --force enable
+
+  cat >/etc/fail2ban/jail.d/sshd-local.conf <<'EOF_FAIL2BAN'
+[sshd]
+enabled = true
+mode = aggressive
+maxretry = 5
+findtime = 10m
+bantime = 1h
+EOF_FAIL2BAN
+  systemctl enable --now fail2ban
+}
+
+configure_kernel_and_limits() {
+  log "Applying Minecraft-oriented kernel and process limits"
+  cat >/etc/sysctl.d/99-minecraft-performance.conf <<'EOF_SYSCTL'
+# Keep anonymous memory resident and avoid swap-induced TPS stalls.
+vm.swappiness = 10
+vm.dirty_background_ratio = 5
+vm.dirty_ratio = 15
+
+# Provide headroom for Java, RCON, and backup file handles.
+fs.file-max = 1048576
+
+# Small TCP latency and queue improvements for game traffic.
+net.core.somaxconn = 4096
+net.core.netdev_max_backlog = 16384
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_keepalive_time = 600
+EOF_SYSCTL
+  sysctl --system
+
+  cat >/etc/security/limits.d/99-minecraft.conf <<'EOF_LIMITS'
+minecraft soft nofile 1048576
+minecraft hard nofile 1048576
+minecraft soft nproc 65535
+minecraft hard nproc 65535
+EOF_LIMITS
+
+  cat >/etc/systemd/system/disable-transparent-huge-pages.service <<'EOF_THP'
+[Unit]
+Description=Disable transparent huge pages for latency-sensitive Java workloads
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'test -f /sys/kernel/mm/transparent_hugepage/enabled && echo never > /sys/kernel/mm/transparent_hugepage/enabled || true; test -f /sys/kernel/mm/transparent_hugepage/defrag && echo never > /sys/kernel/mm/transparent_hugepage/defrag || true'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF_THP
+  systemctl daemon-reload
+  systemctl enable --now disable-transparent-huge-pages.service
+}
+
+mount_data_disk() {
+  log "Preparing Minecraft data disk"
+  local disk="/dev/disk/azure/scsi1/lun0"
+  local uuid
+
+  for _ in $(seq 1 60); do
+    [ -b "$disk" ] && break
+    sleep 5
+  done
+
+  if [ ! -b "$disk" ]; then
+    log "Data disk $disk was not attached"
+    exit 1
+  fi
+
+  if ! blkid "$disk" >/dev/null 2>&1; then
+    mkfs.ext4 -F -L minecraft-data "$disk"
+  fi
+
+  install -d -m 0755 "$DATA_MOUNT"
+  uuid="$(blkid -s UUID -o value "$disk")"
+  if ! grep -q "$uuid" /etc/fstab; then
+    printf 'UUID=%s %s ext4 defaults,noatime,nofail 0 2\n' "$uuid" "$DATA_MOUNT" >>/etc/fstab
+  fi
+  mount "$DATA_MOUNT"
+}
+
+create_minecraft_user_and_dirs() {
+  log "Creating dedicated minecraft user and directories"
+  if ! id minecraft >/dev/null 2>&1; then
+    useradd --system --create-home --home-dir /home/minecraft --shell /usr/sbin/nologin minecraft
+  fi
+
+  install -d -o minecraft -g minecraft -m 0750 "$SERVER_DIR" "$BACKUP_ROOT" "$LOG_ROOT"
+}
+
+set_property() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  touch "$file"
+  if grep -q "^$key=" "$file"; then
+    sed -i "s|^$key=.*|$key=$value|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >>"$file"
+  fi
+}
+
+install_superior_rpg_pack() {
+  log "Installing Superior RPG server pack if needed"
+  local server_pack_url="$1"
+  local rcon_password="$2"
+  local temp_dir
+  local zip_file
+  local source_dir
+  local top_level_dir
+  local top_level_count
+
+  if [ ! -f "$PACK_MARKER" ]; then
+    temp_dir="$(mktemp -d)"
+    zip_file="$temp_dir/superior-rpg-server-pack.zip"
+    curl -fsSL "$server_pack_url" -o "$zip_file"
+    unzip -q -o "$zip_file" -d "$temp_dir/extracted"
+
+    top_level_count="$(find "$temp_dir/extracted" -mindepth 1 -maxdepth 1 | wc -l)"
+    top_level_dir="$(find "$temp_dir/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit || true)"
+    if [ "$top_level_count" = "1" ] && [ -n "$top_level_dir" ]; then
+      source_dir="$top_level_dir"
+    else
+      source_dir="$temp_dir/extracted"
+    fi
+
+    rsync -a "$source_dir"/ "$SERVER_DIR"/
+    rm -rf "$temp_dir"
+    touch "$PACK_MARKER"
+  fi
+
+  find "$SERVER_DIR" -maxdepth 5 -type f -name '*.sh' -exec chmod +x {} \;
+
+  cat >"$SERVER_DIR/eula.txt" <<'EOF_EULA'
+eula=true
+EOF_EULA
+
+  cat >"$SERVER_DIR/user_jvm_args.txt" <<EOF_JVM_ARGS
+$JVM_FLAGS
+EOF_JVM_ARGS
+
+  set_property "$SERVER_DIR/server.properties" "server-port" "$MINECRAFT_PORT"
+  set_property "$SERVER_DIR/server.properties" "max-players" "$MINECRAFT_MAX_PLAYERS"
+  set_property "$SERVER_DIR/server.properties" "view-distance" "8"
+  set_property "$SERVER_DIR/server.properties" "simulation-distance" "6"
+  set_property "$SERVER_DIR/server.properties" "sync-chunk-writes" "false"
+  set_property "$SERVER_DIR/server.properties" "network-compression-threshold" "256"
+  set_property "$SERVER_DIR/server.properties" "enable-rcon" "true"
+  set_property "$SERVER_DIR/server.properties" "rcon.port" "$MINECRAFT_RCON_PORT"
+  set_property "$SERVER_DIR/server.properties" "rcon.password" "$rcon_password"
+  set_property "$SERVER_DIR/server.properties" "enable-query" "false"
+  set_property "$SERVER_DIR/server.properties" "use-native-transport" "true"
+  chown -R minecraft:minecraft "$SERVER_DIR" "$BACKUP_ROOT" "$LOG_ROOT"
+}
+
+install_rcon_client() {
+  log "Installing local lightweight RCON client"
+  cat >/usr/local/bin/minecraft-rcon <<'EOF_RCON'
+#!/usr/bin/env python3
+import socket
+import struct
+import sys
+
+
+def packet(request_id, packet_type, payload):
+    data = payload.encode("utf-8") + b"\x00\x00"
+    return struct.pack("<iii", len(data) + 8, request_id, packet_type) + data
+
+
+def recv_packet(sock):
+    header = sock.recv(4)
+    if len(header) != 4:
+        raise RuntimeError("short RCON length header")
+    length = struct.unpack("<i", header)[0]
+    body = b""
+    while len(body) < length:
+        chunk = sock.recv(length - len(body))
+        if not chunk:
+            break
+        body += chunk
+    if len(body) != length:
+        raise RuntimeError("short RCON body")
+    request_id, packet_type = struct.unpack("<ii", body[:8])
+    payload = body[8:-2].decode("utf-8", errors="replace")
+    return request_id, packet_type, payload
+
+
+def main():
+    if len(sys.argv) < 5:
+        print("usage: minecraft-rcon HOST PORT PASSWORD COMMAND", file=sys.stderr)
+        return 2
+    host, port, password, command = sys.argv[1], int(sys.argv[2]), sys.argv[3], " ".join(sys.argv[4:])
+    with socket.create_connection((host, port), timeout=5) as sock:
+        sock.sendall(packet(1, 3, password))
+        auth_id, _, _ = recv_packet(sock)
+        if auth_id == -1:
+            print("RCON authentication failed", file=sys.stderr)
+            return 1
+        sock.sendall(packet(2, 2, command))
+        _, _, response = recv_packet(sock)
+        print(response)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF_RCON
+  chmod 0755 /usr/local/bin/minecraft-rcon
+}
+
+install_minecraft_service() {
+  log "Installing direct Minecraft systemd service"
+  cat >/etc/minecraft-server.conf <<EOF_SERVER_CONF
+MINECRAFT_INSTANCE_NAME="$MINECRAFT_INSTANCE_NAME"
+MINECRAFT_SERVER_DIR="$SERVER_DIR"
+MINECRAFT_JVM_FLAGS="$JVM_FLAGS"
+MINECRAFT_PORT="$MINECRAFT_PORT"
+MINECRAFT_RCON_PORT="$MINECRAFT_RCON_PORT"
+EOF_SERVER_CONF
+  chmod 0644 /etc/minecraft-server.conf
+
+  cat >/usr/local/sbin/minecraft-start.sh <<'EOF_START'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source /etc/minecraft-server.conf
+
+find_server_root() {
+  local match
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 5 -type f \( -iname 'run.sh' -o -iname 'start.sh' -o -iname 'startserver.sh' -o -iname 'serverstart.sh' \) | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    dirname "$match"
+    return 0
+  fi
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 8 -type f \( -path '*/minecraftforge/*/unix_args.txt' -o -path '*/neoforged/*/unix_args.txt' \) | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    case "$match" in
+      */libraries/*) printf '%s\n' "$${match%%/libraries/*}" ;;
+      *) dirname "$match" ;;
+    esac
+    return 0
+  fi
+
+  match="$(find "$MINECRAFT_SERVER_DIR" -maxdepth 5 -type f -name '*.jar' ! -iname '*installer*.jar' ! -iname '*sources*.jar' ! -iname '*javadoc*.jar' | sort | head -n 1 || true)"
+  if [ -n "$match" ]; then
+    dirname "$match"
+    return 0
+  fi
+
+  return 1
+}
+
+SERVER_ROOT="$(find_server_root || true)"
+if [ -z "$SERVER_ROOT" ]; then
+  echo "No runnable server jar, run.sh, start script, or unix_args.txt found under $MINECRAFT_SERVER_DIR" >&2
+  echo "Top-level contents:" >&2
+  find "$MINECRAFT_SERVER_DIR" -maxdepth 3 -mindepth 1 -printf '%y %p\n' | sort >&2 || true
+  exit 1
+fi
+
+cd "$SERVER_ROOT"
+
+if [ ! -f "$SERVER_ROOT/.server-installer.done" ]; then
+  installer="$(find "$SERVER_ROOT" -maxdepth 5 -type f \( -iname '*forge*installer*.jar' -o -iname '*neoforge*installer*.jar' \) | sort | head -n 1 || true)"
+  if [ -n "$installer" ]; then
+    /usr/bin/java -jar "$installer" --installServer
+  fi
+  touch "$SERVER_ROOT/.server-installer.done"
+fi
+
+for script in run.sh start.sh startserver.sh serverstart.sh; do
+  if [ -f "$script" ]; then
+    exec /bin/bash "./$script" nogui
+  fi
+done
+
+script="$(find "$SERVER_ROOT" -maxdepth 5 -type f \( -iname 'run.sh' -o -iname 'start.sh' -o -iname 'startserver.sh' -o -iname 'serverstart.sh' \) | sort | head -n 1 || true)"
+if [ -n "$script" ]; then
+  cd "$(dirname "$script")"
+  exec /bin/bash "./$(basename "$script")" nogui
+fi
+
+unix_args="$(find "$SERVER_ROOT" -maxdepth 8 -type f \( -path '*/minecraftforge/*/unix_args.txt' -o -path '*/neoforged/*/unix_args.txt' \) 2>/dev/null | sort | head -n 1 || true)"
+if [ -n "$unix_args" ]; then
+  read -r -a java_args <<< "$MINECRAFT_JVM_FLAGS"
+  exec /usr/bin/java "$${java_args[@]}" @"$unix_args" nogui
+fi
+
+jar="$(find "$SERVER_ROOT" -maxdepth 5 -type f -name '*.jar' ! -iname '*installer*.jar' ! -iname '*sources*.jar' ! -iname '*javadoc*.jar' | sort | head -n 1 || true)"
+if [ -z "$jar" ]; then
+  echo "No runnable server jar, run.sh, start script, or unix_args.txt found under $MINECRAFT_SERVER_DIR" >&2
+  find "$MINECRAFT_SERVER_DIR" -maxdepth 3 -mindepth 1 -printf '%y %p\n' | sort >&2 || true
+  exit 1
+fi
+
+cd "$(dirname "$jar")"
+read -r -a java_args <<< "$MINECRAFT_JVM_FLAGS"
+exec /usr/bin/java "$${java_args[@]}" -jar "./$(basename "$jar")" nogui
+EOF_START
+  chmod 0755 /usr/local/sbin/minecraft-start.sh
+
+  cat >/etc/systemd/system/minecraft.service <<'EOF_SERVICE'
+[Unit]
+Description=Superior RPG Minecraft Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=minecraft
+Group=minecraft
+WorkingDirectory=/opt/minecraft/server
+EnvironmentFile=/etc/minecraft-server.conf
+ExecStart=/usr/local/sbin/minecraft-start.sh
+Restart=on-failure
+RestartSec=30
+SuccessExitStatus=0 143
+TimeoutStopSec=120
+KillSignal=SIGTERM
+LimitNOFILE=1048576
+LimitNPROC=65535
+Nice=-5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
+
+[Install]
+WantedBy=multi-user.target
+EOF_SERVICE
+
+  systemctl daemon-reload
+  systemctl enable minecraft.service
+}
+
+install_backup_and_monitoring() {
+  log "Installing backup, health, and idle-shutdown timers"
+  local rcon_password="$1"
+  local rcon_password_b64
+  rcon_password_b64="$(printf '%s' "$rcon_password" | base64 -w0)"
+
+  cat >/etc/minecraft-monitor.conf <<EOF_MONITOR_CONF
+RCON_PASSWORD_B64="$rcon_password_b64"
+MANAGED_IDENTITY_CLIENT_ID="$MANAGED_IDENTITY_CLIENT_ID"
+MINECRAFT_RCON_PORT="$MINECRAFT_RCON_PORT"
+MINECRAFT_INSTANCE_NAME="$MINECRAFT_INSTANCE_NAME"
+MINECRAFT_DIR="$SERVER_DIR"
+LOG_ROOT="$LOG_ROOT"
+ENABLE_IDLE_SHUTDOWN="$ENABLE_IDLE_SHUTDOWN"
+IDLE_SHUTDOWN_GRACE_MINUTES="$IDLE_SHUTDOWN_GRACE_MINUTES"
+EOF_MONITOR_CONF
+  chmod 0600 /etc/minecraft-monitor.conf
+
+  cat >/usr/local/sbin/minecraft-backup.sh <<EOF_BACKUP
+#!/usr/bin/env bash
+set -Eeuo pipefail
+BACKUP_ROOT="$BACKUP_ROOT"
+SERVER_DIR="$SERVER_DIR"
+RETENTION_DAYS="$BACKUP_RETENTION_DAYS"
+LOG_FILE="$LOG_ROOT/backup.log"
+timestamp="\$(date +%Y%m%d-%H%M%S)"
+archive="\$BACKUP_ROOT/superior-rpg-\$timestamp.tar.zst"
+mkdir -p "\$BACKUP_ROOT" "$(dirname "$LOG_ROOT/backup.log")"
+{
+  echo "[\$(date --iso-8601=seconds)] Starting backup \$archive"
+  systemctl is-active --quiet minecraft.service && /usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "\$(printf '%s' "$rcon_password_b64" | base64 -d)" "save-all flush" || true
+  set +e
+  nice -n 10 ionice -c2 -n7 tar --zstd -cpf "\$archive" -C "$(dirname "$SERVER_DIR")" "$(basename "$SERVER_DIR")"
+  rc=\$?
+  set -e
+  if [ "\$rc" -gt 1 ]; then
+    echo "[\$(date --iso-8601=seconds)] Backup failed with tar exit code \$rc"
+    exit "\$rc"
+  fi
+  find "\$BACKUP_ROOT" -type f -name 'superior-rpg-*.tar.zst' -mtime "+\$RETENTION_DAYS" -delete
+  echo "[\$(date --iso-8601=seconds)] Backup complete: \$archive"
+} >>"\$LOG_FILE" 2>&1
+EOF_BACKUP
+  chmod 0750 /usr/local/sbin/minecraft-backup.sh
+
+  cat >/usr/local/sbin/minecraft-health.sh <<'EOF_HEALTH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source /etc/minecraft-monitor.conf
+RCON_PASSWORD="$(printf '%s' "$RCON_PASSWORD_B64" | base64 -d)"
+LOG_FILE="$LOG_ROOT/health.log"
+mkdir -p "$LOG_ROOT"
+
+cpu_idle="$(mpstat 1 1 | awk '/Average/ && $NF ~ /^[0-9.]+$/ {print $NF}' | tail -n 1)"
+cpu_used="$(awk -v idle="$cpu_idle" 'BEGIN { printf "%.1f", 100 - idle }')"
+ram_line="$(free -m | awk '/Mem:/ { printf "%sMiB used / %sMiB total", $3, $2 }')"
+disk_line="$(df -h /opt/minecraft | awk 'NR==2 { printf "%s used, %s free (%s)", $3, $4, $5 }')"
+service_state="$(systemctl is-active minecraft.service || true)"
+mc_pids="$(pgrep -u minecraft -f 'java.*(minecraft|forge|neoforge|server|jar)' | tr '\n' ' ' || true)"
+
+tps_output="unavailable"
+if /usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$RCON_PASSWORD" "forge tps" >/tmp/minecraft-tps.out 2>/tmp/minecraft-tps.err; then
+  tps_output="$(tr '\n' ' ' </tmp/minecraft-tps.out)"
+elif /usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$RCON_PASSWORD" "tps" >/tmp/minecraft-tps.out 2>/tmp/minecraft-tps.err; then
+  tps_output="$(tr '\n' ' ' </tmp/minecraft-tps.out)"
+elif [ -f "$MINECRAFT_DIR/logs/latest.log" ]; then
+  tps_output="$(tail -n 50 "$MINECRAFT_DIR/logs/latest.log" | grep -i 'tps\|mspt\|can.t keep up' | tail -n 3 | tr '\n' ' ' || true)"
+fi
+
+printf '[%s] cpu=%s%% ram="%s" disk="%s" service="%s" minecraft_pids="%s" tps="%s"\n' \
+  "$(date --iso-8601=seconds)" "$cpu_used" "$ram_line" "$disk_line" "$service_state" "$mc_pids" "$tps_output" >>"$LOG_FILE"
+EOF_HEALTH
+  chmod 0750 /usr/local/sbin/minecraft-health.sh
+
+  cat >/usr/local/sbin/minecraft-idle-shutdown.sh <<'EOF_IDLE_SHUTDOWN'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source /etc/minecraft-monitor.conf
+
+LOG_FILE="$LOG_ROOT/idle-shutdown.log"
+mkdir -p "$LOG_ROOT"
+
+log_idle() {
+  printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*" >>"$LOG_FILE"
+}
+
+player_count() {
+  local rcon_password output count
+  rcon_password="$(printf '%s' "$RCON_PASSWORD_B64" | base64 -d)"
+
+  if ! systemctl is-active --quiet minecraft.service; then
+    log_idle "Minecraft service is not active; skipping idle shutdown check."
+    return 1
+  fi
+
+  if ! output="$(/usr/local/bin/minecraft-rcon 127.0.0.1 "$MINECRAFT_RCON_PORT" "$rcon_password" "list" 2>&1)"; then
+    log_idle "Skipping idle shutdown check because RCON list failed: $output"
+    return 1
+  fi
+
+  count="$(printf '%s\n' "$output" | sed -nE 's/.*There are ([0-9]+) of a max.*/\1/p' | tail -n 1)"
+  if [ -z "$count" ]; then
+    log_idle "Skipping idle shutdown check because player count was not parseable: $output"
+    return 1
+  fi
+
+  printf '%s\n' "$count"
+}
+
+metadata_value() {
+  local path="$1"
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/instance/$path?api-version=2021-02-01&format=text"
+}
+
+management_token() {
+  curl -fsS --noproxy "*" \
+    -H "Metadata: true" \
+    "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F&client_id=$MANAGED_IDENTITY_CLIENT_ID" \
+    | jq -r '.access_token'
+}
+
+deallocate_vm() {
+  local subscription_id resource_group vm_name token
+  subscription_id="$(metadata_value compute/subscriptionId)"
+  resource_group="$(metadata_value compute/resourceGroupName)"
+  vm_name="$(metadata_value compute/name)"
+  token="$(management_token)"
+
+  log_idle "No players remained online after grace period. Stopping Minecraft, taking a final backup, and deallocating VM $resource_group/$vm_name."
+  systemctl stop minecraft.service >>"$LOG_FILE" 2>&1 || true
+  systemctl start minecraft-backup.service >>"$LOG_FILE" 2>&1 || true
+
+  curl -fsS -X POST \
+    -H "Authorization: Bearer $token" \
+    -H "Content-Length: 0" \
+    "https://management.azure.com/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Compute/virtualMachines/$vm_name/deallocate?api-version=2024-03-01" \
+    >/dev/null
+  log_idle "Azure VM deallocate request submitted."
+}
+
+if [ "$${ENABLE_IDLE_SHUTDOWN:-false}" != "true" ]; then
+  log_idle "Idle shutdown is disabled."
+  exit 0
+fi
+
+initial_count="$(player_count)" || exit 0
+if [ "$initial_count" -gt 0 ]; then
+  log_idle "Idle shutdown skipped: $initial_count player(s) online."
+  exit 0
+fi
+
+log_idle "Server is empty. Waiting $${IDLE_SHUTDOWN_GRACE_MINUTES:-5} minute(s) before re-checking."
+sleep "$(($${IDLE_SHUTDOWN_GRACE_MINUTES:-5} * 60))"
+
+final_count="$(player_count)" || exit 0
+if [ "$final_count" -gt 0 ]; then
+  log_idle "Idle shutdown cancelled: $final_count player(s) joined during grace period."
+  exit 0
+fi
+
+deallocate_vm
+EOF_IDLE_SHUTDOWN
+  chmod 0750 /usr/local/sbin/minecraft-idle-shutdown.sh
+
+  cat >/etc/systemd/system/minecraft-backup.service <<'EOF_BACKUP_SERVICE'
+[Unit]
+Description=Superior RPG Minecraft compressed backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-backup.sh
+EOF_BACKUP_SERVICE
+
+  cat >/etc/systemd/system/minecraft-backup.timer <<'EOF_BACKUP_TIMER'
+[Unit]
+Description=Run Superior RPG Minecraft backup daily
+
+[Timer]
+OnCalendar=*-*-* 04:10:00
+Persistent=true
+RandomizedDelaySec=20m
+
+[Install]
+WantedBy=timers.target
+EOF_BACKUP_TIMER
+
+  cat >/etc/systemd/system/minecraft-health.service <<'EOF_HEALTH_SERVICE'
+[Unit]
+Description=Superior RPG Minecraft lightweight health sample
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-health.sh
+EOF_HEALTH_SERVICE
+
+  cat >/etc/systemd/system/minecraft-health.timer <<'EOF_HEALTH_TIMER'
+[Unit]
+Description=Run Superior RPG Minecraft health sample every five minutes
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=5m
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
+EOF_HEALTH_TIMER
+
+  cat >/etc/systemd/system/minecraft-idle-shutdown.service <<'EOF_IDLE_SHUTDOWN_SERVICE'
+[Unit]
+Description=Deallocate Azure VM when Superior RPG Minecraft is empty
+After=network-online.target minecraft.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/minecraft-idle-shutdown.sh
+EOF_IDLE_SHUTDOWN_SERVICE
+
+  cat >/etc/systemd/system/minecraft-idle-shutdown.timer <<'EOF_IDLE_SHUTDOWN_TIMER'
+[Unit]
+Description=Check for empty Superior RPG Minecraft server
+
+[Timer]
+OnBootSec=20m
+OnUnitActiveSec=5m
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
+EOF_IDLE_SHUTDOWN_TIMER
+
+  systemctl daemon-reload
+  systemctl enable --now minecraft-backup.timer minecraft-health.timer
+  if [ "$ENABLE_IDLE_SHUTDOWN" = "true" ]; then
+    systemctl enable --now minecraft-idle-shutdown.timer
+  else
+    systemctl disable --now minecraft-idle-shutdown.timer >/dev/null 2>&1 || true
+  fi
+}
+
+main() {
+  install_packages
+  configure_timezone_and_updates
+  configure_sshd
+  configure_firewall
+  configure_kernel_and_limits
+  mount_data_disk
+  create_minecraft_user_and_dirs
+
+  log "Fetching bootstrap secrets from Azure Key Vault"
+  RCON_PASSWORD="$(retry 30 10 get_secret "$RCON_PASSWORD_SECRET_NAME")"
+  SERVER_PACK_URL="$(retry 30 10 get_secret "$SERVER_PACK_URL_SECRET_NAME")"
+
+  install_superior_rpg_pack "$SERVER_PACK_URL" "$RCON_PASSWORD"
+  install_rcon_client
+  install_minecraft_service
+  install_backup_and_monitoring "$RCON_PASSWORD"
+  systemctl restart minecraft.service
+
+  touch "$BOOTSTRAP_MARKER"
+  log "Bootstrap completed successfully"
+}
+
+main "$@"

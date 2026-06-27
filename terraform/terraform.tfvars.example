@@ -1,0 +1,39 @@
+# Copy to terraform.tfvars and replace placeholders before running terraform apply.
+
+project_name = "superior-rpg"
+environment  = "prod"
+location     = "swedencentral"
+
+# Recommended default for 8 modded players. For roughly 20 players, change to Standard_D4as_v4
+# and increase minecraft_memory_mb to 10240 or 12288.
+vm_size              = "Standard_D2as_v4"
+minecraft_memory_mb = 6144
+minecraft_max_players = 8
+
+admin_username = "azureadmin"
+ssh_public_key = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"
+
+# Replace with your public IP/CIDR. Avoid leaving SSH open to the internet.
+admin_ssh_source_cidrs = ["203.0.113.10/32"]
+
+# Minecraft is intentionally public.
+minecraft_source_cidrs = ["0.0.0.0/0"]
+
+# Recommended: put your Superior RPG server pack zip outside the repo and let Terraform
+# upload it to a private Azure Blob container.
+server_pack_local_path = "../server-packs/superior-rpg-server-pack.zip"
+
+# Alternative: use an existing direct HTTPS URL instead of server_pack_local_path.
+# superior_rpg_server_pack_url = "https://example.com/superior-rpg-server-pack.zip"
+
+data_disk_size_gb = 128
+backup_retention_days = 14
+enable_idle_shutdown = true
+idle_shutdown_grace_minutes = 5
+timezone = "UTC"
+
+tags = {
+  Owner       = "minecraft-admin"
+  CostCenter  = "gaming"
+  Criticality = "low"
+}
