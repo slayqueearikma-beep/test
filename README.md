@@ -14,3 +14,7 @@ python scripts/stop-lab.py
 ```
 
 `stop-lab.py` uses Azure VM deallocation, which stops VM compute billing while keeping disks, IP, Key Vault, and storage.
+
+## Discord start/stop bot
+
+Optional Discord bot tooling is available in [`discord-bot/`](discord-bot/). It provides `/startlab`, `/stoplab`, and `/statuslab` commands for allowed Discord user IDs.
