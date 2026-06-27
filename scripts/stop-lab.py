@@ -13,7 +13,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TERRAFORM_DIR = REPO_ROOT / "terraform"
 
 
-def run(command: list[str], *, cwd: Path | None = None, capture: bool = False) -> str:
+def run(
+    command: list[str],
+    *,
+    cwd: Path | None = None,
+    capture: bool = False,
+    timeout_seconds: int | None = None,
+) -> str:
     try:
         completed = subprocess.run(
             command,
@@ -22,6 +28,7 @@ def run(command: list[str], *, cwd: Path | None = None, capture: bool = False) -
             text=True,
             stdout=subprocess.PIPE if capture else None,
             stderr=subprocess.PIPE if capture else None,
+            timeout=timeout_seconds,
         )
     except FileNotFoundError:
         print(f"Missing command: {command[0]}", file=sys.stderr)
@@ -31,16 +38,28 @@ def run(command: list[str], *, cwd: Path | None = None, capture: bool = False) -
             print(exc.stderr.strip(), file=sys.stderr)
         print(f"Command failed: {' '.join(command)}", file=sys.stderr)
         sys.exit(exc.returncode)
+    except subprocess.TimeoutExpired:
+        print(f"Command timed out: {' '.join(command)}", file=sys.stderr)
+        sys.exit(1)
 
     return completed.stdout.strip() if capture and completed.stdout else ""
 
 
 def terraform_output(terraform_dir: Path, name: str) -> str:
-    return run(["terraform", "output", "-raw", name], cwd=terraform_dir, capture=True)
+    if not terraform_dir.exists():
+        print(f"Terraform directory not found: {terraform_dir}", file=sys.stderr)
+        sys.exit(1)
+    return run(
+        ["terraform", "output", "-raw", name],
+        cwd=terraform_dir,
+        capture=True,
+        timeout_seconds=30,
+    )
 
 
 def ensure_azure_login() -> None:
-    run(["az", "account", "show"], capture=True)
+    print("Checking Azure CLI login...", flush=True)
+    run(["az", "account", "show"], capture=True, timeout_seconds=30)
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,6 +87,7 @@ def main() -> int:
 
     ensure_azure_login()
 
+    print("Reading VM details...", flush=True)
     resource_group = args.resource_group or terraform_output(terraform_dir, "resource_group_name")
     vm_name = args.vm_name or terraform_output(terraform_dir, "virtual_machine_name")
 
