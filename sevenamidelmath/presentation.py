@@ -121,16 +121,26 @@ def chunk_text(text: str, *, limit: int = 3800) -> list[str]:
 
 
 def _one_vs_one_text(bracket: dict[str, Any]) -> str:
-    round_one = bracket["rounds"][0]
-    lines = ["**Round 1**"]
-    for match in round_one["matches"]:
-        lines.append(
-            f"**Match {match['match_number']}:** "
-            f"{_bracket_player(match['player_a'])} vs {_bracket_player(match['player_b'])}"
-        )
+    lines = []
+    for round_data in bracket["rounds"]:
+        if lines:
+            lines.append("")
+        lines.append(f"**{round_data['name']}**")
+        for match in round_data["matches"]:
+            line = (
+                f"**Match {match['match_number']}:** "
+                f"{_bracket_player(match['player_a'])} vs {_bracket_player(match['player_b'])}"
+            )
+            if match.get("winner"):
+                line += f" - Winner: {_bracket_player(match['winner'])}"
+            lines.append(line)
 
-    for player in round_one["byes"]:
-        lines.append(f"**Bye:** {_bracket_player(player)} advances automatically.")
+        for player in round_data["byes"]:
+            lines.append(f"**Bye:** {_bracket_player(player)} advances automatically.")
+
+    if bracket.get("champion"):
+        lines.append("")
+        lines.append(f"**Champion:** {_bracket_player(bracket['champion'])}")
 
     return "\n".join(lines)
 

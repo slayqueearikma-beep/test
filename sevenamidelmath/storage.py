@@ -341,6 +341,17 @@ class TournamentStore:
                 (json.dumps(bracket), tournament_id),
             )
 
+    def update_bracket(self, tournament_id: int, bracket: dict[str, Any]) -> None:
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE tournaments
+                SET bracket_json = ?
+                WHERE id = ?
+                """,
+                (json.dumps(bracket), tournament_id),
+            )
+
     def cancel_tournament(self, tournament_id: int) -> None:
         with self._connection:
             self._connection.execute(

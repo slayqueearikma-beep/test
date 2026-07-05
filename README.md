@@ -131,6 +131,12 @@ notes.
   - Only the creator or someone with Manage Server can start it.
 - `/tournament bracket tournament_id`
   - Shows a previously generated bracket.
+- `/tournament winner tournament_id match_number winner round_number`
+  - Reports a 1 vs 1 match winner.
+  - When all winners in a round are reported, the bot automatically creates the
+    next round: winners vs winners.
+  - `round_number` is optional. Leave it as `0` to report into the latest round.
+  - Only the tournament creator or someone with Manage Server can report winners.
 - `/tournament cancel tournament_id`
   - Cancels an open tournament.
   - Only the creator or someone with Manage Server can cancel it.
@@ -210,6 +216,17 @@ notes.
 
 Players are shuffled and paired into first-round matches. If there is an odd
 number of players, one player receives a bye.
+
+After the first round, report each winner:
+
+```text
+/tournament winner tournament_id: 1 match_number: 1 winner: @PlayerA
+/tournament winner tournament_id: 1 match_number: 2 winner: @PlayerD
+```
+
+When every match in that round has a winner, the bot creates the next round with
+the winners paired against each other. Keep reporting winners until the bot shows
+the champion.
 
 ### 5 vs 5
 

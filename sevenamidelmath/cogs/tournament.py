@@ -6,7 +6,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..bracket import NotEnoughPlayersError, generate_bracket, minimum_players_for_mode
+from ..bracket import (
+    BracketProgressionError,
+    NotEnoughPlayersError,
+    generate_bracket,
+    minimum_players_for_mode,
+    report_one_vs_one_winner,
+)
 from ..lol import generate_lol_bracket
 from ..presentation import bracket_embed, bracket_to_text, chunk_text, enrollment_embed
 from ..storage import TournamentStore
@@ -189,6 +195,80 @@ class TournamentCog(commands.Cog):
 
         await interaction.response.defer(thinking=True)
         await self._send_bracket(interaction, tournament, bracket)
+
+    @tournament.command(name="winner", description="Report a 1v1 match winner and advance the bracket.")
+    @app_commands.describe(
+        tournament_id="Tournament ID.",
+        match_number="Match number in the current round.",
+        winner="The player who won the match.",
+        round_number="Optional round number. Leave as 0 for the latest round.",
+    )
+    async def winner(
+        self,
+        interaction: discord.Interaction,
+        tournament_id: int,
+        match_number: int,
+        winner: discord.Member,
+        round_number: int = 0,
+    ) -> None:
+        tournament = self.store.get_tournament(tournament_id)
+        if tournament is None:
+            await interaction.response.send_message(
+                "I could not find that tournament.",
+                ephemeral=True,
+            )
+            return
+
+        if not self._can_manage(interaction, tournament):
+            await interaction.response.send_message(
+                "Only the tournament creator or a server manager can report winners.",
+                ephemeral=True,
+            )
+            return
+
+        if tournament["status"] != "started":
+            await interaction.response.send_message(
+                "Start the tournament before reporting winners.",
+                ephemeral=True,
+            )
+            return
+
+        bracket = self.store.get_bracket(tournament_id)
+        if bracket is None:
+            await interaction.response.send_message(
+                "That tournament does not have a generated bracket yet.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            result = report_one_vs_one_winner(
+                bracket,
+                match_number=match_number,
+                winner_user_id=winner.id,
+                round_number=round_number or None,
+            )
+        except BracketProgressionError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+
+        await interaction.response.defer(thinking=True)
+        self.store.update_bracket(tournament_id, result["bracket"])
+
+        message = (
+            f"Recorded <@{winner.id}> as winner of Round {result['round_number']} "
+            f"Match {result['match_number']}."
+        )
+        if result["completed"]:
+            champion = result["bracket"]["champion"]
+            message += f"\nChampion: <@{champion['user_id']}>."
+        elif result["advanced"]:
+            message += f"\nRound {result['next_round_number']} is ready."
+        else:
+            message += "\nWaiting for the rest of this round's winners."
+
+        await interaction.followup.send(message)
+        await self._send_bracket(interaction, tournament, result["bracket"])
 
     @tournament.command(name="cancel", description="Cancel an open tournament.")
     @app_commands.describe(tournament_id="Tournament ID to cancel.")
