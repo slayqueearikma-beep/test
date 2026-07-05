@@ -1,0 +1,16 @@
+# Copy this file to terraform.tfvars and fill in your real Discord token.
+# terraform.tfvars is intentionally ignored because it contains secrets.
+
+discord_token = "replace-me"
+
+# Optional: speeds up slash-command syncing to one test server.
+# guild_id = "123456789012345678"
+
+# Optional: choose an Azure region close to you.
+location = "eastus"
+
+# Defaults are tuned for a small, low-budget Discord bot.
+container_cpu    = 0.25
+container_memory = "0.5Gi"
+min_replicas     = 1
+max_replicas     = 1
