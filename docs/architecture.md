@@ -51,3 +51,16 @@ flowchart LR
 - **Managed Identity** avoids hardcoded cloud credentials in application code.
 - **Key Vault** centralizes secrets for future app integrations.
 - **Security gates** stop vulnerable code, leaked secrets, insecure IaC, or vulnerable images before deployment.
+
+## Production hardening roadmap
+
+For a real enterprise deployment, the next controls to add are:
+
+- Private endpoints for Key Vault and Azure Container Registry
+- Disabled public network access for sensitive services
+- Premium ACR with zone redundancy and geo-replication
+- Defender for Cloud registry vulnerability assessment
+- Network-isolated Container Apps environment
+- Centralized alert routing to an incident response channel
+
+The first SCAD version keeps the cloud footprint smaller so it is easier to deploy, demo, and explain as a portfolio project.
