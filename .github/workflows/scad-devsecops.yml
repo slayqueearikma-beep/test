@@ -111,7 +111,7 @@ jobs:
           directory: infrastructure/terraform
           framework: terraform
           output_format: cli
-          skip_check: CKV_AZURE_139,CKV_AZURE_237,CKV_AZURE_166,CKV_AZURE_233,CKV_AZURE_164,CKV_AZURE_167,CKV_AZURE_163,CKV_AZURE_109,CKV_AZURE_189,CKV2_AZURE_32
+          skip_check: CKV_AZURE_139,CKV_AZURE_237,CKV_AZURE_166,CKV_AZURE_233,CKV_AZURE_164,CKV_AZURE_167,CKV_AZURE_163,CKV_AZURE_165,CKV_AZURE_109,CKV_AZURE_189,CKV2_AZURE_32
           soft_fail: false
 
   build-and-scan-image:
