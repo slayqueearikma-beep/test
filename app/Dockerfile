@@ -9,6 +9,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 RUN addgroup -S scad && adduser -S scad -G scad
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY package*.json ./
 COPY src ./src
