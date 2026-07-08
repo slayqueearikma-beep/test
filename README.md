@@ -2,7 +2,7 @@
 
 SCAD is a DevSecOps portfolio project that demonstrates how to test, scan, containerize, and deploy a cloud-native application to Azure using automated security controls.
 
-The project is designed for a DevSecOps / Cloud Architect profile. It combines application delivery, infrastructure as code, container security, secret management, and observability in one repository.
+The project is designed for a DevSecOps / Cloud Architect profile. It combines application delivery, infrastructure as code, container security, secret management, observability, security data integration, and risk-based release decisions in one repository.
 
 ## Architecture flow
 
@@ -16,6 +16,9 @@ Developer
   -> Azure Container Registry
   -> Azure Container Apps
   -> Azure Monitor / Log Analytics / Alerts
+  -> Security Findings API
+  -> Risk Scoring Engine
+  -> Approved / Needs Review / Blocked
 ```
 
 ## Repository structure
@@ -43,6 +46,9 @@ The pipeline includes:
 - Docker image build
 - Container vulnerability scanning with Trivy
 - Optional Azure deployment through GitHub Actions OIDC credentials
+- Security findings normalization API
+- CVSS, EPSS, and policy-based risk scoring
+- Automated release decision: approved, needs review, or blocked
 
 Some enterprise Azure hardening checks are intentionally documented as future improvements instead of blocking the starter deployment. Examples include private endpoints for Key Vault, disabling all public network access, ACR geo-replication, ACR zone redundancy, and Defender-backed registry scanning. These controls are valuable in production, but they require additional network design, premium SKUs, and higher cloud cost.
 
@@ -64,7 +70,18 @@ Useful endpoints:
 - `GET /healthz` - liveness probe
 - `GET /readyz` - readiness probe
 - `GET /deployment` - deployment and security control metadata
+- `GET /findings` - normalized security findings
+- `POST /findings` - ingest one security finding
+- `POST /findings/bulk` - ingest multiple security findings
+- `GET /findings/summary` - findings summary by severity, category, and tool
+- `GET /security/score` - CVSS/EPSS/policy risk score and release decision
 - `GET /metrics` - Prometheus metrics
+
+In production, set `SCAD_INGEST_TOKEN` and send it with write requests:
+
+```http
+X-SCAD-Ingest-Token: <token>
+```
 
 ## Docker
 
@@ -95,3 +112,5 @@ Deployment is designed to run from the `SCAD DevSecOps Pipeline` workflow using 
 ## Project goal
 
 SCAD is not a replacement for GitHub Actions. It is a secure delivery platform built with GitHub Actions, Terraform, Docker, and Azure services to show real-world DevSecOps and cloud architecture practices.
+
+The security data integration layer is documented in [`docs/security-data-integration.md`](docs/security-data-integration.md).
