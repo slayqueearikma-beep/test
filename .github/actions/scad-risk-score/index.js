@@ -9,7 +9,12 @@ const severityDeductions = {
 };
 
 function getInput(name, fallback = "") {
-  return process.env[`INPUT_${name.replace(/-/g, "_").toUpperCase()}`] || fallback;
+  const upperName = name.toUpperCase();
+  return (
+    process.env[`INPUT_${upperName}`] ||
+    process.env[`INPUT_${upperName.replace(/-/g, "_")}`] ||
+    fallback
+  );
 }
 
 function setOutput(name, value) {
