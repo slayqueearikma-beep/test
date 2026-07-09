@@ -39,6 +39,45 @@ test("exposes health and readiness probes", async () => {
   assert.deepEqual(await health.json(), { status: "healthy" });
 });
 
+test("adds a generated request trace id to responses", async () => {
+  const response = await fetch(`${baseUrl}/trace`);
+  const body = await response.json();
+  const responseTraceId = response.headers.get("x-request-id");
+
+  assert.equal(response.status, 200);
+  assert.ok(responseTraceId);
+  assert.equal(body.traceId, responseTraceId);
+  assert.equal(response.headers.get("x-correlation-id"), responseTraceId);
+});
+
+test("propagates client-provided request trace id", async () => {
+  const traceId = "demo-trace-12345";
+  const response = await fetch(`${baseUrl}/trace`, {
+    headers: {
+      "x-request-id": traceId,
+    },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-request-id"), traceId);
+  assert.equal(body.traceId, traceId);
+});
+
+test("extracts W3C traceparent trace id", async () => {
+  const traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+  const response = await fetch(`${baseUrl}/trace`, {
+    headers: {
+      traceparent: `00-${traceId}-00f067aa0ba902b7-01`,
+    },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-request-id"), traceId);
+  assert.equal(body.traceId, traceId);
+});
+
 test("exposes Prometheus metrics", async () => {
   const response = await fetch(`${baseUrl}/metrics`);
   const body = await response.text();

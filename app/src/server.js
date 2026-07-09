@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import client from "prom-client";
+import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { defaultFindingsStore } from "./findings.js";
 import { calculateRiskScore } from "./risk-scoring.js";
@@ -22,6 +23,31 @@ const httpRequestDuration = new client.Histogram({
   labelNames: ["method", "route", "status_code"],
   buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5],
 });
+
+function parseTraceparent(traceparent) {
+  const match = /^00-([a-f0-9]{32})-[a-f0-9]{16}-[a-f0-9]{2}$/i.exec(traceparent || "");
+  return match ? match[1].toLowerCase() : undefined;
+}
+
+function sanitizeTraceId(value) {
+  const traceId = String(value || "").trim();
+  return /^[A-Za-z0-9_.:-]{8,128}$/.test(traceId) ? traceId : undefined;
+}
+
+function createTraceContext(req, res, next) {
+  const traceId =
+    parseTraceparent(req.headers.traceparent) ||
+    sanitizeTraceId(req.headers["x-request-id"]) ||
+    sanitizeTraceId(req.headers["x-correlation-id"]) ||
+    crypto.randomUUID();
+
+  req.traceId = traceId;
+  res.locals.traceId = traceId;
+  res.set("X-Request-Id", traceId);
+  res.set("X-Correlation-Id", traceId);
+
+  next();
+}
 
 function requireIngestToken(req, res, next) {
   const expectedToken = process.env.SCAD_INGEST_TOKEN;
@@ -47,10 +73,15 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
   const app = express();
 
   app.disable("x-powered-by");
+  app.use(createTraceContext);
   app.use(helmet());
   app.use(express.json({ limit: "100kb" }));
   app.use(
     pinoHttp({
+      genReqId: (req) => req.traceId,
+      customProps: (req) => ({
+        traceId: req.traceId,
+      }),
       redact: ["req.headers.authorization", "req.headers.cookie"],
     }),
   );
@@ -105,7 +136,18 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
         "security findings normalization",
         "CVSS and EPSS risk scoring",
         "risk-based release decision",
+        "request tracing and correlation IDs",
       ],
+    });
+  });
+
+  app.get("/trace", (req, res) => {
+    res.json({
+      traceId: req.traceId,
+      headers: {
+        requestId: res.get("X-Request-Id"),
+        correlationId: res.get("X-Correlation-Id"),
+      },
     });
   });
 

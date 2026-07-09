@@ -46,12 +46,13 @@ flowchart LR
 8. For manual deployments, Terraform provisions Azure infrastructure.
 9. The image is pushed to Azure Container Registry.
 10. Azure Container Apps pulls and runs the image using managed identity.
-11. The app exposes health, readiness, deployment metadata, and Prometheus metrics endpoints.
-12. Logs and metrics are sent to Azure Monitor and Log Analytics.
-13. Security scan results can be sent to the SCAD Findings API.
-14. SCAD normalizes findings from different tools into one common format.
-15. The Risk Scoring Engine combines severity, CVSS, EPSS, and SCAD policy rules.
-16. SCAD returns a release decision: approved, needs review, or blocked.
+11. Each request receives or propagates a trace ID for log and response correlation.
+12. The app exposes health, readiness, deployment metadata, trace, and Prometheus metrics endpoints.
+13. Logs and metrics are sent to Azure Monitor and Log Analytics.
+14. Security scan results can be sent to the SCAD Findings API.
+15. SCAD normalizes findings from different tools into one common format.
+16. The Risk Scoring Engine combines severity, CVSS, EPSS, and SCAD policy rules.
+17. SCAD returns a release decision: approved, needs review, or blocked.
 
 ## Main architecture decisions
 
@@ -63,6 +64,7 @@ flowchart LR
 - **Security gates** stop vulnerable code, leaked secrets, insecure IaC, or vulnerable images before deployment.
 - **Security data integration** converts scan outputs from multiple tools into normalized findings.
 - **Risk scoring** turns technical findings into a clear release decision for security governance.
+- **Request tracing** propagates `X-Request-Id`, `X-Correlation-Id`, and W3C trace context so API responses, logs, and monitoring events can be correlated during debugging or incident response.
 
 ## Production hardening roadmap
 

@@ -49,6 +49,7 @@ The pipeline includes:
 - Security findings normalization API
 - CVSS, EPSS, and policy-based risk scoring
 - Automated release decision: approved, needs review, or blocked
+- Request tracing with `X-Request-Id`, `X-Correlation-Id`, and W3C `traceparent` support
 
 Some enterprise Azure hardening checks are intentionally documented as future improvements instead of blocking the starter deployment. Examples include private endpoints for Key Vault, disabling all public network access, ACR geo-replication, ACR zone redundancy, and Defender-backed registry scanning. These controls are valuable in production, but they require additional network design, premium SKUs, and higher cloud cost.
 
@@ -70,6 +71,7 @@ Useful endpoints:
 - `GET /healthz` - liveness probe
 - `GET /readyz` - readiness probe
 - `GET /deployment` - deployment and security control metadata
+- `GET /trace` - shows the current request trace ID and correlation headers
 - `GET /findings` - normalized security findings
 - `POST /findings` - ingest one security finding
 - `POST /findings/bulk` - ingest multiple security findings
@@ -82,6 +84,15 @@ In production, set `SCAD_INGEST_TOKEN` and send it with write requests:
 ```http
 X-SCAD-Ingest-Token: <token>
 ```
+
+Every API response includes:
+
+```http
+X-Request-Id: <trace-id>
+X-Correlation-Id: <trace-id>
+```
+
+Send your own trace ID with `X-Request-Id`, `X-Correlation-Id`, or a W3C `traceparent` header to correlate API responses with logs and monitoring events.
 
 ## Docker
 
