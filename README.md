@@ -114,3 +114,5 @@ Deployment is designed to run from the `SCAD DevSecOps Pipeline` workflow using 
 SCAD is not a replacement for GitHub Actions. It is a secure delivery platform built with GitHub Actions, Terraform, Docker, and Azure services to show real-world DevSecOps and cloud architecture practices.
 
 The security data integration layer is documented in [`docs/security-data-integration.md`](docs/security-data-integration.md).
+
+The security-gated CI/CD structure and custom SCAD risk-score action are documented in [`docs/security-gated-cicd.md`](docs/security-gated-cicd.md).

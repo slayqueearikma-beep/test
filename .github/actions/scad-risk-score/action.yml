@@ -1,0 +1,29 @@
+name: "SCAD Risk Score Gate"
+description: "Calculate a security risk score from normalized findings and fail unsafe releases."
+
+inputs:
+  findings-file:
+    description: "Path to a JSON file containing an array of findings or an object with a findings array."
+    required: true
+  minimum-score:
+    description: "Minimum score required to approve the release."
+    required: false
+    default: "85"
+  report-file:
+    description: "Path where the Markdown risk report should be written."
+    required: false
+    default: "scad-risk-report.md"
+
+outputs:
+  score:
+    description: "Final SCAD security score from 0 to 100."
+  decision:
+    description: "Release decision: approved, needs_review, or blocked."
+  risk-level:
+    description: "Risk level: low, medium, or high."
+  report-file:
+    description: "Generated Markdown report path."
+
+runs:
+  using: "node20"
+  main: "index.js"

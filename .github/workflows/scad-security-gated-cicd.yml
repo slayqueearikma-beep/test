@@ -1,0 +1,253 @@
+name: SCAD Security-Gated CI/CD
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+env:
+  APP_DIR: app
+  TF_DIR: infrastructure/terraform
+  IMAGE_NAME: scad-api
+  RISK_FINDINGS_FILE: security-findings.json
+  RISK_REPORT_FILE: scad-risk-report.md
+
+jobs:
+  structure-gate:
+    name: "Layer 0 - Repository structure"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Verify required project structure
+        run: |
+          set -euo pipefail
+
+          required_paths=(
+            "app/package.json"
+            "app/src/server.js"
+            "app/test/server.test.js"
+            "app/Dockerfile"
+            "app/.dockerignore"
+            "infrastructure/terraform/providers.tf"
+            "infrastructure/terraform/main.tf"
+            "infrastructure/terraform/variables.tf"
+            ".github/workflows/scad-devsecops.yml"
+          )
+
+          for path in "${required_paths[@]}"; do
+            if [ ! -e "$path" ]; then
+              echo "::error::Required SCAD path is missing: $path"
+              exit 1
+            fi
+          done
+
+      - name: Reject committed local secret files
+        run: |
+          set -euo pipefail
+
+          tracked_secret_files="$(git ls-files \
+            | grep -E '(^|/)(\.env($|\.)|.*\.pem$|.*\.key$|id_rsa$|id_ed25519$)' \
+            | grep -vE '(^|/)\.env\.example$' || true)"
+
+          if [ -n "$tracked_secret_files" ]; then
+            echo "$tracked_secret_files"
+            echo "::error::Potential local secret/private key file is tracked by Git."
+            exit 1
+          fi
+
+  quality-gate:
+    name: "Layer 1 - Code quality and dependency safety"
+    runs-on: ubuntu-latest
+    needs: structure-gate
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Run linting
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: ${{ env.APP_DIR }}
+        run: npm test
+
+      - name: Audit dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm audit --audit-level=high
+
+  secret-gate:
+    name: "Layer 2 - Secret exposure scanning"
+    runs-on: ubuntu-latest
+    needs: structure-gate
+    steps:
+      - name: Checkout full Git history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast-gate:
+    name: "Layer 3 - Static application security testing"
+    runs-on: ubuntu-latest
+    needs: structure-gate
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+
+  iac-gate:
+    name: "Layer 4 - Infrastructure as Code security"
+    runs-on: ubuntu-latest
+    needs: structure-gate
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+      - name: Run Checkov IaC scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          output_format: cli
+          skip_check: CKV_AZURE_139,CKV_AZURE_237,CKV_AZURE_166,CKV_AZURE_233,CKV_AZURE_164,CKV_AZURE_167,CKV_AZURE_163,CKV_AZURE_165,CKV_AZURE_109,CKV_AZURE_189,CKV2_AZURE_32
+          soft_fail: false
+
+  container-gate:
+    name: "Layer 5 - Container build and image security"
+    runs-on: ubuntu-latest
+    needs:
+      - quality-gate
+      - structure-gate
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Build runtime image
+        run: |
+          docker build \
+            --tag $IMAGE_NAME:${{ github.sha }} \
+            --file app/Dockerfile \
+            app
+
+      - name: Scan runtime image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scad-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  risk-score-gate:
+    name: "Layer 6 - SCAD risk score release gate"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - structure-gate
+      - quality-gate
+      - secret-gate
+      - sast-gate
+      - iac-gate
+      - container-gate
+    steps:
+      - name: Checkout developer code
+        uses: actions/checkout@v5
+
+      - name: Build normalized pipeline findings
+        env:
+          STRUCTURE_RESULT: ${{ needs.structure-gate.result }}
+          QUALITY_RESULT: ${{ needs.quality-gate.result }}
+          SECRET_RESULT: ${{ needs.secret-gate.result }}
+          SAST_RESULT: ${{ needs.sast-gate.result }}
+          IAC_RESULT: ${{ needs.iac-gate.result }}
+          CONTAINER_RESULT: ${{ needs.container-gate.result }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const gates = [
+            ["structure-gate", process.env.STRUCTURE_RESULT, "pipeline", "Repository structure policy failed"],
+            ["quality-gate", process.env.QUALITY_RESULT, "dependency", "Code quality or dependency safety gate failed"],
+            ["secret-gate", process.env.SECRET_RESULT, "secret", "Secret exposure gate failed"],
+            ["sast-gate", process.env.SAST_RESULT, "sast", "Static application security gate failed"],
+            ["iac-gate", process.env.IAC_RESULT, "iac", "Infrastructure security gate failed"],
+            ["container-gate", process.env.CONTAINER_RESULT, "container", "Container image security gate failed"],
+          ];
+
+          const findings = gates
+            .filter(([, result]) => result !== "success")
+            .map(([tool, result, category, title]) => ({
+              tool,
+              category,
+              severity: result === "skipped" ? "MEDIUM" : "CRITICAL",
+              title,
+              status: "open",
+              evidence: {
+                failedGate: true,
+                githubResult: result,
+              },
+            }));
+
+          fs.writeFileSync(process.env.RISK_FINDINGS_FILE, JSON.stringify({ findings }, null, 2));
+          console.log(`Wrote ${findings.length} normalized pipeline findings.`);
+          NODE
+
+      - name: Calculate SCAD release risk score
+        id: scad-risk
+        uses: ./.github/actions/scad-risk-score
+        with:
+          findings-file: ${{ env.RISK_FINDINGS_FILE }}
+          minimum-score: "85"
+          report-file: ${{ env.RISK_REPORT_FILE }}
+
+      - name: Upload SCAD risk report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scad-risk-report
+          path: |
+            ${{ env.RISK_FINDINGS_FILE }}
+            ${{ env.RISK_REPORT_FILE }}
