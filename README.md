@@ -103,7 +103,17 @@ npm run docker:down     # stop and remove container
 
 The compose service uses container name `scad-api`, so `docker stop scad-api` also works after `docker:up`.
 
-## Azure deployment
+## Azure deployment (automatic on push to main)
+
+After security checks pass, a push to `main` automatically:
+
+1. Builds the Docker image
+2. Scans it with Trivy
+3. Pushes it to Azure Container Registry
+4. Deploys it to Azure Container Apps (running container)
+5. Verifies `/healthz` on the live URL
+
+Pull requests run scans and image build only; they do not deploy.
 
 The Terraform stack creates:
 
@@ -116,11 +126,13 @@ The Terraform stack creates:
 - Log Analytics Workspace
 - RBAC assignments for secure ACR and Key Vault access
 
-Deployment is designed to run from the `SCAD DevSecOps Pipeline` workflow using these GitHub secrets:
+One-time setup: add these GitHub secrets and a `production` environment:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
+
+See [`docs/auto-deploy.md`](docs/auto-deploy.md) for the full setup guide.
 
 ## Project goal
 
