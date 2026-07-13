@@ -103,6 +103,36 @@ npm run docker:down     # stop and remove container
 
 The compose service uses container name `scad-api`, so `docker stop scad-api` also works after `docker:up`.
 
+## Choose deploy target (Azure or Docker)
+
+Interactive menu from the repo root:
+
+```bash
+npm run deploy
+```
+
+You will see:
+
+```text
+SCAD deployment target
+  1) Azure Container Apps
+  2) Docker (local, open source)
+
+Choose target [1/2]:
+```
+
+Non-interactive options:
+
+```bash
+npm run deploy:azure
+npm run deploy:docker
+npm run deploy -- --target azure
+npm run deploy -- --target docker
+```
+
+- **Option 1 (Azure):** builds the image, pushes to ACR, deploys Container Apps. If Azure CLI or Terraform is missing locally, it triggers the GitHub Actions deploy workflow instead.
+- **Option 2 (Docker):** builds and runs the container locally with Docker Compose on `http://127.0.0.1:8080`.
+
 ## Azure deployment (automatic on push to main)
 
 After security checks pass, a push to `main` automatically:
