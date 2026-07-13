@@ -85,10 +85,23 @@ X-SCAD-Ingest-Token: <token>
 
 ## Docker
 
+Manual commands:
+
 ```bash
 docker build -t scad-api:local -f app/Dockerfile app
 docker run --rm -p 8080:8080 scad-api:local
 ```
+
+Automated workflow with Docker Compose and npm scripts:
+
+```bash
+npm run docker:up       # build + start in background
+npm run docker:verify   # health check + non-root user check
+npm run docker:logs     # follow container logs
+npm run docker:down     # stop and remove container
+```
+
+The compose service uses container name `scad-api`, so `docker stop scad-api` also works after `docker:up`.
 
 ## Azure deployment
 

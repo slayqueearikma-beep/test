@@ -1,0 +1,17 @@
+{
+  "name": "scad",
+  "private": true,
+  "description": "SCAD DevSecOps platform workspace scripts",
+  "scripts": {
+    "start": "npm --prefix app start",
+    "test": "npm --prefix app test",
+    "lint": "npm --prefix app run lint",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:stop": "docker compose stop",
+    "docker:logs": "docker compose logs -f scad-api",
+    "docker:ps": "docker compose ps",
+    "docker:verify": "node scripts/verify-docker.mjs"
+  }
+}
