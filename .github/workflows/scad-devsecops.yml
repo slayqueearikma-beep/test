@@ -1,0 +1,227 @@
+name: SCAD DevSecOps Pipeline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Container image tag to deploy"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  id-token: write
+
+env:
+  APP_DIR: app
+  TF_DIR: infrastructure/terraform
+  IMAGE_NAME: scad-api
+
+jobs:
+  validate-app:
+    name: Validate application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run lint
+
+      - name: Test
+        working-directory: ${{ env.APP_DIR }}
+        run: npm test
+
+      - name: Dependency audit
+        working-directory: ${{ env.APP_DIR }}
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast-scan:
+    name: SAST scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+
+  iac-scan:
+    name: IaC validation and scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          output_format: cli
+          skip_check: CKV_AZURE_139,CKV_AZURE_237,CKV_AZURE_166,CKV_AZURE_233,CKV_AZURE_164,CKV_AZURE_167,CKV_AZURE_163,CKV_AZURE_165,CKV_AZURE_109,CKV_AZURE_189,CKV2_AZURE_32
+          soft_fail: false
+
+  build-and-scan-image:
+    name: Build and scan image
+    runs-on: ubuntu-latest
+    needs:
+      - validate-app
+      - secret-scan
+      - sast-scan
+      - iac-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag $IMAGE_NAME:${{ github.sha }} \
+            --file app/Dockerfile \
+            app
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scad-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  deploy-azure:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    needs: build-and-scan-image
+    if: >
+      needs.build-and-scan-image.result == 'success' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      )
+    environment: production
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Restore Terraform state
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TF_DIR }}/terraform.tfstate
+          key: scad-terraform-state-${{ github.repository }}
+          restore-keys: |
+            scad-terraform-state-${{ github.repository }}
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Provision registry foundation
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -target=azurerm_container_registry.this \
+            -var="image_tag=${{ env.IMAGE_TAG }}"
+
+      - name: Build image for registry
+        run: docker build --tag scad-api:${{ env.IMAGE_TAG }} --file app/Dockerfile app
+
+      - name: Push image to ACR
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          ACR_LOGIN_SERVER="$(terraform output -raw container_registry_login_server)"
+          az acr login --name "${ACR_LOGIN_SERVER%%.*}"
+          docker tag scad-api:${{ env.IMAGE_TAG }} "$ACR_LOGIN_SERVER/scad-api:${{ env.IMAGE_TAG }}"
+          docker push "$ACR_LOGIN_SERVER/scad-api:${{ env.IMAGE_TAG }}"
+
+      - name: Terraform apply infrastructure
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -var="image_tag=${{ env.IMAGE_TAG }}"
+
+      - name: Save Terraform state
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.TF_DIR }}/terraform.tfstate
+          key: scad-terraform-state-${{ github.repository }}
+
+      - name: Verify deployed container
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          APP_URL="$(terraform output -raw container_app_url)"
+          echo "Waiting for container at $APP_URL"
+          for attempt in $(seq 1 30); do
+            if curl -sf "$APP_URL/healthz"; then
+              echo "Deployment healthy at $APP_URL"
+              exit 0
+            fi
+            echo "Attempt $attempt/30: service not ready yet"
+            sleep 10
+          done
+          echo "Container did not become healthy in time"
+          exit 1

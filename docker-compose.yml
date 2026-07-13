@@ -1,0 +1,15 @@
+name: scad
+
+services:
+  scad-api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: scad-api:local
+    container_name: scad-api
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+    restart: unless-stopped

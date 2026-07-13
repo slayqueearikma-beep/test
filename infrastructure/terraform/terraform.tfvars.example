@@ -1,0 +1,6 @@
+project_name     = "scad"
+environment      = "dev"
+location         = "westeurope"
+image_tag        = "latest"
+container_cpu    = 0.25
+container_memory = "0.5Gi"
