@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@eslint/*"
+          - "eslint"
+          - "c8"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,6 @@
+# Default reviewers for SCAD platform changes.
+* @slayqueearikma-beep
+
+/.github/ @slayqueearikma-beep
+/infrastructure/ @slayqueearikma-beep
+/app/ @slayqueearikma-beep

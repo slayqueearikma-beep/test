@@ -1,0 +1,47 @@
+name: SCAD Smoke Test
+description: Verify deployed SCAD API endpoints after rollout.
+
+inputs:
+  terraform-directory:
+    description: Terraform directory containing outputs
+    required: true
+    default: infrastructure/terraform
+  auth-token:
+    description: Optional bearer token for protected endpoints
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Verify deployment endpoints
+      shell: bash
+      working-directory: ${{ inputs.terraform-directory }}
+      env:
+        SCAD_AUTH_TOKEN: ${{ inputs.auth-token }}
+      run: |
+        APP_URL="$(terraform output -raw container_app_url)"
+        echo "Running smoke tests against ${APP_URL}"
+
+        for attempt in $(seq 1 30); do
+          if curl -sf "${APP_URL}/healthz" >/dev/null; then
+            break
+          fi
+          echo "Attempt ${attempt}/30: waiting for /healthz"
+          sleep 10
+        done
+
+        curl -sf "${APP_URL}/healthz"
+        curl -sf "${APP_URL}/readyz"
+        curl -sf "${APP_URL}/deployment"
+
+        AUTH_HEADER=()
+        if [ -n "${SCAD_AUTH_TOKEN}" ]; then
+          AUTH_HEADER=(-H "Authorization: Bearer ${SCAD_AUTH_TOKEN}")
+        fi
+
+        curl -sf "${AUTH_HEADER[@]}" "${APP_URL}/findings/summary"
+        curl -sf "${AUTH_HEADER[@]}" "${APP_URL}/security/score"
+        curl -sf "${APP_URL}/metrics" | head -n 5
+
+        echo "Smoke tests passed for ${APP_URL}"

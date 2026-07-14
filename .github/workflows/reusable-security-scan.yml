@@ -1,0 +1,130 @@
+name: Reusable - Security Scan
+
+on:
+  workflow_call:
+    outputs:
+      findings_artifact:
+        description: Uploaded pipeline findings artifact name
+        value: pipeline-security-findings-${{ github.run_id }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast-scan:
+    name: SAST scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  iac-scan:
+    name: IaC validation and scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform format check
+        working-directory: infrastructure/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        working-directory: infrastructure/terraform
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: infrastructure/terraform
+        run: terraform validate
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov.sarif
+          skip_check: CKV_AZURE_139,CKV_AZURE_237,CKV_AZURE_166,CKV_AZURE_233,CKV_AZURE_164,CKV_AZURE_167,CKV_AZURE_163,CKV_AZURE_165,CKV_AZURE_109,CKV_AZURE_189,CKV2_AZURE_32
+          soft_fail: false
+
+      - name: Upload Checkov SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
+  collect-findings:
+    name: Collect security findings
+    runs-on: ubuntu-latest
+    needs:
+      - secret-scan
+      - sast-scan
+      - iac-scan
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Generate pipeline findings snapshot
+        working-directory: app
+        run: |
+          npm ci --omit=dev
+          node ../scripts/generate-pipeline-findings.mjs \
+            --output ../pipeline-findings.json \
+            --commit "${{ github.sha }}" \
+            --ref "${{ github.ref_name }}"
+
+      - name: Upload pipeline findings
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-security-findings-${{ github.run_id }}
+          path: pipeline-findings.json
+          retention-days: 30

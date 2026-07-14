@@ -31,9 +31,9 @@ function triggerGitHubDeploy() {
   }
 
   console.log("Triggering Azure deploy through GitHub Actions...\n");
-  run('gh workflow run "SCAD DevSecOps Pipeline"');
+  run('gh workflow run "SCAD Platform Pipeline"');
   console.log("\nGitHub Actions deploy started.");
-  console.log("Track progress with: gh run list --workflow scad-devsecops.yml");
+  console.log("Track progress with: gh run list --workflow scad-platform.yml");
 }
 
 const requiredCommands = ["docker"];

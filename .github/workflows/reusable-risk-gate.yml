@@ -1,0 +1,44 @@
+name: Reusable - Risk Gate
+
+on:
+  workflow_call:
+    inputs:
+      findings_artifact:
+        description: Artifact name containing pipeline-findings.json
+        required: true
+        type: string
+      minimum_score:
+        description: Minimum acceptable risk score
+        required: false
+        type: number
+        default: 60
+
+permissions:
+  contents: read
+
+jobs:
+  risk-gate:
+    name: Evaluate release decision
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download pipeline findings
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.findings_artifact }}
+          path: .
+
+      - name: Run SCAD risk gate
+        uses: ./.github/actions/scad-risk-gate
+        with:
+          findings-file: pipeline-findings.json
+          minimum-score: ${{ inputs.minimum_score }}
+
+      - name: Upload risk decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-decision-${{ github.run_id }}
+          path: pipeline-findings.json
+          retention-days: 30

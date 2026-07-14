@@ -124,6 +124,21 @@ resource "azurerm_container_app" "api" {
         name  = "APP_VERSION"
         value = var.image_tag
       }
+
+      env {
+        name  = "IMAGE_TAG"
+        value = var.image_tag
+      }
+
+      env {
+        name  = "DEPLOYMENT_ENVIRONMENT"
+        value = var.environment
+      }
+
+      env {
+        name  = "SCAD_REQUIRE_API_AUTH"
+        value = "false"
+      }
     }
   }
 

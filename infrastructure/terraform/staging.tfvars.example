@@ -1,0 +1,3 @@
+environment = "staging"
+location    = "westeurope"
+image_tag   = "staging-latest"

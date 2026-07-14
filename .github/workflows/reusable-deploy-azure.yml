@@ -1,0 +1,126 @@
+name: Reusable - Deploy Azure
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Container image tag to deploy
+        required: true
+        type: string
+      environment_name:
+        description: GitHub environment name
+        required: true
+        type: string
+      terraform_environment:
+        description: Terraform environment variable value
+        required: true
+        type: string
+      state_cache_key:
+        description: Terraform state cache key suffix
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_DIR: infrastructure/terraform
+
+jobs:
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+    concurrency:
+      group: scad-deploy-${{ inputs.environment_name }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Restore Terraform state
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.TF_DIR }}/terraform.tfstate
+          key: scad-terraform-state-${{ inputs.state_cache_key }}
+          restore-keys: |
+            scad-terraform-state-${{ inputs.state_cache_key }}
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Provision registry foundation
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -target=azurerm_container_registry.this \
+            -var="image_tag=${{ inputs.image_tag }}" \
+            -var="environment=${{ inputs.terraform_environment }}"
+
+      - name: Download built image
+        uses: actions/download-artifact@v4
+        with:
+          name: scad-api-image-${{ inputs.image_tag }}
+          path: .
+
+      - name: Load built image
+        run: docker load -i scad-api-image.tar
+
+      - name: Push image to ACR
+        id: push
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          ACR_LOGIN_SERVER="$(terraform output -raw container_registry_login_server)"
+          az acr login --name "${ACR_LOGIN_SERVER%%.*}"
+          REMOTE_IMAGE="$ACR_LOGIN_SERVER/scad-api:${{ inputs.image_tag }}"
+          docker tag "scad-api:${{ inputs.image_tag }}" "$REMOTE_IMAGE"
+          docker push "$REMOTE_IMAGE"
+          echo "remote_tag=${REMOTE_IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign and verify production image
+        run: |
+          cosign sign --yes "${{ steps.push.outputs.remote_tag }}"
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "${{ steps.push.outputs.remote_tag }}"
+
+      - name: Terraform apply infrastructure
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -var="image_tag=${{ inputs.image_tag }}" \
+            -var="environment=${{ inputs.terraform_environment }}"
+
+      - name: Save Terraform state
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.TF_DIR }}/terraform.tfstate
+          key: scad-terraform-state-${{ inputs.state_cache_key }}
+
+      - name: Run post-deploy smoke tests
+        uses: ./.github/actions/scad-smoke-test
+        with:
+          terraform-directory: infrastructure/terraform

@@ -1,0 +1,19 @@
+# Remote state backend (recommended for teams)
+
+Uncomment and configure before using shared Terraform state in CI/CD.
+
+```hcl
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "rg-scad-tfstate"
+    storage_account_name = "scadtstate"
+    container_name       = "tfstate"
+    key                  = "scad.tfstate"
+  }
+}
+```
+
+Use separate keys per environment:
+
+- `scad-staging.tfstate`
+- `scad-production.tfstate`

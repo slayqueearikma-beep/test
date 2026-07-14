@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import express from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
@@ -5,6 +6,13 @@ import client from "prom-client";
 import { pathToFileURL } from "node:url";
 import { defaultFindingsStore } from "./findings.js";
 import { calculateRiskScore } from "./risk-scoring.js";
+import {
+  addSecurityHeaders,
+  authenticateBearer,
+  createRateLimiter,
+  requireJsonContentType,
+  requireRole,
+} from "./security.js";
 
 const serviceName = process.env.SERVICE_NAME || "scad-api";
 const version = process.env.APP_VERSION || "1.0.0";
@@ -43,15 +51,30 @@ function requireIngestToken(req, res, next) {
   return next();
 }
 
-export function createApp({ findingsStore = defaultFindingsStore } = {}) {
+export function createApp({
+  findingsStore = defaultFindingsStore,
+  requireApiAuth = process.env.SCAD_REQUIRE_API_AUTH === "true",
+} = {}) {
   const app = express();
 
   app.disable("x-powered-by");
   app.use(helmet());
+  app.use(addSecurityHeaders);
+  app.use(createRateLimiter({ windowMs: 60_000, maxRequests: 180 }));
   app.use(express.json({ limit: "100kb" }));
+  app.use(requireJsonContentType);
+  app.use((req, res, next) => {
+    const requestId = req.headers["x-request-id"] || crypto.randomUUID();
+    req.requestId = requestId;
+    res.set("X-Request-Id", requestId);
+    next();
+  });
   app.use(
     pinoHttp({
       redact: ["req.headers.authorization", "req.headers.cookie"],
+      customProps: (req) => ({
+        requestId: req.requestId,
+      }),
     }),
   );
 
@@ -118,7 +141,11 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
     });
   });
 
-  app.get("/findings", (req, res) => {
+  const protectedRead = requireApiAuth
+    ? [authenticateBearer, requireRole("security-reader")]
+    : [];
+
+  app.get("/findings", ...protectedRead, (req, res) => {
     res.json({
       findings: findingsStore.list({
         status: req.query.status,
@@ -165,11 +192,11 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
     }
   });
 
-  app.get("/findings/summary", (_req, res) => {
+  app.get("/findings/summary", ...protectedRead, (_req, res) => {
     res.json(findingsStore.summary());
   });
 
-  app.get("/security/score", (_req, res) => {
+  app.get("/security/score", ...protectedRead, (_req, res) => {
     const findings = findingsStore.list();
     res.json(calculateRiskScore(findings));
   });
@@ -206,7 +233,16 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectRun) {
-  createApp().listen(port, () => {
+  const app = createApp();
+  const server = app.listen(port, () => {
     console.log(`${serviceName} listening on port ${port}`);
   });
+
+  const shutdown = (signal) => {
+    console.log(`Received ${signal}, shutting down gracefully`);
+    server.close(() => process.exit(0));
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

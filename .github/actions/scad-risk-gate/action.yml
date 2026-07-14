@@ -1,0 +1,26 @@
+name: SCAD Risk Gate
+description: Evaluate SCAD risk score and block release when policy requires it.
+
+inputs:
+  findings-file:
+    description: Path to pipeline findings JSON file
+    required: true
+  minimum-score:
+    description: Minimum acceptable risk score
+    required: false
+    default: "60"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: 24
+
+    - name: Evaluate risk score
+      shell: bash
+      run: |
+        node scripts/ci-risk-gate.mjs \
+          --findings "${{ inputs.findings-file }}" \
+          --minimum-score "${{ inputs.minimum-score }}"

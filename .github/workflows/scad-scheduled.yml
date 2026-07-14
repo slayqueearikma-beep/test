@@ -1,0 +1,45 @@
+name: SCAD Scheduled Operations
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  weekly-security-scan:
+    name: Weekly security scan
+    uses: ./.github/workflows/reusable-security-scan.yml
+
+  dependency-audit:
+    name: Weekly dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Audit dependencies
+        working-directory: app
+        run: |
+          npm ci
+          npm audit --audit-level=moderate
+
+  terraform-drift-check:
+    name: Terraform validate and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+      - name: Check Terraform
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init -backend=false
+          terraform fmt -check -recursive
+          terraform validate

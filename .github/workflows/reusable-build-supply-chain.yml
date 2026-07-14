@@ -1,0 +1,108 @@
+name: Reusable - Build and Supply Chain
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Docker image tag
+        required: true
+        type: string
+    outputs:
+      image_ref:
+        description: Immutable image reference with digest
+        value: ${{ jobs.build.outputs.image_ref }}
+      image_digest:
+        description: Image digest
+        value: ${{ jobs.build.outputs.image_digest }}
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  security-events: write
+
+env:
+  IMAGE_NAME: scad-api
+
+jobs:
+  build:
+    name: Build, scan, and attest
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.build.outputs.image_ref }}
+      image_digest: ${{ steps.build.outputs.image_digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build Docker image
+        id: build
+        run: |
+          docker build \
+            --tag "$IMAGE_NAME:${{ inputs.image_tag }}" \
+            --file app/Dockerfile \
+            app
+          IMAGE_DIGEST="$(docker inspect -f '{{.Id}}' "$IMAGE_NAME:${{ inputs.image_tag }}")"
+          echo "image_ref=${IMAGE_NAME}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "image_digest=${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scad-api:${{ inputs.image_tag }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: scad-api:${{ inputs.image_tag }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-scad-api-${{ inputs.image_tag }}
+          path: sbom.spdx.json
+          retention-days: 90
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign container image
+        run: cosign sign --yes "${{ steps.build.outputs.image_ref }}"
+
+      - name: Attach SBOM attestation
+        run: |
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdx \
+            "${{ steps.build.outputs.image_ref }}"
+
+      - name: Generate build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: scad-api
+          subject-digest: ${{ steps.build.outputs.image_digest }}
+          push-to-registry: false
+
+      - name: Save image tarball
+        run: docker save "scad-api:${{ inputs.image_tag }}" -o scad-api-image.tar
+
+      - name: Upload built image
+        uses: actions/upload-artifact@v4
+        with:
+          name: scad-api-image-${{ inputs.image_tag }}
+          path: scad-api-image.tar
+          retention-days: 7

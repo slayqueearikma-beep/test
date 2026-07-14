@@ -58,7 +58,7 @@ Deployment healthy at https://ca-....azurecontainerapps.io
 
 You can still deploy any tag manually from the Actions tab:
 
-**SCAD DevSecOps Pipeline** -> **Run workflow** -> optional `image_tag`
+**SCAD Platform Pipeline** -> **Run workflow** -> optional `image_tag`
 
 ## Disable automatic deploy
 

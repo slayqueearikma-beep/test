@@ -1,0 +1,81 @@
+name: SCAD Release
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  security-events: write
+  actions: read
+
+env:
+  IMAGE_TAG: ${{ github.ref_name }}
+
+jobs:
+  validate:
+    uses: ./.github/workflows/reusable-validate-app.yml
+
+  security:
+    uses: ./.github/workflows/reusable-security-scan.yml
+
+  build-supply-chain:
+    needs:
+      - validate
+      - security
+    uses: ./.github/workflows/reusable-build-supply-chain.yml
+    with:
+      image_tag: ${{ env.IMAGE_TAG }}
+
+  risk-gate:
+    needs:
+      - validate
+      - security
+      - build-supply-chain
+    uses: ./.github/workflows/reusable-risk-gate.yml
+    with:
+      findings_artifact: pipeline-security-findings-${{ github.run_id }}
+      minimum_score: 70
+
+  create-release:
+    name: Create GitHub Release
+    needs:
+      - build-supply-chain
+      - risk-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom-scad-api-${{ env.IMAGE_TAG }}
+          path: release-assets
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/sbom.spdx.json
+
+  deploy-production:
+    needs:
+      - create-release
+      - build-supply-chain
+      - risk-gate
+    uses: ./.github/workflows/reusable-deploy-azure.yml
+    with:
+      image_tag: ${{ env.IMAGE_TAG }}
+      environment_name: production
+      terraform_environment: production
+      state_cache_key: ${{ github.repository }}-production
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

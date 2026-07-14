@@ -1,0 +1,105 @@
+name: SCAD Platform Pipeline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Container image tag to deploy
+        required: false
+        default: ""
+      deploy_production:
+        description: Deploy to production after staging
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: scad-platform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  id-token: write
+  attestations: write
+  pull-requests: write
+
+env:
+  IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+
+jobs:
+  validate:
+    name: CI - Validate
+    uses: ./.github/workflows/reusable-validate-app.yml
+
+  security:
+    name: CI - Security
+    uses: ./.github/workflows/reusable-security-scan.yml
+
+  build-supply-chain:
+    name: CI - Build and Supply Chain
+    needs:
+      - validate
+      - security
+    uses: ./.github/workflows/reusable-build-supply-chain.yml
+    with:
+      image_tag: ${{ env.IMAGE_TAG }}
+
+  risk-gate:
+    name: CI - Risk Gate
+    needs:
+      - validate
+      - security
+      - build-supply-chain
+    uses: ./.github/workflows/reusable-risk-gate.yml
+    with:
+      findings_artifact: pipeline-security-findings-${{ github.run_id }}
+      minimum_score: 60
+
+  deploy-staging:
+    name: CD - Staging
+    needs:
+      - build-supply-chain
+      - risk-gate
+    if: >
+      needs.risk-gate.result == 'success' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      )
+    uses: ./.github/workflows/reusable-deploy-azure.yml
+    with:
+      image_tag: ${{ env.IMAGE_TAG }}
+      environment_name: staging
+      terraform_environment: staging
+      state_cache_key: ${{ github.repository }}-staging
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  deploy-production:
+    name: CD - Production
+    needs:
+      - deploy-staging
+    if: >
+      needs.deploy-staging.result == 'success' &&
+      (
+        inputs.deploy_production == true ||
+        startsWith(github.ref, 'refs/tags/v')
+      )
+    uses: ./.github/workflows/reusable-deploy-azure.yml
+    with:
+      image_tag: ${{ env.IMAGE_TAG }}
+      environment_name: production
+      terraform_environment: production
+      state_cache_key: ${{ github.repository }}-production
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

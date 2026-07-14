@@ -9,17 +9,10 @@ The project is designed for a DevSecOps / Cloud Architect profile. It combines a
 ```text
 Developer
   -> GitHub Repository
-  -> GitHub Actions DevSecOps Pipeline
-  -> SAST / Secret / Dependency / IaC Scans
-  -> Docker Image Build
-  -> Container Image Scan
-  -> SBOM + Cosign Sign + Provenance
-  -> Azure Container Registry
-  -> Azure Container Apps
-  -> Azure Monitor / Log Analytics / Alerts
-  -> Security Findings API
-  -> Risk Scoring Engine
-  -> Approved / Needs Review / Blocked
+  -> GitHub Actions Platform Pipeline
+  -> Validate / Security / Supply Chain (reusable workflows)
+  -> Risk Gate (SCAD policy engine)
+  -> Staging Deploy -> Production Promote
 ```
 
 ## Repository structure
@@ -31,7 +24,11 @@ Developer
 │   ├── test/server.test.js        # Node.js tests
 │   └── Dockerfile                # Production container image
 ├── infrastructure/terraform/     # Azure infrastructure as code
-├── .github/workflows/            # DevSecOps CI/CD pipeline
+├── .github/
+│   ├── workflows/                # Platform, release, scheduled, reusable workflows
+│   ├── actions/                  # Composite actions (risk gate, smoke tests)
+│   ├── dependabot.yml
+│   └── pull_request_template.md
 └── docs/                         # Architecture and presentation notes
 ```
 
@@ -53,6 +50,11 @@ The pipeline includes:
 - Security findings normalization API
 - CVSS, EPSS, and policy-based risk scoring
 - Automated release decision: approved, needs review, or blocked
+- Reusable workflow architecture for industry-style CI/CD
+- Coverage gate, SARIF uploads, staging/production promotion
+- Weekly scheduled security and drift checks
+
+Pipeline reference: [`docs/ci-cd-platform.md`](docs/ci-cd-platform.md)
 
 Some enterprise Azure hardening checks are intentionally documented as future improvements instead of blocking the starter deployment. Examples include private endpoints for Key Vault, disabling all public network access, ACR geo-replication, ACR zone redundancy, and Defender-backed registry scanning. These controls are valuable in production, but they require additional network design, premium SKUs, and higher cloud cost.
 
