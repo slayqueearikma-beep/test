@@ -101,11 +101,20 @@ export function createApp({ findingsStore = defaultFindingsStore } = {}) {
         "dependency scanning",
         "IaC scanning",
         "container image scanning",
+        "SBOM generation",
+        "image signing and verification",
+        "SLSA build provenance",
         "runtime monitoring",
         "security findings normalization",
         "CVSS and EPSS risk scoring",
         "risk-based release decision",
       ],
+      supplyChain: {
+        sbom: "Syft SPDX SBOM generated in CI",
+        signing: "Cosign keyless signing in GitHub Actions",
+        provenance: "GitHub build provenance attestation",
+        deployPolicy: "Deploy blocked unless image signature verifies",
+      },
     });
   });
 

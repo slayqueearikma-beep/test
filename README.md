@@ -13,6 +13,7 @@ Developer
   -> SAST / Secret / Dependency / IaC Scans
   -> Docker Image Build
   -> Container Image Scan
+  -> SBOM + Cosign Sign + Provenance
   -> Azure Container Registry
   -> Azure Container Apps
   -> Azure Monitor / Log Analytics / Alerts
@@ -45,6 +46,9 @@ The pipeline includes:
 - IaC security scanning with Checkov
 - Docker image build
 - Container vulnerability scanning with Trivy
+- SBOM generation with Syft (SPDX)
+- Container image signing and verification with Cosign
+- SLSA-style build provenance attestations
 - Optional Azure deployment through GitHub Actions OIDC credentials
 - Security findings normalization API
 - CVSS, EPSS, and policy-based risk scoring
@@ -169,3 +173,5 @@ See [`docs/auto-deploy.md`](docs/auto-deploy.md) for the full setup guide.
 SCAD is not a replacement for GitHub Actions. It is a secure delivery platform built with GitHub Actions, Terraform, Docker, and Azure services to show real-world DevSecOps and cloud architecture practices.
 
 The security data integration layer is documented in [`docs/security-data-integration.md`](docs/security-data-integration.md).
+
+Supply chain controls are documented in [`docs/supply-chain-security.md`](docs/supply-chain-security.md).

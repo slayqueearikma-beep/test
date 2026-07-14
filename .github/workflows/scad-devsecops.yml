@@ -17,6 +17,7 @@ permissions:
   actions: read
   security-events: write
   id-token: write
+  attestations: write
 
 env:
   APP_DIR: app
@@ -127,11 +128,15 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Build Docker image
+        id: build
         run: |
           docker build \
             --tag $IMAGE_NAME:${{ github.sha }} \
             --file app/Dockerfile \
             app
+          IMAGE_DIGEST="$(docker inspect -f '{{.Id}}' "$IMAGE_NAME:${{ github.sha }}")"
+          echo "image_ref=${IMAGE_NAME}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "image_digest=${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -140,6 +145,40 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: scad-api:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-scad-api-${{ github.sha }}
+          path: sbom.spdx.json
+          retention-days: 90
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign container image
+        run: cosign sign --yes "${{ steps.build.outputs.image_ref }}"
+
+      - name: Attach SBOM attestation
+        run: |
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdx \
+            "${{ steps.build.outputs.image_ref }}"
+
+      - name: Generate build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: scad-api
+          subject-digest: ${{ steps.build.outputs.image_digest }}
+          push-to-registry: false
 
   deploy-azure:
     name: Deploy to Azure
@@ -188,15 +227,35 @@ jobs:
             -var="image_tag=${{ env.IMAGE_TAG }}"
 
       - name: Build image for registry
-        run: docker build --tag scad-api:${{ env.IMAGE_TAG }} --file app/Dockerfile app
+        id: build
+        run: |
+          docker build --tag scad-api:${{ env.IMAGE_TAG }} --file app/Dockerfile app
+          IMAGE_DIGEST="$(docker inspect -f '{{.Id}}' "scad-api:${{ env.IMAGE_TAG }}")"
+          echo "image_ref=scad-api@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Push image to ACR
+        id: push
         working-directory: ${{ env.TF_DIR }}
         run: |
           ACR_LOGIN_SERVER="$(terraform output -raw container_registry_login_server)"
           az acr login --name "${ACR_LOGIN_SERVER%%.*}"
-          docker tag scad-api:${{ env.IMAGE_TAG }} "$ACR_LOGIN_SERVER/scad-api:${{ env.IMAGE_TAG }}"
-          docker push "$ACR_LOGIN_SERVER/scad-api:${{ env.IMAGE_TAG }}"
+          REMOTE_IMAGE="$ACR_LOGIN_SERVER/scad-api:${{ env.IMAGE_TAG }}"
+          docker tag scad-api:${{ env.IMAGE_TAG }} "$REMOTE_IMAGE"
+          docker push "$REMOTE_IMAGE"
+          REMOTE_DIGEST="$(docker inspect -f '{{.Id}}' "$REMOTE_IMAGE")"
+          echo "remote_image=${REMOTE_IMAGE%%:*}@${REMOTE_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "remote_tag=${REMOTE_IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign and verify production image
+        run: |
+          cosign sign --yes "${{ steps.push.outputs.remote_tag }}"
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "${{ steps.push.outputs.remote_tag }}"
 
       - name: Terraform apply infrastructure
         working-directory: ${{ env.TF_DIR }}
