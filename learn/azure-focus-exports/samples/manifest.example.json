@@ -1,0 +1,32 @@
+{
+  "exportConfig": {
+    "exportName": "lab-focus-daily",
+    "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.CostManagement/exports/lab-focus-daily",
+    "dataVersion": "1.0",
+    "apiVersion": "2025-03-01",
+    "type": "FocusCost",
+    "timeFrame": "MonthToDate",
+    "granularity": "Daily"
+  },
+  "runInfo": {
+    "executionType": "Scheduled",
+    "submittedTime": "2026-07-14T02:15:00Z",
+    "runId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "startTime": "2026-07-14T02:15:05Z",
+    "endTime": "2026-07-14T02:18:42Z",
+    "status": "Completed",
+    "files": [
+      {
+        "blobName": "focus-parquet/20260714-020000/00000001.parquet",
+        "byteCount": 245760,
+        "dataRowCount": 1842
+      }
+    ],
+    "manifestVersion": "1.0",
+    "dataFormat": "Parquet",
+    "blobCount": 1,
+    "byteCount": 245760,
+    "dataRowCount": 1842,
+    "exportConfigHash": "example-hash-not-real"
+  }
+}

@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars and set a unique storage account name.
+# storage_account_name must be globally unique across Azure.
+
+storage_account_name = "stfocuslabYOURNAME"
+location             = "westeurope"
+
+tags = {
+  project = "focus-learning-lab"
+  owner   = "your-name"
+}
