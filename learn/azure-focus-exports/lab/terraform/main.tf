@@ -138,3 +138,32 @@ output "actual_cost_path" {
 output "portal_exports_url" {
   value = "https://portal.azure.com/#view/Microsoft_Azure_CostManagement/Menu/~/costmanagementexports"
 }
+
+output "subscription_id" {
+  value = data.azurerm_client_config.current.subscription_id
+}
+
+output "focus_export_name" {
+  value = azapi_resource.focus_export.name
+}
+
+output "focus_export_id" {
+  value = azapi_resource.focus_export.id
+}
+
+output "actual_cost_export_name" {
+  value = azurerm_resource_group_cost_management_export.actual_cost.name
+}
+
+output "verify_commands" {
+  value = <<-EOT
+    # List exports (use 2025 API — az costmanagement export list may miss FOCUS):
+    az rest --method GET --uri "https://management.azure.com/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CostManagement/exports?api-version=2025-03-01"
+
+    # FOCUS run history:
+    az rest --method GET --uri "https://management.azure.com/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.CostManagement/exports/${var.focus_export_name}/runHistory?api-version=2025-03-01"
+
+    # List blob files:
+    az storage blob list --account-name ${azurerm_storage_account.focus_lab.name} --container-name ${azurerm_storage_container.focus_exports.name} --prefix focus-parquet/ --auth-mode login -o table
+  EOT
+}

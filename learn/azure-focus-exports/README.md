@@ -70,6 +70,10 @@ FOCUS combines actual + amortized in one open standard.
 
 Follow [docs/03-portal-create-export.md](docs/03-portal-create-export.md).
 
+### Option A2 — No portal: Terraform + CLI
+
+Follow [docs/08-verify-without-portal.md](docs/08-verify-without-portal.md) — create with Terraform, verify with `terraform output`, `az rest`, and blob listing.
+
 ### Option B — Terraform lab (repeatable)
 
 ```bash
