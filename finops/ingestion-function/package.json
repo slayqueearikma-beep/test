@@ -1,0 +1,15 @@
+{
+  "name": "scad-finops-ingestion",
+  "version": "1.0.0",
+  "description": "Ingest FOCUS cost exports and CI pipeline metrics into Azure SQL.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.6.0",
+    "@azure/identity": "^4.10.0",
+    "@azure/storage-blob": "^12.27.0",
+    "mssql": "^11.0.1"
+  }
+}

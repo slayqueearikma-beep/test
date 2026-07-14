@@ -4,3 +4,6 @@ location         = "westeurope"
 image_tag        = "latest"
 container_cpu    = 0.25
 container_memory = "0.5Gi"
+enable_finops    = true
+enable_focus_export = true
+# ci_principal_id = "00000000-0000-0000-0000-000000000000"

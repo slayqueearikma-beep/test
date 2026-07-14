@@ -9,3 +9,5 @@ dist/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+infrastructure/terraform/modules/finops/build/
+finops/ingestion-function/node_modules/

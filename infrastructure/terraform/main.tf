@@ -12,6 +12,8 @@ locals {
     project     = "SCAD"
     environment = var.environment
     managed_by  = "terraform"
+    cost_center = "scad-platform"
+    workload    = "devsecops"
   }
 }
 

@@ -56,6 +56,11 @@ The pipeline includes:
 
 Pipeline reference: [`docs/ci-cd-platform.md`](docs/ci-cd-platform.md)
 
+Azure architecture and FinOps analytics:
+
+- [`docs/azure-architecture.md`](docs/azure-architecture.md)
+- [`docs/finops-power-bi.md`](docs/finops-power-bi.md)
+
 Some enterprise Azure hardening checks are intentionally documented as future improvements instead of blocking the starter deployment. Examples include private endpoints for Key Vault, disabling all public network access, ACR geo-replication, ACR zone redundancy, and Defender-backed registry scanning. These controls are valuable in production, but they require additional network design, premium SKUs, and higher cloud cost.
 
 ## Local development

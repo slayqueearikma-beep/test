@@ -33,3 +33,22 @@ variable "container_memory" {
   type        = string
   default     = "0.5Gi"
 }
+
+variable "enable_finops" {
+  description = "Provision FinOps exports, ingestion function, SQL, and analytics storage."
+  type        = bool
+  default     = true
+}
+
+variable "enable_focus_export" {
+  description = "Enable FOCUS parquet export. Disable if subscription does not support FOCUS."
+  type        = bool
+  default     = true
+}
+
+variable "ci_principal_id" {
+  description = "Optional Entra object ID for GitHub Actions OIDC principal to upload pipeline metrics."
+  type        = string
+  default     = ""
+}
+

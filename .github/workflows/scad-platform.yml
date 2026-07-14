@@ -61,6 +61,38 @@ jobs:
       findings_artifact: pipeline-security-findings-${{ github.run_id }}
       minimum_score: 60
 
+  publish-observability:
+    name: Observability - Publish Metrics
+    runs-on: ubuntu-latest
+    needs:
+      - risk-gate
+    if: always() && vars.SCAD_FINOPS_STORAGE_ACCOUNT != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download pipeline findings
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: pipeline-security-findings-${{ github.run_id }}
+          path: pipeline-artifacts
+
+      - name: Publish pipeline metrics JSON
+        env:
+          SCAD_FINOPS_STORAGE_ACCOUNT: ${{ vars.SCAD_FINOPS_STORAGE_ACCOUNT }}
+          PIPELINE_FINDINGS_FILE: pipeline-artifacts/pipeline-findings.json
+          DEPLOYMENT_ENVIRONMENT: ci
+          PIPELINE_CONCLUSION: ${{ needs.risk-gate.result }}
+        run: node scripts/publish-pipeline-metrics.mjs
+
   deploy-staging:
     name: CD - Staging
     needs:

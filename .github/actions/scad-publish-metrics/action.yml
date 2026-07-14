@@ -1,0 +1,50 @@
+name: SCAD Publish Pipeline Metrics
+description: Upload CI/CD pipeline summary JSON to FinOps blob storage for Power BI ingestion.
+
+inputs:
+  storage-account:
+    description: FinOps storage account name
+    required: true
+  findings-artifact:
+    description: Optional artifact name containing pipeline-findings.json
+    required: false
+    default: ""
+  environment:
+    description: Deployment environment label
+    required: false
+    default: ci
+
+secrets:
+  AZURE_CLIENT_ID:
+    required: true
+  AZURE_TENANT_ID:
+    required: true
+  AZURE_SUBSCRIPTION_ID:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Download findings artifact
+      if: inputs.findings-artifact != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.findings-artifact }}
+        path: pipeline-artifacts
+
+    - name: Publish metrics JSON
+      shell: bash
+      env:
+        SCAD_FINOPS_STORAGE_ACCOUNT: ${{ inputs.storage-account }}
+        SCAD_FINOPS_PIPELINE_CONTAINER: pipeline-metrics
+        DEPLOYMENT_ENVIRONMENT: ${{ inputs.environment }}
+        PIPELINE_CONCLUSION: ${{ job.status }}
+        PIPELINE_FINDINGS_FILE: ${{ inputs.findings-artifact != '' && 'pipeline-artifacts/pipeline-findings.json' || '' }}
+      run: node scripts/publish-pipeline-metrics.mjs

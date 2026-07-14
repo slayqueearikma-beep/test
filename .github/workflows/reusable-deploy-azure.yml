@@ -124,3 +124,18 @@ jobs:
         uses: ./.github/actions/scad-smoke-test
         with:
           terraform-directory: infrastructure/terraform
+
+      - name: Publish pipeline metrics to FinOps storage
+        if: always()
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ inputs.terraform_environment }}
+          PIPELINE_FINDINGS_FILE: ${{ github.workspace }}/pipeline-findings.json
+        run: |
+          STORAGE="$(terraform output -raw finops_storage_account_name 2>/dev/null || true)"
+          if [ -z "$STORAGE" ] || [ "$STORAGE" = "null" ]; then
+            echo "FinOps storage not provisioned; skipping metrics publish."
+            exit 0
+          fi
+          export SCAD_FINOPS_STORAGE_ACCOUNT="$STORAGE"
+          node "${{ github.workspace }}/scripts/publish-pipeline-metrics.mjs"
