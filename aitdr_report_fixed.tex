@@ -1,0 +1,687 @@
+\documentclass[11pt,a4paper]{report}
+
+% ============================================
+% ENCODAGE, LANGUE, PAGE
+% ============================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.5cm, top=3cm, bottom=3cm]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{pdflscape}
+\usepackage{adjustbox}
+
+% ============================================
+% TABLEAUX, FIGURES, COULEURS
+% ============================================
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{float}
+\usepackage{caption}
+
+% ============================================
+% LIENS, MATHS, DESSINS, CODE
+% ============================================
+\usepackage[colorlinks=true, linkcolor=black, urlcolor=black, citecolor=black]{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{listings}
+\usepackage{mdframed}
+
+% ============================================
+% EN-TÊTES ET TITRES
+% ============================================
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+% ============================================
+% COULEURS
+% ============================================
+\definecolor{codeblue}{RGB}{30,100,180}
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codeorange}{RGB}{200,80,0}
+\definecolor{alertred}{RGB}{180,30,30}
+\definecolor{infobox}{RGB}{230,240,255}
+\definecolor{titleblue}{RGB}{20,60,120}
+\definecolor{warnbox}{RGB}{255,248,220}
+\definecolor{successbox}{RGB}{230,255,230}
+
+% Business Model Canvas colors.
+\definecolor{cPartners}{RGB}{226,232,240}
+\definecolor{cActivities}{RGB}{207,226,243}
+\definecolor{cResources}{RGB}{207,226,243}
+\definecolor{cValue}{RGB}{255,224,178}
+\definecolor{cRelations}{RGB}{215,238,213}
+\definecolor{cChannels}{RGB}{215,238,213}
+\definecolor{cSegments}{RGB}{232,213,242}
+\definecolor{cCosts}{RGB}{230,230,230}
+\definecolor{cRevenue}{RGB}{230,230,230}
+
+% Table colors.
+\definecolor{tabheader}{RGB}{20,60,120}
+\definecolor{tabrowlight}{RGB}{248,250,252}
+\definecolor{tabrowdark}{RGB}{235,240,245}
+\definecolor{tabgreen}{RGB}{220,240,220}
+
+% ============================================
+% COLONNES ET COMMANDES DE TABLEAUX
+% ============================================
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% Use \theadcell{...} in every header cell so the full header row is white and bold.
+\newcommand{\tableheader}{\rowcolor{tabheader}}
+\newcommand{\theadcell}[1]{\textcolor{white}{\bfseries #1}}
+\newcommand{\rowlight}{\rowcolor{tabrowlight}}
+\newcommand{\rowdark}{\rowcolor{tabrowdark}}
+\newcommand{\rowgreen}{\rowcolor{tabgreen}}
+
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{5pt}
+
+\newcommand{\techterm}[1]{\textit{#1}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ============================================
+% LISTINGS
+% ============================================
+\lstdefinestyle{commoncode}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  captionpos=b,
+  frame=single,
+  rulecolor=\color{gray!40},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  showstringspaces=false,
+  tabsize=2,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\lstdefinestyle{bashstyle}{
+  style=commoncode,
+  language=bash,
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{codeblue}\bfseries,
+  stringstyle=\color{codeorange}
+}
+
+\lstdefinestyle{pythonstyle}{
+  style=commoncode,
+  language=Python,
+  commentstyle=\color{codegreen}\itshape,
+  keywordstyle=\color{codeblue}\bfseries,
+  stringstyle=\color{codeorange}
+}
+
+\lstdefinestyle{hclstyle}{
+  style=commoncode,
+  commentstyle=\color{codegreen}\itshape,
+  keywordstyle=\color{codeblue}\bfseries,
+  stringstyle=\color{codeorange}
+}
+
+\lstdefinestyle{sqlstyle}{
+  style=commoncode,
+  language=SQL,
+  commentstyle=\color{codegreen}\itshape,
+  keywordstyle=\color{codeblue}\bfseries,
+  stringstyle=\color{codeorange}
+}
+
+% ============================================
+% BOÎTES
+% ============================================
+\newmdenv[
+  backgroundcolor=infobox,
+  linecolor=codeblue,
+  linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt
+]{infobox}
+
+\newmdenv[
+  backgroundcolor=red!8,
+  linecolor=alertred,
+  linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt
+]{alertbox}
+
+\newmdenv[
+  backgroundcolor=warnbox,
+  linecolor=orange,
+  linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt
+]{warnbox}
+
+\newmdenv[
+  backgroundcolor=successbox,
+  linecolor=codegreen,
+  linewidth=1.5pt,
+  leftline=true, rightline=false, topline=false, bottomline=false,
+  innerleftmargin=12pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt
+]{successbox}
+
+% ============================================
+% MISE EN PAGE
+% ============================================
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small AITDR}
+\lhead{\small \nouppercase{\leftmark}}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\titleformat{\chapter}[block]{\Large\bfseries\color{titleblue}}{\thechapter.}{0.8em}{}
+\titlespacing*{\chapter}{0pt}{16pt}{10pt}
+\titleformat{\section}[block]{\large\bfseries}{\thesection}{0.6em}{}
+\titlespacing*{\section}{0pt}{12pt}{5pt}
+\titleformat{\subsection}[block]{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{8pt}{3pt}
+\titleformat{\subsubsection}[block]{\normalsize\itshape}{\thesubsubsection}{0.5em}{}
+
+\setlist[itemize]{noitemsep, topsep=3pt, leftmargin=1.5em}
+\setlist[enumerate]{noitemsep, topsep=3pt, leftmargin=1.5em}
+\captionsetup{font=small, labelfont=bf}
+
+% ============================================
+% BUSINESS MODEL CANVAS
+% ============================================
+\newcommand{\bmctitle}[1]{{\bfseries\small\color{titleblue} #1}\\[2pt]}
+
+\newcommand{\AITDRBusinessModelCanvas}{%
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\caption{Business Model Canvas de AITDR}
+\label{fig:bmc}
+\begingroup
+\setlist[itemize]{leftmargin=*, itemsep=1pt, topsep=1pt, parsep=0pt, label=\textbullet}
+\begin{tikzpicture}[font=\fontsize{7.6}{8.7}\selectfont]
+
+% Dimensions sized for an A4 landscape page.
+\def\colA{4.1}
+\def\colB{4.1}
+\def\colC{5.2}
+\def\colD{4.1}
+\def\colE{4.1}
+\def\rowTop{10.2}
+\def\rowHalf{5.1}
+\def\rowBottom{4.2}
+
+\def\xA{0}
+\pgfmathsetmacro{\xB}{\xA + \colA}
+\pgfmathsetmacro{\xC}{\xB + \colB}
+\pgfmathsetmacro{\xD}{\xC + \colC}
+\pgfmathsetmacro{\xE}{\xD + \colD}
+\pgfmathsetmacro{\xEnd}{\xE + \colE}
+
+\def\yTop{0}
+\pgfmathsetmacro{\yMid}{\yTop - \rowHalf}
+\pgfmathsetmacro{\yBottomRowStart}{\yTop - \rowTop}
+\pgfmathsetmacro{\yEnd}{\yBottomRowStart - \rowBottom}
+
+\pgfmathsetmacro{\wA}{\colA - 0.35}
+\pgfmathsetmacro{\wB}{\colB - 0.35}
+\pgfmathsetmacro{\wC}{\colC - 0.35}
+\pgfmathsetmacro{\wD}{\colD - 0.35}
+\pgfmathsetmacro{\wE}{\colE - 0.35}
+\pgfmathsetmacro{\wHalf}{(\xEnd - \xA)/2 - 0.35}
+\pgfmathsetmacro{\xMidBottom}{\xA + (\xEnd - \xA)/2}
+
+\fill[cPartners] (\xA,\yTop) rectangle (\xB,\yBottomRowStart);
+\draw (\xA,\yTop) rectangle (\xB,\yBottomRowStart);
+\node[anchor=north west, text width=\wA cm, align=left, inner sep=5pt] at (\xA,\yTop) {
+  \bmctitle{Partenaires clés}
+  \begin{itemize}
+    \item Microsoft Azure : infrastructure, Azure for Students / Startups.
+    \item Communautés open source : Suricata, DVWA, Sigma, MITRE ATT\&CK.
+    \item Threat Intelligence : AbuseIPDB, Emerging Threats.
+    \item Écoles et universités : partenariats pédagogiques, EMSI.
+    \item Revendeurs, MSSP et Microsoft Partner Network.
+  \end{itemize}
+};
+
+\fill[cActivities] (\xB,\yTop) rectangle (\xC,\yMid);
+\draw (\xB,\yTop) rectangle (\xC,\yMid);
+\node[anchor=north west, text width=\wB cm, align=left, inner sep=5pt] at (\xB,\yTop) {
+  \bmctitle{Activités clés}
+  \begin{itemize}
+    \item Développement et maintenance : Terraform, Python, Logic Apps.
+    \item Calibration ML : Isolation Forest, DBSCAN.
+    \item Mise à jour des règles KQL/Sigma et veille Threat Intelligence.
+    \item Support client et animation communauté.
+  \end{itemize}
+};
+
+\fill[cResources] (\xB,\yMid) rectangle (\xC,\yBottomRowStart);
+\draw (\xB,\yMid) rectangle (\xC,\yBottomRowStart);
+\node[anchor=north west, text width=\wB cm, align=left, inner sep=5pt] at (\xB,\yMid) {
+  \bmctitle{Ressources clés}
+  \begin{itemize}
+    \item Infrastructure Azure : Sentinel, Logic Apps, SQL, Key Vault.
+    \item Code Terraform modulaire et reproductible.
+    \item Modèles ML entraînés et données d'attaques réelles.
+    \item Compétences cloud, sécurité et data science.
+  \end{itemize}
+};
+
+\fill[cValue] (\xC,\yTop) rectangle (\xD,\yBottomRowStart);
+\draw (\xC,\yTop) rectangle (\xD,\yBottomRowStart);
+\node[anchor=north west, text width=\wC cm, align=left, inner sep=5pt] at (\xC,\yTop) {
+  \bmctitle{Proposition de valeur}
+  \begin{itemize}
+    \item Détection des cybermenaces en temps réel : MTTD réduit à moins de 5 minutes.
+    \item Réponse SOAR automatisée : blocage des IP en moins de 30 secondes.
+    \item Détection d'anomalies ML sans dépendre uniquement des signatures.
+    \item Architecture cloud reproductible via Terraform, déployable rapidement.
+    \item Visibilité continue via Power BI, même lorsque certaines VMs sont arrêtées.
+    \item Plateforme SOC verticale : capture, corrélation, IA, réponse et visualisation.
+    \item Coût maîtrisé : prototype à 87,40 USD contre 500 USD+/mois pour des solutions SOC professionnelles.
+  \end{itemize}
+};
+
+\fill[cRelations] (\xD,\yTop) rectangle (\xE,\yMid);
+\draw (\xD,\yTop) rectangle (\xE,\yMid);
+\node[anchor=north west, text width=\wD cm, align=left, inner sep=5pt] at (\xD,\yTop) {
+  \bmctitle{Relations clients}
+  \begin{itemize}
+    \item Self-service : documentation et déploiement Terraform.
+    \item Support communautaire : GitHub, forums, Discord.
+    \item Onboarding assisté pour les clients SaaS.
+    \item Formation, certification et support dédié Enterprise/MSSP.
+  \end{itemize}
+};
+
+\fill[cChannels] (\xD,\yMid) rectangle (\xE,\yBottomRowStart);
+\draw (\xD,\yMid) rectangle (\xE,\yBottomRowStart);
+\node[anchor=north west, text width=\wD cm, align=left, inner sep=5pt] at (\xD,\yMid) {
+  \bmctitle{Canaux}
+  \begin{itemize}
+    \item Plateforme web / portail SaaS.
+    \item Dépôt GitHub open source.
+    \item Azure Marketplace.
+    \item LinkedIn, conférences, webinaires et ateliers.
+    \item Partenariats avec les écoles d'ingénieurs.
+  \end{itemize}
+};
+
+\fill[cSegments] (\xE,\yTop) rectangle (\xEnd,\yBottomRowStart);
+\draw (\xE,\yTop) rectangle (\xEnd,\yBottomRowStart);
+\node[anchor=north west, text width=\wE cm, align=left, inner sep=5pt] at (\xE,\yTop) {
+  \bmctitle{Segments de clientèle}
+  \begin{itemize}
+    \item PME et startups technologiques sans équipe SOC dédiée.
+    \item Analystes SOC et équipes cybersécurité.
+    \item Administrateurs cloud Azure.
+    \item Équipes DevSecOps.
+    \item MSSP.
+    \item Établissements d'enseignement en cybersécurité.
+  \end{itemize}
+};
+
+\fill[cCosts] (\xA,\yBottomRowStart) rectangle (\xMidBottom,\yEnd);
+\draw (\xA,\yBottomRowStart) rectangle (\xMidBottom,\yEnd);
+\node[anchor=north west, text width=\wHalf cm, align=left, inner sep=5pt] at (\xA,\yBottomRowStart) {
+  \bmctitle{Structure de coûts}
+  \begin{itemize}
+    \item Infrastructure Azure : VMs B2s, Sentinel, SQL Database, stockage ; environ 44 USD/mois par instance.
+    \item Développement, maintenance, support client et documentation.
+    \item R\&D : modèles ML et nouvelles règles de détection.
+    \item Marketing, acquisition clients, conférences et partenariats.
+  \end{itemize}
+};
+
+\fill[cRevenue] (\xMidBottom,\yBottomRowStart) rectangle (\xEnd,\yEnd);
+\draw (\xMidBottom,\yBottomRowStart) rectangle (\xEnd,\yEnd);
+\node[anchor=north west, text width=\wHalf cm, align=left, inner sep=5pt] at (\xMidBottom,\yBottomRowStart) {
+  \bmctitle{Sources de revenus}
+  \begin{itemize}
+    \item Freemium : version open source auto-hébergée.
+    \item Abonnement SaaS : 49--99 USD/mois pour les PME.
+    \item Licence Enterprise sur devis pour MSSP et grands comptes.
+    \item Formation, certification et consulting de déploiement.
+  \end{itemize}
+};
+
+\end{tikzpicture}
+\endgroup
+
+\vspace{4pt}
+{\footnotesize Budget de développement initial du prototype : 100 USD --- Coût final : 87,40 USD}
+\end{figure}
+\end{landscape}
+}
+
+\begin{document}
+
+% ============================================
+% PAGE DE GARDE
+% ============================================
+\begin{titlepage}
+\centering
+\vspace*{1cm}
+{\color{titleblue}\rule{\textwidth}{2pt}}\\[0.8cm]
+{\Huge\bfseries\color{titleblue} AITDR}\\[0.5cm]
+{\large\bfseries Azure Intelligent Threat Detection \& Response}\\[0.3cm]
+{\color{titleblue}\rule{\textwidth}{0.5pt}}\\[1.5cm]
+{\Large Rapport de Projet de Fin d'Année}\\[0.5cm]
+{\normalsize Plateforme SOC Cloud --- Détection intelligente et réponse automatisée aux cybermenaces}\\[1.5cm]
+{\large\bfseries Promotion 2025 --- 2026}\\[2cm]
+
+\begin{tabular}{@{}rl@{}}
+\textbf{Auteur}        & Oussama Gammal \\[4pt]
+\textbf{Établissement} & EMSI --- École Marocaine des Sciences de l'Ingénieur \\[4pt]
+\textbf{Filière}       & Ingénierie Informatique \& Réseaux (4IIR) \\[4pt]
+\textbf{Superviseur}   & [Nom du superviseur] \\[4pt]
+\textbf{Date}          & 16 juin 2026 \\[4pt]
+\textbf{Version}       & 1.0 --- Final \\[4pt]
+\textbf{Budget}        & 100 USD \\
+\end{tabular}
+
+\vfill
+{\color{titleblue}\rule{\textwidth}{0.5pt}}\\[0.3cm]
+{\small Rapport confidentiel --- Usage académique uniquement}
+\end{titlepage}
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Le projet AITDR (Azure Intelligent Threat Detection \& Response) vise à concevoir et déployer une plateforme SOC cloud-native, automatisée et intelligente sur Microsoft Azure. La solution combine une architecture Hub-and-Spoke sécurisée, un honeypot DVWA, un pipeline ETL, Microsoft Sentinel, Azure Logic Apps, des modèles de Machine Learning non supervisés et des tableaux de bord Power BI.
+
+\begin{infobox}
+\textbf{Objectif du correctif LaTeX :} cette version corrige la lisibilité des tableaux, rend les en-têtes cohérents, évite les dépassements du Business Model Canvas en portrait et ajoute les dépendances manquantes pour la compilation.
+\end{infobox}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\chapter{Présentation du cadre de projet}
+
+\section{Contexte général et constat terrain}
+
+La transformation numérique des organisations marocaines augmente la surface d'exposition aux cybermenaces. Les solutions SOC et SIEM traditionnelles restent souvent coûteuses, complexes à déployer et difficiles à exploiter pour les PME.
+
+\begin{table}[H]
+\centering
+\caption{Cartographie des frustrations par segment}
+\label{tab:frustrations}
+\small
+\begin{tabularx}{\textwidth}{@{}L{2.8cm}L{5.2cm}Y@{}}
+\toprule
+\tableheader
+\theadcell{Segment} & \theadcell{Frustrations identifiées} & \theadcell{Verbatim représentatif} \\
+\midrule
+\rowlight
+Responsable Sécurité / RSSI &
+\begin{itemize}[leftmargin=*]
+  \item Coût des solutions SIEM traditionnelles.
+  \item Manque de visibilité sur l'état de sécurité.
+  \item Difficulté à justifier les investissements.
+\end{itemize} &
+« Les solutions que nous avons évaluées coûtent plus de 20 000 MAD par mois. C'est hors de portée pour nous. » \\
+\rowdark
+Analyste SOC &
+\begin{itemize}[leftmargin=*]
+  \item Surcharge d'alertes.
+  \item Outils complexes et peu intégrés.
+  \item Réponses manuelles chronophages.
+\end{itemize} &
+« Je passe 80\% de mon temps à trier des faux positifs. » \\
+\rowlight
+Direction Générale &
+\begin{itemize}[leftmargin=*]
+  \item Risque réputationnel.
+  \item Conformité réglementaire.
+  \item Rapport coût/bénéfice incertain.
+\end{itemize} &
+« Nous avons besoin d'une solution SOC complète, mais accessible financièrement. » \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Project Charter}
+
+\begin{table}[H]
+\centering
+\caption{Project Charter synthétique}
+\label{tab:charter}
+\small
+\begin{tabularx}{\textwidth}{@{}L{3.5cm}Y@{}}
+\toprule
+\tableheader
+\theadcell{Dimension} & \theadcell{Description} \\
+\midrule
+\rowlight Intitulé & AITDR --- Azure Intelligent Threat Detection \& Response \\
+\rowdark Objectif général & Concevoir et déployer une plateforme SOC cloud-native, automatisée et intelligente sur Microsoft Azure. \\
+\rowlight Périmètre inclus & Infrastructure Azure, honeypot DVWA, pipeline ETL, Sentinel SIEM, Logic Apps SOAR, ML non supervisé, Power BI et documentation. \\
+\rowdark Budget & 100 USD via Azure for Students. \\
+\rowlight Indicateurs de succès &
+\begin{itemize}[leftmargin=*]
+  \item Infrastructure déployée en moins d'une heure.
+  \item Détection en moins de 5 minutes.
+  \item Réponse automatisée en moins de 30 secondes.
+  \item Budget inférieur à 100 USD.
+\end{itemize} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{Analyse stratégique \& étude de marché}
+
+\section{Benchmark concurrentiel corrigé}
+
+Le tableau original du benchmark contenait six colonnes de données mais seulement cinq colonnes déclarées dans l'environnement \code{tabularx}. La version ci-dessous corrige ce problème et réduit les largeurs fixes pour éviter les dépassements.
+
+\begin{table}[H]
+\centering
+\caption{Benchmark concurrentiel}
+\label{tab:benchmark}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}L{1.9cm}L{2.2cm}L{2.4cm}L{2.3cm}Y Y@{}}
+\toprule
+\tableheader
+\theadcell{Solution} & \theadcell{Type} & \theadcell{Présence au Maroc} & \theadcell{Prix mensuel (MAD)} & \theadcell{Avantages} & \theadcell{Faiblesses vs AITDR} \\
+\midrule
+\rowlight Microsoft Sentinel & Cloud Azure & Forte & 20 000+ selon volume & Intégration Azure native, IA intégrée. & Coût élevé et configuration complexe. \\
+\rowdark Splunk Enterprise Security & Cloud / On-prem & Partenaires & 80 000+ & Leader historique, écosystème riche. & Coût prohibitif, exploitation lourde. \\
+\rowlight Elastic SIEM & Open source / Cloud & Communauté active & 0 / 15 000+ & Flexible et open source. & Courbe d'apprentissage élevée. \\
+\rowdark QRadar IBM & On-prem / Cloud & Partenaires locaux & 100 000+ & Réputation et support éditeur. & Coût très élevé. \\
+\rowlight AITDR & Cloud Azure & Nouvel entrant & 1 200--5 000 & Prix accessible, intégration verticale, reproductible. & Notoriété à construire. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Business Model Canvas}
+
+Le Business Model Canvas existe dans cette version sous la commande \code{\textbackslash AITDRBusinessModelCanvas}. Il est volontairement rendu en paysage pour conserver des blocs lisibles sur A4.
+
+\AITDRBusinessModelCanvas
+
+\chapter{Viabilité entrepreneuriale \& modèle d'affaires}
+
+\section{Grille tarifaire}
+
+\begin{table}[H]
+\centering
+\caption{Grille tarifaire}
+\label{tab:tarifs}
+\small
+\begin{tabularx}{\textwidth}{@{}L{2.2cm}R{2.4cm}Y L{2.7cm}L{2.2cm}@{}}
+\toprule
+\tableheader
+\theadcell{Offre} & \theadcell{Prix (MAD/mois)} & \theadcell{Fonctionnalités} & \theadcell{Cible} & \theadcell{Modèle} \\
+\midrule
+\rowlight Discovery & Gratuit & Version open source auto-hébergée et documentation. & Étudiants, chercheurs, petites structures. & Freemium \\
+\rowdark Basic & 1 200 & Hébergement Azure, honeypot, Sentinel et règles KQL. & Micro-entreprises, start-ups. & SaaS \\
+\rowlight Premium & 2 500 & Basic + SOAR automatisé, ML, Power BI et support. & PME, ETI. & SaaS \\
+\rowdark Enterprise & Sur devis & Premium + infrastructure dédiée, SOC as a Service et formation. & Grands comptes, MSSP. & Licence / SaaS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Seuil de rentabilité}
+
+\begin{table}[H]
+\centering
+\caption{Calcul du seuil de rentabilité}
+\label{tab:sr}
+\small
+\begin{tabularx}{\textwidth}{@{}L{4.4cm}L{3.2cm}Y@{}}
+\toprule
+\tableheader
+\theadcell{Paramètre} & \theadcell{Valeur} & \theadcell{Formule / détail} \\
+\midrule
+\rowlight Revenu moyen annuel (RMA) & 18 000 MAD & 1 500 MAD/mois $\times$ 12 mois. \\
+\rowdark Charges fixes (CF) & 126 000 MAD & Support, maintenance et marketing. \\
+\rowlight Coût variable unitaire (CVu) & 6 000 MAD & Infrastructure annuelle par client. \\
+\rowdark Marge sur coût variable (MCVu) & 12 000 MAD & RMA $-$ CVu. \\
+\rowgreen Seuil de rentabilité (SR) & 10,5 clients & CF / MCVu ; rentabilité à partir de 11 clients. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{Réalisation technique}
+
+\section{Infrastructure Cloud Azure}
+
+\begin{lstlisting}[style=bashstyle, caption={Arborescence des modules Terraform AITDR}]
+soc-lab/
+|-- main.tf
+|-- variables.tf
+|-- terraform.tfvars        # gitignored
+|-- outputs.tf
+`-- modules/
+    |-- key_vault/
+    |-- vm1_webserver/
+    |-- vm2_ml/
+    |-- sql_database/
+    |-- sentinel/
+    |-- soar/
+    |-- nsg/
+    |-- vnet1/
+    |-- vnet2/
+    |-- vnet3/
+    `-- hub_vnet/
+\end{lstlisting}
+
+\begin{lstlisting}[style=hclstyle, caption={Module Key Vault corrigé}]
+resource "azurerm_key_vault" "aitdr_kv" {
+  name                       = "aitdr-kv-${random_string.suffix.result}"
+  location                   = var.location
+  resource_group_name        = var.resource_group_name
+  tenant_id                  = var.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = true
+  enable_rbac_authorization  = true
+
+  tags = {
+    environment = "SOC-Lab"
+    project     = "AITDR"
+  }
+}
+\end{lstlisting}
+
+\section{Pipeline de collecte et traitement}
+
+\begin{lstlisting}[style=pythonstyle, caption={Classification des attaques web}]
+SQL_ATTACK_PATTERNS = {
+    "SQLi": ["UNION SELECT", "SELECT * FROM", "INSERT INTO", "DROP TABLE"],
+    "XSS": ["<script>", "alert(", "onerror=", "onload="],
+    "LFI": ["../../", "etc/passwd", "/proc/self/environ"],
+    "RCE": ["; wget", "; curl", "| bash", "| sh"],
+    "CMDI": ["; rm", "; mkdir", "; chmod"],
+}
+
+def classify_attack(url: str, user_agent: str) -> str:
+    candidate = f"{url} {user_agent}".lower()
+    for attack_type, patterns in SQL_ATTACK_PATTERNS.items():
+        if any(pattern.lower() in candidate for pattern in patterns):
+            return attack_type
+    return "Unknown"
+\end{lstlisting}
+
+\section{Modèle de données SQL}
+
+\begin{lstlisting}[style=sqlstyle, caption={DDL principal}]
+CREATE TABLE WebAttacks (
+    id           INT IDENTITY(1,1) PRIMARY KEY,
+    attack_date  DATE NOT NULL,
+    attack_time  DATETIME NOT NULL DEFAULT GETDATE(),
+    attacker_ip  VARCHAR(45) NOT NULL,
+    attack_type  VARCHAR(50) NOT NULL,
+    url_path     VARCHAR(500),
+    http_method  VARCHAR(10),
+    status_code  INT,
+    user_agent   VARCHAR(500)
+);
+
+CREATE TABLE MLAnomalies (
+    id             INT IDENTITY(1,1) PRIMARY KEY,
+    detected_at    DATETIME NOT NULL DEFAULT GETDATE(),
+    anomaly_score  FLOAT,
+    anomaly_label  VARCHAR(50),
+    model_used     VARCHAR(50),
+    source_ip      VARCHAR(45),
+    details        VARCHAR(1000)
+);
+\end{lstlisting}
+
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+Cette version fournit une base LaTeX plus robuste pour le rapport AITDR. Les corrections principales concernent la lisibilité des tableaux, la cohérence des en-têtes, la correction du benchmark concurrentiel, la présence vérifiée du BMC et la mise en page paysage du canvas pour éviter les débordements.
+
+\appendix
+
+\chapter{Checklist des corrections appliquées}
+
+\begin{longtable}{@{}L{4.2cm}L{10.2cm}@{}}
+\caption{Résumé des corrections LaTeX}\\
+\toprule
+\tableheader
+\theadcell{Élément} & \theadcell{Correction} \\
+\midrule
+\endfirsthead
+\toprule
+\tableheader
+\theadcell{Élément} & \theadcell{Correction} \\
+\midrule
+\endhead
+\rowlight Business Model Canvas & Présent sous \code{\textbackslash AITDRBusinessModelCanvas}, rendu en paysage et dimensionné pour A4. \\
+\rowdark En-têtes de tableaux & Ajout de \code{\textbackslash theadcell\{...\}} pour garantir un texte blanc et gras dans toutes les cellules. \\
+\rowlight Benchmark concurrentiel & Correction du nombre de colonnes : six cellules de données, six colonnes déclarées. \\
+\rowdark Listings & Ajout de retours à la ligne visibles et de styles communs pour Bash, Python, HCL et SQL. \\
+\rowlight Compilation & Ajout de \code{amssymb}, \code{pdflscape} et \code{adjustbox}; suppression des tirets Unicode problématiques dans le code. \\
+\bottomrule
+\end{longtable}
+
+\end{document}
