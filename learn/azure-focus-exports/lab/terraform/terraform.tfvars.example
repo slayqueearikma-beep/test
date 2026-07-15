@@ -1,8 +1,12 @@
 # Copy to terraform.tfvars and set a unique storage account name.
-# storage_account_name must be globally unique across Azure.
+# storage_account_name must be globally unique across Azure (3-24 lowercase letters/numbers).
 
 storage_account_name = "stfocuslabYOURNAME"
-location             = "westeurope"
+
+# If terraform apply fails with RequestDisallowedByAzure, your subscription blocks this region.
+# Run: ..\..\scripts\pick-allowed-region.ps1
+# Common allowed regions: eastus, westus2, centralus
+location = "eastus"
 
 tags = {
   project = "focus-learning-lab"

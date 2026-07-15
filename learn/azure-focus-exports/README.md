@@ -35,6 +35,7 @@ SCAD also implements FOCUS in production Terraform (`infrastructure/terraform/mo
 | 7 | [lab/terraform/README.md](lab/terraform/README.md) | 45 min |
 | 8 | [docs/07-power-bi-and-fabric.md](docs/07-power-bi-and-fabric.md) | 30 min |
 | 9 | [exercises/](exercises/) | hands-on |
+| — | [docs/09-region-policy-troubleshooting.md](docs/09-region-policy-troubleshooting.md) | if apply fails with 403 |
 
 ---
 

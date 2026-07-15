@@ -23,18 +23,24 @@ Minimal infrastructure to practice the [Microsoft improved exports tutorial](htt
 ```bash
 cd learn/azure-focus-exports/lab/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit storage_account_name to something globally unique
+# Edit storage_account_name (globally unique) and location if needed
+```
 
+**Region policy?** If apply fails with `RequestDisallowedByAzure`, run `scripts/pick-allowed-region.ps1` and set `location` in `terraform.tfvars`. See [docs/09-region-policy-troubleshooting.md](../../docs/09-region-policy-troubleshooting.md).
+
+```bash
 terraform init
 terraform plan
 terraform apply
 ```
 
-## Verify
+## Verify (no portal required)
 
-1. Portal → **Cost Management** → **Exports** — confirm `lab-focus-daily` and `lab-actual-cost-daily`
-2. After the next scheduled run, browse storage → `cost-exports` → `focus-parquet/`
-3. Open `_manifest.json` under the date folder — see [samples/manifest.example.json](../../samples/manifest.example.json)
+See [docs/08-verify-without-portal.md](../../docs/08-verify-without-portal.md) or run:
+
+```powershell
+..\..\scripts\verify-exports.ps1
+```
 
 ## Destroy (stop ongoing export charges for storage only)
 

@@ -5,9 +5,9 @@ variable "resource_group_name" {
 }
 
 variable "location" {
-  description = "Azure region."
+  description = "Azure region. Many student/trial subscriptions block westeurope — try eastus or westus2. Run scripts/pick-allowed-region.ps1 to find allowed regions."
   type        = string
-  default     = "westeurope"
+  default     = "eastus"
 }
 
 variable "storage_account_name" {
