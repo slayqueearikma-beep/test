@@ -37,6 +37,25 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
 Use your machine IP instead of `10.0.2.2` on a physical device.
 
+### First-time Android setup
+
+If `android/` is missing, generate it without overwriting Dart sources:
+
+```bash
+flutter create . --platforms=android
+git checkout -- lib/main.dart lib/app.dart   # keep MarGem entry point
+```
+
+**Windows:** enable **Developer Mode** (Settings → Privacy & security → For developers) so Flutter plugins can use symlinks.
+
+**NDK version mismatch:** add to `android/app/build.gradle.kts` inside the `android { }` block:
+
+```kotlin
+ndkVersion = "27.0.12077973"
+```
+
+Install NDK 27 in Android Studio → SDK Manager → SDK Tools → NDK (Side by side).
+
 ## Firebase (production auth)
 
 1. Create a Firebase project

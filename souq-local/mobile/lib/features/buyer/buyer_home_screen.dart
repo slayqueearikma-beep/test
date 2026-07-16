@@ -194,7 +194,7 @@ class BuyerHomeScreen extends ConsumerWidget {
           sellersAsync.when(
             data: (sellers) {
               if (sellers.isEmpty) {
-                return const SliverFillRemaining(
+                return SliverFillRemaining(
                   child: Center(child: Text(l10n.noBusinessesInCity)),
                 );
               }

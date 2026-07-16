@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'strings/app_strings.dart';
 
+export 'strings/app_strings.dart';
+
 class AppLocalizations {
   AppLocalizations(this.strings);
 

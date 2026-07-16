@@ -37,9 +37,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   autofocus: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: l10n.businessKeyword,
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: const Icon(Icons.search),
                   ),
                   onChanged: (value) => setState(() => _query = value),
                 ),
