@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and fill in secrets (never commit terraform.tfvars)
+
+resource_group_name = "rg-margem-prod"
+location            = "westeurope"
+environment_name    = "prod"
+
+postgres_admin_login    = "margemadmin"
+postgres_admin_password = "CHANGE_ME_STRONG_PASSWORD"
+jwt_secret_key          = "CHANGE_ME_MIN_32_CHAR_JWT_SECRET_KEY"
+
+# After building/pushing to ACR, set e.g. margemregistry.azurecr.io/margem-api:1.0.0
+api_image = "margemapi:latest"
+
+create_container_registry = true
+acr_name                  = "margemregistry"
+
+# Production: restrict to your app origins
+cors_origins = "[\"*\"]"
