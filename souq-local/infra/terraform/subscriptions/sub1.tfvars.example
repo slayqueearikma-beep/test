@@ -1,0 +1,21 @@
+# Month 1 — first Azure subscription (free credits / student account)
+# When budget hits $0: destroy sub1, then deploy sub2 (see MONTHLY-ROTATION.md)
+# Copy to sub1.tfvars and fill in secrets — never commit sub1.tfvars
+
+subscription_id    = "00000000-0000-0000-0000-000000000001"
+subscription_alias = "sub1"
+
+location         = "westeurope"
+environment_name = "prod"
+
+postgres_admin_login    = "margemadmin"
+postgres_admin_password = "CHANGE_ME_STRONG_PASSWORD"
+jwt_secret_key          = "CHANGE_ME_MIN_32_CHAR_JWT_SECRET_KEY"
+
+api_image                 = "margemregsub1.azurecr.io/margem-api:1.0.0"
+create_container_registry = true
+
+min_replicas                      = 1
+enable_key_vault_purge_protection = true
+allowed_hosts                     = "[\"margem-prod-sub1-api.azurecontainerapps.io\"]"
+cors_origins                      = "[\"https://margem.app\"]"

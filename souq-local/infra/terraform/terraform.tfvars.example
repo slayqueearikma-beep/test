@@ -1,0 +1,32 @@
+# Copy to terraform.tfvars and fill in secrets (never commit terraform.tfvars)
+# Or use per-subscription files: terraform apply -var-file=subscriptions/sub1.tfvars
+
+# --- Subscription (required) ---
+# List subscriptions: az account list --output table
+subscription_id    = "00000000-0000-0000-0000-000000000001"
+subscription_alias = "sub1"
+
+location         = "westeurope"
+environment_name = "prod"
+
+# Optional overrides (leave empty to auto-generate from subscription_alias)
+# resource_group_name = "rg-margem-prod-sub1"
+# acr_name            = "margemregsub1"
+
+postgres_admin_login    = "margemadmin"
+postgres_admin_password = "CHANGE_ME_STRONG_PASSWORD"
+jwt_secret_key          = "CHANGE_ME_MIN_32_CHAR_JWT_SECRET_KEY"
+
+# After building/pushing to ACR, set e.g. margemregsub1.azurecr.io/margem-api:1.0.0
+api_image = "margemregsub1.azurecr.io/margem-api:1.0.0"
+
+create_container_registry = true
+
+min_replicas = 1
+enable_key_vault_purge_protection = true
+
+# Set to your Container App FQDN after first deploy, e.g. ["margem-prod-sub1-api.xxx.azurecontainerapps.io"]
+allowed_hosts = "[\"margem-prod-sub1-api.azurecontainerapps.io\"]"
+
+# Restrict to your mobile app / web origins — no wildcard in production
+cors_origins = "[\"https://margem.app\"]"

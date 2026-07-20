@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'core/services/app_storage.dart';
+import 'core/services/locale_provider.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/login_screen.dart';
+import 'features/buyer/buyer_home_screen.dart';
+import 'features/onboarding/account_type_onboarding_screen.dart';
+import 'features/onboarding/buyer_registration_screen.dart';
+import 'features/onboarding/onboarding_welcome_screen.dart';
+import 'features/onboarding/seller_registration_screen.dart';
+import 'features/seller/product_detail_screen.dart';
+import 'features/seller/seller_dashboard_screen.dart';
+import 'features/seller/seller_detail_screen.dart';
+import 'features/settings/language_selection_screen.dart';
+import 'features/splash/splash_screen.dart';
+import 'l10n/app_localizations.dart';
+
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+
+final routerProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
+    initialLocation: '/splash',
+    redirect: (context, state) {
+      final session = ProviderScope.containerOf(context).read(userSessionProvider);
+      final path = state.matchedLocation;
+      final isProtected = path.startsWith('/buyer/home') || path.startsWith('/seller/dashboard');
+      if (isProtected && session == null) {
+        return '/login';
+      }
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/language', builder: (_, __) => const LanguageSelectionScreen()),
+      GoRoute(
+        path: '/settings/language',
+        builder: (_, __) => const LanguageSelectionScreen(fromSettings: true),
+      ),
+      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingWelcomeScreen()),
+      GoRoute(path: '/onboarding/account-type', builder: (_, __) => const AccountTypeOnboardingScreen()),
+      GoRoute(path: '/onboarding/buyer-register', builder: (_, __) => const BuyerRegistrationScreen()),
+      GoRoute(path: '/onboarding/seller-register', builder: (_, __) => const SellerRegistrationScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/buyer/home', builder: (_, __) => const BuyerHomeShell()),
+      GoRoute(path: '/seller/dashboard', builder: (_, __) => const SellerDashboardScreen()),
+      GoRoute(
+        path: '/seller/:id',
+        builder: (_, state) => SellerDetailScreen(sellerId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/product/:sellerId/:productId',
+        builder: (_, state) => ProductDetailScreen(
+          sellerId: state.pathParameters['sellerId']!,
+          productId: state.pathParameters['productId']!,
+        ),
+      ),
+    ],
+  );
+});
+
+class MarGemApp extends ConsumerWidget {
+  const MarGemApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
+    final locale = ref.watch(localeProvider);
+
+    ref.listen(appStorageProvider, (previous, next) {
+      if (next != null) {
+        ref.read(localeProvider.notifier).updateStorage(next);
+      }
+    });
+
+    return MaterialApp.router(
+      title: 'MarGem',
+      debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      routerConfig: router,
+    );
+  }
+}

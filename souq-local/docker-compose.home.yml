@@ -1,0 +1,53 @@
+# MarGem home server — laptop runs API + Postgres, Azure Blob stores images
+# Usage: docker compose -f docker-compose.home.yml --env-file .env.home up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: margem-home-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: margemadmin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: margem
+    volumes:
+      - margem_home_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U margemadmin -d margem"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: margem-home-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      AUTH_DEV_BYPASS: "false"
+      DATABASE_URL: postgresql+asyncpg://margemadmin:${POSTGRES_PASSWORD}@postgres:5432/margem
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      AZURE_STORAGE_CONTAINER: margem-media
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      JWT_ACCESS_EXPIRE_MINUTES: "60"
+      JWT_REFRESH_EXPIRE_DAYS: "7"
+      AUTH_RATE_LIMIT: "5/minute"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  margem_home_pg:

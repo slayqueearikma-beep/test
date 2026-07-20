@@ -1,0 +1,47 @@
+# MarGem budget production stack — runs on a single Azure VM
+# Used by start_azure_budget.ps1 (do not use for local dev — use docker-compose.yml)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: margem-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: margemadmin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: margem
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U margemadmin -d margem"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: margem-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      AUTH_DEV_BYPASS: "false"
+      DATABASE_URL: postgresql+asyncpg://margemadmin:${POSTGRES_PASSWORD}@postgres:5432/margem
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      AZURE_STORAGE_CONTAINER: margem-media
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      JWT_ACCESS_EXPIRE_MINUTES: "60"
+      JWT_REFRESH_EXPIRE_DAYS: "7"
+      AUTH_RATE_LIMIT: "5/minute"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

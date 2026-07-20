@@ -1,0 +1,6 @@
+# Remote state for subscription 2 — use a different `key` so stacks do not overwrite each other
+
+resource_group_name  = "rg-terraform-state"
+storage_account_name = "margemtfstate"
+container_name       = "tfstate"
+key                  = "margem/prod/sub2.terraform.tfstate"

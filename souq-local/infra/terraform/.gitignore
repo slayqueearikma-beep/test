@@ -1,0 +1,16 @@
+# Terraform state and secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+subscriptions/*.tfvars
+!subscriptions/*.tfvars.example
+backends/*.backend.hcl
+!backends/*.backend.hcl.example
+backups/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
