@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars — never commit terraform.tfvars
+
+subscription_id    = "00000000-0000-0000-0000-000000000001"
+subscription_alias = "sub1"
+location           = "westeurope"
+
+# Cheapest VM. If API crashes/OOM, change to Standard_B1ms (~$15/mo, 2GB RAM)
+vm_size = "Standard_B1s"
+
+admin_username = "azureuser"
+
+# Paste your public SSH key (Get-Content $env:USERPROFILE\.ssh\id_rsa.pub)
+ssh_public_key = "ssh-rsa AAAA... your-key-here"
+
+postgres_password = "CHANGE_ME_STRONG_PASSWORD"
+jwt_secret_key    = "CHANGE_ME_MIN_32_CHAR_JWT_SECRET_KEY"
+
+# Lock SSH to your IP for security: "YOUR.IP.ADDRESS/32"
+allowed_ssh_cidr = "0.0.0.0/0"
