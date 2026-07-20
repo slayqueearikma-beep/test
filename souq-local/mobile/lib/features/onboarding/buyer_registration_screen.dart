@@ -128,10 +128,10 @@ class _BuyerRegistrationScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!AppConfig.isProduction) ...[
-            const Text(
+            Text(
               'API: ${AppConfig.apiBaseUrl}',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: Colors.grey),
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
