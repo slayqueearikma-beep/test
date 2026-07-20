@@ -1,0 +1,5 @@
+# Copy to android/key.properties for Play Store release signing (never commit key.properties)
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=margem
+storeFile=../margem-release.keystore

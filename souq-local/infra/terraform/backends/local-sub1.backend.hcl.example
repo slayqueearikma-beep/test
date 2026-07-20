@@ -1,0 +1,6 @@
+# Local state per subscription (simplest option — one state file per subscription)
+# Usage:
+#   terraform init -backend-config=backends/local-sub1.backend.hcl
+#   terraform apply -var-file=subscriptions/sub1.tfvars
+
+path = "terraform-sub1.tfstate"

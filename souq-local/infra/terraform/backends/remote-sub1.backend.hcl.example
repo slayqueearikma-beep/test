@@ -1,0 +1,9 @@
+# Remote state in Azure Storage (recommended for teams)
+# 1. Create a storage account + container once (can live in any subscription)
+# 2. Copy to backends/remote-sub1.backend.hcl and fill in values
+# 3. terraform init -backend-config=backends/remote-sub1.backend.hcl
+
+resource_group_name  = "rg-terraform-state"
+storage_account_name = "margemtfstate"
+container_name       = "tfstate"
+key                  = "margem/prod/sub1.terraform.tfstate"
