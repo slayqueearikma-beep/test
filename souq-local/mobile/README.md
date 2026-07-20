@@ -15,6 +15,19 @@ flutter pub get
 flutter run --dart-define=API_BASE_URL=http://YOUR_PC_IP:8000
 ```
 
+If `assembleDebug` fails, get the real Gradle line (not just exit code 1):
+
+```bash
+cd android && ./gradlew assembleDebug --stacktrace
+# or:
+flutter run -v --dart-define=API_BASE_URL=http://YOUR_PC_IP:8000
+```
+
+Common fixes:
+- Install Android SDK Platform 35 + NDK (Side by side) from Android Studio → SDK Manager
+- Ensure USB debugging works: `adb devices` shows `device`
+- Free RAM if Gradle cannot start (heap is capped at 4G)
+
 Optional demo map when API is offline (dev only):
 
 ```bash

@@ -22,7 +22,9 @@ if (keyPropertiesFile.exists()) {
 android {
     namespace = "com.margem.app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Use Flutter's bundled NDK pin — a hardcoded newer NDK (e.g. 27.x) fails
+    // assembleDebug when that exact package is not installed in Android Studio.
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
