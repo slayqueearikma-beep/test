@@ -1,0 +1,6 @@
+# Local state for subscription 2
+# Usage:
+#   terraform init -reconfigure -backend-config=backends/local-sub2.backend.hcl
+#   terraform apply -var-file=subscriptions/sub2.tfvars
+
+path = "terraform-sub2.tfstate"
