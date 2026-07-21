@@ -168,7 +168,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                         crossAxisCount: 2,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 1.25,
+                        childAspectRatio: 1.45,
                       ),
                       delegate: SliverChildListDelegate([
                         StatCard(

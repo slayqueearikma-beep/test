@@ -80,11 +80,158 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
       child: Row(
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
           const Spacer(),
           if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(44, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                actionLabel!,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class FeaturedBusinessCard extends StatelessWidget {
+  const FeaturedBusinessCard({
+    super.key,
+    required this.businessName,
+    required this.category,
+    required this.rating,
+    required this.reviewCount,
+    required this.distanceLabel,
+    required this.imageUrl,
+    required this.isFavorite,
+    required this.onTap,
+    required this.onFavorite,
+  });
+
+  final String businessName;
+  final String category;
+  final double rating;
+  final int reviewCount;
+  final String distanceLabel;
+  final String imageUrl;
+  final bool isFavorite;
+  final VoidCallback onTap;
+  final VoidCallback onFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? AppColors.darkCard : Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 236,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 128,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    NetworkImageView(
+                      url: imageUrl,
+                      placeholderIcon: Icons.storefront_rounded,
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: onFavorite,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              isFavorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      businessName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            size: 14, color: AppColors.star),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            '${rating.toStringAsFixed(1)} ($reviewCount) · $distanceLabel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -130,7 +277,8 @@ class SellerCard extends StatelessWidget {
             SizedBox(
               height: compact ? 100 : 140,
               width: double.infinity,
-              child: NetworkImageView(url: imageUrl, placeholderIcon: Icons.storefront_rounded),
+              child: NetworkImageView(
+                  url: imageUrl, placeholderIcon: Icons.storefront_rounded),
             ),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -142,7 +290,8 @@ class SellerCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           businessName,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -152,7 +301,8 @@ class SellerCard extends StatelessWidget {
                           achievementStars.clamp(0, 3),
                           (_) => const Padding(
                             padding: EdgeInsets.only(left: 2),
-                            child: Icon(Icons.star_rounded, size: 14, color: AppColors.star),
+                            child: Icon(Icons.star_rounded,
+                                size: 14, color: AppColors.star),
                           ),
                         ),
                     ],
@@ -163,17 +313,22 @@ class SellerCard extends StatelessWidget {
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ],
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 14, color: AppColors.star),
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: AppColors.star),
                       const SizedBox(width: 4),
-                      Text('$rating ($reviewCount)', style: const TextStyle(fontSize: 13)),
+                      Text('$rating ($reviewCount)',
+                          style: const TextStyle(fontSize: 13)),
                       const Spacer(),
-                      Text(city, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text(city,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ],
@@ -205,17 +360,32 @@ class StatCard extends StatelessWidget {
     final secondary = Theme.of(context).colorScheme.onSurfaceVariant;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.sm + 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppColors.primary, size: 22),
-            const SizedBox(height: AppSpacing.sm),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-            Text(label, style: TextStyle(color: secondary, fontSize: 13)),
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: secondary, fontSize: 12),
+            ),
             if (trend != null) ...[
-              const SizedBox(height: 4),
-              Text(trend!, style: const TextStyle(color: AppColors.success, fontSize: 12)),
+              const SizedBox(height: 2),
+              Text(
+                trend!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: secondary, fontSize: 11),
+              ),
             ],
           ],
         ),

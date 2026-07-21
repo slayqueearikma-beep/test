@@ -79,6 +79,7 @@ class ConversationOut(BaseModel):
     last_message_at: datetime
     peer_name: str = ""
     unread_count: int = 0
+    last_message_preview: str = ""
 
 
 class PlanOut(BaseModel):
@@ -233,6 +234,12 @@ async def list_conversations(
                     Message.read_at.is_(None),
                 )
             )
+            last = await session.scalar(
+                select(Message.body)
+                .where(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            )
             outs.append(
                 ConversationOut(
                     id=conversation.id,
@@ -241,6 +248,7 @@ async def list_conversations(
                     last_message_at=conversation.last_message_at,
                     peer_name=(buyer.display_name or buyer.email) if buyer else "Buyer",
                     unread_count=int(unread or 0),
+                    last_message_preview=(last or "")[:160],
                 )
             )
         return outs
@@ -259,6 +267,12 @@ async def list_conversations(
                 Message.read_at.is_(None),
             )
         )
+        last = await session.scalar(
+            select(Message.body)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
         outs.append(
             ConversationOut(
                 id=conversation.id,
@@ -267,6 +281,7 @@ async def list_conversations(
                 last_message_at=conversation.last_message_at,
                 peer_name=seller_profile.business_name if seller_profile else "Seller",
                 unread_count=int(unread or 0),
+                last_message_preview=(last or "")[:160],
             )
         )
     return outs

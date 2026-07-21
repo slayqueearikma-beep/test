@@ -424,6 +424,15 @@ class ApiService {
     return deletePath('/favorites/products/$productId', auth: true);
   }
 
+  Future<FavoriteItemModel> addFavoriteSeller(String sellerId) async {
+    final data = await postEmpty('/favorites/sellers/$sellerId', auth: true);
+    return FavoriteItemModel.fromJson(data);
+  }
+
+  Future<void> removeFavoriteSeller(String sellerId) {
+    return deletePath('/favorites/sellers/$sellerId', auth: true);
+  }
+
   Future<List<FavoriteItemModel>> migrateGuestFavorites(
       List<Map<String, dynamic>> items) async {
     final response = await _request(
@@ -519,6 +528,49 @@ class ApiService {
 
   Future<void> markAllNotificationsRead() {
     return postVoid('/notifications/read-all', const {}, auth: true);
+  }
+
+  Future<List<ConversationModel>> fetchConversations() async {
+    final data = await getJsonList('/messages/conversations', auth: true);
+    return data
+        .map((item) =>
+            ConversationModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ChatMessageModel>> fetchConversationMessages(
+      String conversationId) async {
+    final data = await getJsonList(
+      '/messages/conversations/$conversationId',
+      auth: true,
+    );
+    return data
+        .map((item) => ChatMessageModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ChatMessageModel> replyToConversation(
+    String conversationId,
+    String body,
+  ) async {
+    final data = await postJson(
+      '/messages/conversations/$conversationId',
+      {'body': body},
+      auth: true,
+    );
+    return ChatMessageModel.fromJson(data);
+  }
+
+  Future<ChatMessageModel> startConversationWithSeller(
+    String sellerId,
+    String body,
+  ) async {
+    final data = await postJson(
+      '/messages/sellers/$sellerId',
+      {'body': body},
+      auth: true,
+    );
+    return ChatMessageModel.fromJson(data);
   }
 
   Future<List<SubscriptionPlanModel>> fetchSubscriptionPlans() async {

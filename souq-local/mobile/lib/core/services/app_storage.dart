@@ -212,7 +212,8 @@ class AppStorage {
       return decoded
           .map((item) =>
               GuestFavoriteItem.fromJson(item as Map<String, dynamic>))
-          .where((item) => item.productId.isNotEmpty)
+          .where((item) =>
+              item.productId.isNotEmpty || item.sellerId.isNotEmpty)
           .toList();
     } on Object {
       return const [];
@@ -230,8 +231,12 @@ class AppStorage {
   Future<List<GuestFavoriteItem>> addGuestFavoriteItem(
       GuestFavoriteItem item) async {
     final items = [...getGuestFavoriteItems()];
-    final index =
-        items.indexWhere((entry) => entry.productId == item.productId);
+    final index = items.indexWhere((entry) {
+      if (item.productId.isNotEmpty) {
+        return entry.productId == item.productId;
+      }
+      return entry.productId.isEmpty && entry.sellerId == item.sellerId;
+    });
     if (index == -1) {
       items.add(item);
     } else {
@@ -251,6 +256,16 @@ class AppStorage {
       String productId) async {
     final items = getGuestFavoriteItems()
         .where((item) => item.productId != productId)
+        .toList();
+    await saveGuestFavoriteItems(items);
+    return items;
+  }
+
+  Future<List<GuestFavoriteItem>> removeGuestFavoriteSeller(
+      String sellerId) async {
+    final items = getGuestFavoriteItems()
+        .where((item) =>
+            !(item.sellerId == sellerId && item.productId.isEmpty))
         .toList();
     await saveGuestFavoriteItems(items);
     return items;

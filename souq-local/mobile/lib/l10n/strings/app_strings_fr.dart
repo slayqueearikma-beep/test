@@ -137,6 +137,28 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get navProfile => 'Profil';
   @override
+  String get navMessages => 'Messages';
+  @override
+  String get margemMember => 'Membre MarGem';
+  @override
+  String get allCategories => 'Tous';
+  @override
+  String get localBusiness => 'Commerce local';
+  @override
+  String get searchConversations => 'Rechercher des conversations';
+  @override
+  String get noConversationsYet =>
+      'Aucune conversation pour le moment. Contactez un commerce pour discuter.';
+  @override
+  String get signInToMessage => 'Connectez-vous pour écrire aux vendeurs';
+  @override
+  String get signInToMessageSubtitle =>
+      'Vos demandes et réponses apparaîtront ici une fois connecté.';
+  @override
+  String get noMessagesYet => 'Aucun message dans cette conversation.';
+  @override
+  String get typeMessage => 'Écrire un message';
+  @override
   String goodMorning(String name) =>
       name.isEmpty ? 'Bonjour' : 'Bonjour, $name';
   @override

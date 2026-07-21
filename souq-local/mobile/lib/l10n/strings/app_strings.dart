@@ -65,6 +65,16 @@ abstract class AppStrings {
   String get navSearch;
   String get navMap;
   String get navProfile;
+  String get navMessages;
+  String get margemMember;
+  String get allCategories;
+  String get localBusiness;
+  String get searchConversations;
+  String get noConversationsYet;
+  String get signInToMessage;
+  String get signInToMessageSubtitle;
+  String get noMessagesYet;
+  String get typeMessage;
   String goodMorning(String name);
   String get searchHint;
   String get categories;

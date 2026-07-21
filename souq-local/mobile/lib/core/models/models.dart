@@ -663,3 +663,66 @@ class SubscriptionModel {
     );
   }
 }
+
+class ConversationModel {
+  const ConversationModel({
+    required this.id,
+    required this.buyerId,
+    required this.sellerId,
+    required this.lastMessageAt,
+    this.peerName = '',
+    this.unreadCount = 0,
+    this.lastMessagePreview = '',
+  });
+
+  final String id;
+  final String buyerId;
+  final String sellerId;
+  final String lastMessageAt;
+  final String peerName;
+  final int unreadCount;
+  final String lastMessagePreview;
+
+  bool get hasUnread => unreadCount > 0;
+
+  factory ConversationModel.fromJson(Map<String, dynamic> json) {
+    return ConversationModel(
+      id: json['id'] as String,
+      buyerId: json['buyer_id'] as String? ?? '',
+      sellerId: json['seller_id'] as String? ?? '',
+      lastMessageAt: json['last_message_at'] as String? ?? '',
+      peerName: json['peer_name'] as String? ?? '',
+      unreadCount: json['unread_count'] as int? ?? 0,
+      lastMessagePreview: json['last_message_preview'] as String? ?? '',
+    );
+  }
+}
+
+class ChatMessageModel {
+  const ChatMessageModel({
+    required this.id,
+    required this.conversationId,
+    required this.senderId,
+    required this.body,
+    required this.createdAt,
+    this.readAt,
+  });
+
+  final String id;
+  final String conversationId;
+  final String senderId;
+  final String body;
+  final String createdAt;
+  final String? readAt;
+
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
+    return ChatMessageModel(
+      id: json['id'] as String,
+      conversationId: json['conversation_id'] as String? ?? '',
+      senderId: json['sender_id'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      createdAt: json['created_at'] as String? ?? '',
+      readAt: json['read_at'] as String?,
+    );
+  }
+}

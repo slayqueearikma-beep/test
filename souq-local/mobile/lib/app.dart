@@ -10,6 +10,7 @@ import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/buyer/buyer_home_screen.dart';
 import 'features/map/map_screen.dart';
+import 'features/messages/messages_inbox_screen.dart';
 import 'features/onboarding/account_type_onboarding_screen.dart';
 import 'features/onboarding/buyer_registration_screen.dart';
 import 'features/onboarding/onboarding_welcome_screen.dart';
@@ -27,6 +28,7 @@ import 'features/wishlist/wishlist_screen.dart';
 import 'features/settings/language_selection_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'l10n/app_localizations.dart';
+import 'core/models/models.dart';
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
@@ -92,6 +94,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/map', builder: (_, __) => const MapScreen()),
       GoRoute(path: '/favorites', builder: (_, __) => const FavoritesScreen()),
       GoRoute(path: '/premium', builder: (_, __) => const PremiumScreen()),
+      GoRoute(path: '/profile', builder: (_, __) => const BuyerProfileScreen()),
+      GoRoute(
+        path: '/messages/:id',
+        builder: (_, state) {
+          final extra = state.extra;
+          return ConversationThreadScreen(
+            conversationId: state.pathParameters['id']!,
+            conversation: extra is ConversationModel ? extra : null,
+          );
+        },
+      ),
       GoRoute(
           path: '/seller/dashboard',
           builder: (_, __) => const SellerDashboardScreen()),

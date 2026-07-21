@@ -135,6 +135,28 @@ class AppStringsEn extends AppStrings {
   @override
   String get navProfile => 'Profile';
   @override
+  String get navMessages => 'Messages';
+  @override
+  String get margemMember => 'MarGem member';
+  @override
+  String get allCategories => 'All';
+  @override
+  String get localBusiness => 'Local business';
+  @override
+  String get searchConversations => 'Search conversations';
+  @override
+  String get noConversationsYet =>
+      'No conversations yet. Contact a business to start chatting.';
+  @override
+  String get signInToMessage => 'Sign in to message sellers';
+  @override
+  String get signInToMessageSubtitle =>
+      'Your inquiries and replies will appear here once you are signed in.';
+  @override
+  String get noMessagesYet => 'No messages in this conversation yet.';
+  @override
+  String get typeMessage => 'Type a message';
+  @override
   String goodMorning(String name) =>
       name.isEmpty ? 'Good morning' : 'Good morning, $name';
   @override

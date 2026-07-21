@@ -134,6 +134,28 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get navProfile => 'الملف';
   @override
+  String get navMessages => 'الرسائل';
+  @override
+  String get margemMember => 'عضو MarGem';
+  @override
+  String get allCategories => 'الكل';
+  @override
+  String get localBusiness => 'نشاط محلي';
+  @override
+  String get searchConversations => 'البحث في المحادثات';
+  @override
+  String get noConversationsYet =>
+      'لا توجد محادثات بعد. تواصل مع نشاط تجاري لبدء الدردشة.';
+  @override
+  String get signInToMessage => 'سجّل الدخول لمراسلة البائعين';
+  @override
+  String get signInToMessageSubtitle =>
+      'ستظهر استفساراتك وردودك هنا بعد تسجيل الدخول.';
+  @override
+  String get noMessagesYet => 'لا توجد رسائل في هذه المحادثة بعد.';
+  @override
+  String get typeMessage => 'اكتب رسالة';
+  @override
   String goodMorning(String name) =>
       name.isEmpty ? 'صباح الخير' : 'صباح الخير، $name';
   @override

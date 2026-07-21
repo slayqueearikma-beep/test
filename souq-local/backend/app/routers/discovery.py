@@ -201,6 +201,29 @@ async def add_favorite_seller(
     return _favorite_out(result.scalar_one())
 
 
+@router.delete("/favorites/sellers/{seller_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_favorite_seller(
+    seller_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    result = await session.execute(
+        select(Favorite).where(
+            Favorite.user_id == user.id,
+            Favorite.seller_id == seller_id,
+            Favorite.product_id.is_(None),
+        )
+    )
+    fav = result.scalar_one_or_none()
+    if fav is None:
+        return
+    await session.delete(fav)
+    seller = await session.get(SellerProfile, seller_id)
+    if seller and seller.favorite_count > 0:
+        seller.favorite_count -= 1
+    await session.commit()
+
+
 @router.post("/favorites/migrate-guest", response_model=list[FavoriteOut])
 async def migrate_guest_favorites(
     payload: GuestFavoritesMigrate,
