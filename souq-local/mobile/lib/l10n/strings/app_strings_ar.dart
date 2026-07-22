@@ -237,7 +237,11 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get inquiriesSub => 'تابع العملاء المهتمين ومؤشرات الاستجابة';
   @override
-  String get profileViewsTrend => '+12٪ هذا الأسبوع';
+  String get profileViewsTrend => 'لا مشاهدات بعد';
+  @override
+  String get noViewsYet => 'لا مشاهدات بعد';
+  @override
+  String get noFavoritesYet => 'لا مفضلات بعد';
   @override
   String get previewStorefront => 'معاينة المتجر';
   @override

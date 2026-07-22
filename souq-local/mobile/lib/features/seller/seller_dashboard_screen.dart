@@ -111,10 +111,10 @@ class SellerDashboardScreen extends ConsumerWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.lg),
+                          const SizedBox(height: AppSpacing.md),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [
@@ -168,13 +168,23 @@ class SellerDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenHorizontal,
+                      AppSpacing.md,
+                      AppSpacing.screenHorizontal,
+                      AppSpacing.sm,
+                    ),
                     sliver: SliverLayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.crossAxisExtent;
                         final crossAxisCount = width >= 720 ? 4 : 2;
-                        // Taller cards avoid RenderFlex overflow when trend text is present.
-                        final aspect = width >= 720 ? 1.35 : 1.22;
+                        final isRtl =
+                            Directionality.of(context) == TextDirection.rtl;
+                        final textScale =
+                            MediaQuery.textScalerOf(context).scale(1.0);
+                        // Arabic labels need more vertical room; scale with text size.
+                        final cardHeight =
+                            (isRtl ? 136.0 : 128.0) * textScale.clamp(1.0, 1.35);
                         final profileViews =
                             analytics?.profileViewCount ?? stats.profileViewCount;
                         final productCount =
@@ -185,6 +195,10 @@ class SellerDashboardScreen extends ConsumerWidget {
                             analytics?.inquiryCount ?? stats.inquiryCount;
                         final favoriteCount =
                             analytics?.favoriteCount ?? stats.favoriteCount;
+                        final contactClicks =
+                            analytics?.contactClickCount ?? stats.contactClickCount;
+                        final avgResponse = analytics?.avgResponseMinutes ??
+                            stats.avgResponseMinutes;
 
                         return SliverGrid(
                           gridDelegate:
@@ -192,37 +206,38 @@ class SellerDashboardScreen extends ConsumerWidget {
                             crossAxisCount: crossAxisCount,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio: aspect,
+                            mainAxisExtent: cardHeight,
                           ),
                           delegate: SliverChildListDelegate([
                             StatCard(
                               label: l10n.profileViews,
                               value: '$profileViews',
                               icon: Icons.visibility_outlined,
+                              trend: profileViews > 0 ? null : l10n.noViewsYet,
                             ),
                             StatCard(
                               label: l10n.products,
                               value: '$productCount',
                               icon: Icons.inventory_2_outlined,
-                              trend: l10n.availableCount(availableCount),
+                              trend: productCount > 0
+                                  ? l10n.availableCount(availableCount)
+                                  : l10n.noProductsYet.split('.').first,
                             ),
                             StatCard(
                               label: l10n.inquiries,
                               value: '$inquiryCount',
                               icon: Icons.chat_bubble_outline,
-                              trend: analytics == null
-                                  ? null
-                                  : l10n.avgResponseMinutes(
-                                      analytics.avgResponseMinutes),
+                              trend: inquiryCount > 0
+                                  ? l10n.avgResponseMinutes(avgResponse)
+                                  : l10n.noInquiriesYet,
                             ),
                             StatCard(
                               label: l10n.favorites,
                               value: '$favoriteCount',
                               icon: Icons.favorite_border,
-                              trend: analytics == null
-                                  ? null
-                                  : l10n.contactClicks(
-                                      analytics.contactClickCount),
+                              trend: favoriteCount > 0 || contactClicks > 0
+                                  ? l10n.contactClicks(contactClicks)
+                                  : l10n.noFavoritesYet,
                             ),
                           ]),
                         );
@@ -233,7 +248,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.screenHorizontal,
-                        AppSpacing.lg,
+                        AppSpacing.md,
                         AppSpacing.screenHorizontal,
                         0,
                       ),
@@ -247,28 +262,31 @@ class SellerDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenHorizontal,
+                      AppSpacing.sm,
+                      AppSpacing.screenHorizontal,
+                      AppSpacing.lg,
+                    ),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         DashboardMenuTile(
                           title: l10n.inquiries,
                           subtitle: l10n.inquiriesSub,
                           icon: Icons.chat_bubble_outline,
-                          badge: analytics != null && analytics.inquiryCount > 0
-                              ? '${analytics.inquiryCount}'
+                          badge: (analytics?.inquiryCount ?? stats.inquiryCount) > 0
+                              ? '${analytics?.inquiryCount ?? stats.inquiryCount}'
                               : null,
                           onTap: () => context.push('/seller/messages'),
                         ),
                         DashboardMenuTile(
                           title: l10n.analytics,
-                          subtitle: analytics == null
-                              ? l10n.analyticsSub
-                              : l10n.analyticsSummary(
-                                  analytics.profileViewCount,
-                                  analytics.contactClickCount,
-                                ),
+                          subtitle: l10n.analyticsSummary(
+                            analytics?.profileViewCount ?? stats.profileViewCount,
+                            analytics?.contactClickCount ?? stats.contactClickCount,
+                          ),
                           icon: Icons.query_stats_outlined,
-                          onTap: () => _showAnalytics(context, analytics),
+                          onTap: () => _showAnalytics(context, analytics, stats),
                         ),
                         DashboardMenuTile(
                           title: l10n.productManagement,
@@ -338,13 +356,22 @@ class SellerDashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _showAnalytics(BuildContext context, SellerAnalyticsModel? analytics) {
+  void _showAnalytics(
+    BuildContext context,
+    SellerAnalyticsModel? analytics,
+    SellerDashboardStats stats,
+  ) {
     final l10n = context.l10n;
-    if (analytics == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.loading)));
-      return;
-    }
+    final profileViews = analytics?.profileViewCount ?? stats.profileViewCount;
+    final inquiryCount = analytics?.inquiryCount ?? stats.inquiryCount;
+    final favoriteCount = analytics?.favoriteCount ?? stats.favoriteCount;
+    final contactClicks = analytics?.contactClickCount ?? stats.contactClickCount;
+    final avgResponse = analytics?.avgResponseMinutes ?? stats.avgResponseMinutes;
+    final followers = analytics?.followerEstimate ?? 0;
+    final reviewCount = analytics?.reviewCount ?? stats.reviewCount;
+    final verification =
+        analytics?.verificationStatus ?? stats.verificationStatus;
+
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -361,26 +388,17 @@ class SellerDashboardScreen extends ConsumerWidget {
                       ?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: AppSpacing.md),
               _AnalyticsRow(
-                  label: l10n.profileViews,
-                  value: '${analytics.profileViewCount}'),
+                  label: l10n.profileViews, value: '$profileViews'),
+              _AnalyticsRow(label: l10n.inquiries, value: '$inquiryCount'),
+              _AnalyticsRow(label: l10n.favorites, value: '$favoriteCount'),
               _AnalyticsRow(
-                  label: l10n.inquiries, value: '${analytics.inquiryCount}'),
-              _AnalyticsRow(
-                  label: l10n.favorites, value: '${analytics.favoriteCount}'),
-              _AnalyticsRow(
-                  label: l10n.contactClicksLabel,
-                  value: '${analytics.contactClickCount}'),
+                  label: l10n.contactClicksLabel, value: '$contactClicks'),
               _AnalyticsRow(
                   label: l10n.averageResponse,
-                  value: l10n.avgResponseMinutes(analytics.avgResponseMinutes)),
-              _AnalyticsRow(
-                  label: l10n.followers,
-                  value: '${analytics.followerEstimate}'),
-              _AnalyticsRow(
-                  label: l10n.reviews, value: '${analytics.reviewCount}'),
-              _AnalyticsRow(
-                  label: l10n.verification,
-                  value: analytics.verificationStatus),
+                  value: l10n.avgResponseMinutes(avgResponse)),
+              _AnalyticsRow(label: l10n.followers, value: '$followers'),
+              _AnalyticsRow(label: l10n.reviews, value: '$reviewCount'),
+              _AnalyticsRow(label: l10n.verification, value: verification),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +26,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Never show the API URL in the UI — debug builds may log it only.
+    if (kDebugMode) {
+      debugPrint('MarGem API_BASE_URL=${AppConfig.apiBaseUrl}');
+    }
+  }
 
   @override
   void dispose() {
@@ -173,29 +183,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              if (!AppConfig.isProduction) ...[
-                Text(
-                  'API: ${AppConfig.apiBaseUrl}',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
               PrimaryButton(
                   label: l10n.logIn, onPressed: _login, isLoading: _loading),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               TextButton(
-                  onPressed: _continueAsGuest, child: Text(l10n.guestContinue)),
+                onPressed: _continueAsGuest,
+                child: Text(l10n.guestContinue),
+              ),
               Align(
-                alignment: Alignment.centerRight,
+                alignment: AlignmentDirectional.centerEnd,
                 child: TextButton(
                   onPressed: () => context.push('/forgot-password'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    foregroundColor: AppColors.primary,
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    ),
+                  ),
                   child: Text(l10n.forgotPassword),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
               LinkTextButton(
                   label: l10n.createAccount,
                   onPressed: () => context.go('/onboarding/account-type')),

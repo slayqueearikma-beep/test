@@ -239,7 +239,11 @@ class AppStringsEn extends AppStrings {
   @override
   String get inquiriesSub => 'See interested customers and response signals';
   @override
-  String get profileViewsTrend => '+12% this week';
+  String get profileViewsTrend => 'No views yet';
+  @override
+  String get noViewsYet => 'No views yet';
+  @override
+  String get noFavoritesYet => 'No favorites yet';
   @override
   String get previewStorefront => 'Preview storefront';
   @override

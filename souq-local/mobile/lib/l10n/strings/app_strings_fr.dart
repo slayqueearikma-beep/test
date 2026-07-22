@@ -244,7 +244,11 @@ class AppStringsFr extends AppStringsEn {
   String get inquiriesSub =>
       'Suivez les clients intéressés et les signaux de réponse';
   @override
-  String get profileViewsTrend => '+12 % cette semaine';
+  String get profileViewsTrend => 'Aucune vue pour le moment';
+  @override
+  String get noViewsYet => 'Aucune vue pour le moment';
+  @override
+  String get noFavoritesYet => 'Aucun favori pour le moment';
   @override
   String get previewStorefront => 'Aperçu de la boutique';
   @override

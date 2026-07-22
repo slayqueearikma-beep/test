@@ -259,14 +259,6 @@ class _SellerRegistrationScreenState
       progressTotal: _totalSteps,
       bottom: Column(
         children: [
-          if (!AppConfig.isProduction) ...[
-            Text(
-              'API: ${AppConfig.apiBaseUrl}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
           PrimaryButton(
             label: _step == _totalSteps ? l10n.submitCreateAccount : l10n.next,
             onPressed: _next,

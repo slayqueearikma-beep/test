@@ -357,7 +357,11 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secondary = Theme.of(context).colorScheme.onSurfaceVariant;
+    final scheme = Theme.of(context).colorScheme;
+    final secondary = scheme.onSurfaceVariant;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final textAlign = isRtl ? TextAlign.start : TextAlign.start;
+
     return Card(
       clipBehavior: Clip.hardEdge,
       child: Padding(
@@ -365,40 +369,69 @@ class StatCard extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(icon, color: AppColors.primary, size: 20),
-                const Spacer(flex: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Icon(icon, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      textAlign: textAlign,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.05,
+                        color: scheme.onSurface,
+                        // Keep digits visually LTR even in Arabic UI.
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: secondary, fontSize: 12, height: 1.1),
-                ),
-                if (trend != null && trend!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    trend!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        TextStyle(color: secondary, fontSize: 10, height: 1.1),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: textAlign,
+                        style: TextStyle(
+                          color: secondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: isRtl ? 1.25 : 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Flexible(
+                        child: Text(
+                          (trend != null && trend!.trim().isNotEmpty)
+                              ? trend!
+                              : ' ',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: textAlign,
+                          style: TextStyle(
+                            color: secondary.withValues(alpha: 0.9),
+                            fontSize: 11,
+                            height: isRtl ? 1.25 : 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ],
             );
           },
@@ -432,6 +465,7 @@ class DashboardMenuTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         onTap: comingSoon ? null : onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
           width: 44,
           height: 44,
@@ -443,7 +477,14 @@ class DashboardMenuTile extends StatelessWidget {
         ),
         title: Row(
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
             if (comingSoon) ...[
               const SizedBox(width: 8),
               Container(
@@ -452,15 +493,32 @@ class DashboardMenuTile extends StatelessWidget {
                   color: AppColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(context.l10n.soon, style: const TextStyle(fontSize: 10, color: AppColors.warning)),
+                child: Text(context.l10n.soon,
+                    style: const TextStyle(fontSize: 10, color: AppColors.warning)),
               ),
             ],
           ],
         ),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
+        subtitle: Text(
+          subtitle,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, height: 1.25),
+        ),
         trailing: badge != null
-            ? CircleAvatar(radius: 12, backgroundColor: AppColors.primary, child: Text(badge!, style: const TextStyle(fontSize: 10, color: Colors.white)))
-            : const Icon(Icons.chevron_right_rounded),
+            ? CircleAvatar(
+                radius: 12,
+                backgroundColor: AppColors.primary,
+                child: Text(
+                  badge!,
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+              )
+            : Icon(
+                Directionality.of(context) == TextDirection.rtl
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
+              ),
       ),
     );
   }

@@ -115,6 +115,8 @@ abstract class AppStrings {
   String get messagesSub;
   String get inquiriesSub;
   String get profileViewsTrend;
+  String get noViewsYet;
+  String get noFavoritesYet;
   String get previewStorefront;
   String get previewStorefrontSub;
   String get accountSecurity;

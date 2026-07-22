@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
@@ -227,7 +228,8 @@ class ApiService {
   }
 
   String get _connectionErrorMessage {
-    if (AppConfig.isProduction) {
+    // Never surface internal API host/IP in release or production builds.
+    if (AppConfig.isProduction || kReleaseMode) {
       return 'Cannot reach the server. Check your internet connection and try again.';
     }
     final base = AppConfig.apiBaseUrl;

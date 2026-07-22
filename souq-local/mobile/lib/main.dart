@@ -8,6 +8,11 @@ import 'core/config/app_config.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Config-only base URL — never render it in the UI.
+  if (kDebugMode) {
+    debugPrint('MarGem API_BASE_URL=${AppConfig.apiBaseUrl}');
+  }
+
   // Release/production builds must not ship with cleartext or emulator defaults.
   if (AppConfig.isProduction || kReleaseMode) {
     final api = AppConfig.apiBaseUrl;
