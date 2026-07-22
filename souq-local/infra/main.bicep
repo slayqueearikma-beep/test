@@ -155,7 +155,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'JWT_SECRET_KEY', secretRef: 'jwt-secret' }
             { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'storage-conn' }
             { name: 'AZURE_STORAGE_CONTAINER', value: 'margem-media' }
-            { name: 'CORS_ORIGINS', value: '["*"]' }
+            { name: 'CORS_ORIGINS', value: '["https://margem.ma"]' }
+            { name: 'ALLOWED_HOSTS', value: 'api.margem.ma,localhost,127.0.0.1' }
+            { name: 'AUTH_RATE_LIMIT', value: '30/minute' }
+            { name: 'RATE_LIMIT', value: '300/minute' }
+            { name: 'PUBLIC_APP_URL', value: 'https://margem.ma' }
           ]
         }
       ]

@@ -359,35 +359,49 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final secondary = Theme.of(context).colorScheme.onSurfaceVariant;
     return Card(
+      clipBehavior: Clip.hardEdge,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm + 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: AppColors.primary, size: 20),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: secondary, fontSize: 12),
-            ),
-            if (trend != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                trend!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: secondary, fontSize: 11),
-              ),
-            ],
-          ],
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: AppColors.primary, size: 20),
+                const Spacer(flex: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: secondary, fontSize: 12, height: 1.1),
+                ),
+                if (trend != null && trend!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    trend!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        TextStyle(color: secondary, fontSize: 10, height: 1.1),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );

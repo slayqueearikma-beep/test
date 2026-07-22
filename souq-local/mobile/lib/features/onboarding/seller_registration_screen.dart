@@ -165,16 +165,11 @@ class _SellerRegistrationScreenState
         final uploader = ref.read(uploadServiceProvider);
         String coverUrl = '';
         String logoUrl = '';
-        try {
-          if (_coverImage != null) {
-            coverUrl = await uploader.uploadImage(_coverImage!);
-          }
-          if (_logoImage != null) {
-            logoUrl = await uploader.uploadImage(_logoImage!);
-          }
-        } on ApiException {
-          if (AppConfig.isProduction) rethrow;
-          // Local dev without blob storage — continue without images.
+        if (_coverImage != null) {
+          coverUrl = await uploader.uploadImage(_coverImage!);
+        }
+        if (_logoImage != null) {
+          logoUrl = await uploader.uploadImage(_logoImage!);
         }
 
         final sellerId = await apiServiceProvider.createSeller(
@@ -205,11 +200,7 @@ class _SellerRegistrationScreenState
           final price = double.tryParse(product.priceController.text.trim());
           String imageUrl = '';
           if (product.image != null) {
-            try {
-              imageUrl = await uploader.uploadImage(product.image!);
-            } on ApiException {
-              if (AppConfig.isProduction) rethrow;
-            }
+            imageUrl = await uploader.uploadImage(product.image!);
           }
           await apiServiceProvider.addProduct(
             sellerId,

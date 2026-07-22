@@ -14,7 +14,9 @@ import '../../l10n/app_localizations.dart';
 import '../buyer/buyer_home_screen.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.autofocusSearch = false});
+
+  final bool autofocusSearch;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -24,11 +26,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   String _debounced = '';
   Timer? _timer;
   Future<List<SellerModel>>? _future;
+  final _focusNode = FocusNode();
 
   @override
   void dispose() {
     _timer?.cancel();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.autofocusSearch && !oldWidget.autofocusSearch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusNode.requestFocus();
+      });
+    } else if (!widget.autofocusSearch && oldWidget.autofocusSearch) {
+      _focusNode.unfocus();
+    }
   }
 
   Future<List<SellerModel>> _load() {
@@ -49,6 +65,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final city = ref.watch(buyerCityProvider);
+    ref.listen(buyerCityProvider, (previous, next) {
+      if (previous != next) {
+        setState(() => _future = _load());
+      }
+    });
     _future ??= _load();
 
     return SafeArea(
@@ -61,9 +83,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l10n.search, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  city,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
                 const SizedBox(height: AppSpacing.md),
                 TextField(
-                  autofocus: true,
+                  focusNode: _focusNode,
+                  autofocus: widget.autofocusSearch,
                   decoration: InputDecoration(
                     hintText: l10n.businessKeyword,
                     prefixIcon: const Icon(Icons.search),

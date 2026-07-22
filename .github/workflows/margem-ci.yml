@@ -33,11 +33,33 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
-      - run: pytest -q
+      - run: pip install -r requirements-dev.txt
+      - name: Apply migrations
+        run: alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://souq:souq_local_dev@localhost:5432/souq_local
           JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters-long
+      - name: Validate Compose configs
+        working-directory: ${{ github.workspace }}/souq-local
+        run: |
+          docker compose -f docker-compose.yml config >/dev/null
+          docker compose -f docker-compose.home.yml config >/dev/null
+          docker compose -f docker-compose.budget.yml config >/dev/null
+      - run: pytest -q
+        env:
+          PYTHONPATH: .
+          DATABASE_URL: postgresql+asyncpg://souq:souq_local_dev@localhost:5432/souq_local
+          JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters-long
+
+  api-image:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: souq-local
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API Docker image
+        run: docker build -t margem-api:ci ./backend
 
   terraform:
     runs-on: ubuntu-latest

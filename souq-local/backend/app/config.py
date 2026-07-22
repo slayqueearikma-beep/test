@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     rate_limit: str = "300/minute"
     auth_rate_limit: str = "30/minute"
     max_request_body_bytes: int = 1_048_576
+    redis_url: str = ""
 
     smtp_host: str = ""
     smtp_port: int = 587
@@ -62,6 +63,13 @@ class Settings(BaseSettings):
         "Meknes",
         "Oujda",
     ]
+
+    @field_validator("azure_storage_connection_string", "azure_storage_container", mode="before")
+    @classmethod
+    def strip_secrets(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.strip().strip('"').strip("'")
+        return value
 
     @field_validator("cors_origins", "allowed_hosts", mode="before")
     @classmethod
@@ -96,16 +104,28 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
         if self.app_env in {"production", "prod"}:
+            if self.debug:
+                raise ValueError("DEBUG must be false in production")
             if self.auth_dev_bypass:
                 raise ValueError("AUTH_DEV_BYPASS must be false in production")
             if len(self.jwt_secret_key) < 32:
                 raise ValueError("JWT_SECRET_KEY must be at least 32 characters in production")
+            # Reject the documented default even when it already meets length checks.
+            if self.jwt_secret_key.startswith("change-this-secret"):
+                raise ValueError("JWT_SECRET_KEY must be rotated away from the default value in production")
             if "*" in self.cors_origins:
                 raise ValueError("CORS_ORIGINS must not include '*' in production")
             if "*" in self.allowed_hosts:
                 raise ValueError("ALLOWED_HOSTS must not include '*' in production")
             if not self.azure_storage_connection_string:
                 raise ValueError("AZURE_STORAGE_CONNECTION_STRING is required in production")
+            if not self.smtp_host:
+                logger.warning(
+                    "SMTP_HOST is empty in production — password reset and verification emails "
+                    "will only be logged, not delivered"
+                )
+            if self.public_api_url.startswith("http://") and "localhost" not in self.public_api_url:
+                logger.warning("PUBLIC_API_URL should use HTTPS in production")
         return self
 
 

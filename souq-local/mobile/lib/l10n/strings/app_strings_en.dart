@@ -203,6 +203,8 @@ class AppStringsEn extends AppStrings {
   @override
   String welcomeSeller(String name) => 'Welcome, $name 👋';
   @override
+  String get welcomeExclamation => 'Welcome!';
+  @override
   String get manageStoreSubtitle =>
       'Manage your profile, catalog, inquiries, and reviews.';
   @override
@@ -510,6 +512,9 @@ class AppStringsEn extends AppStrings {
   String get acceptedPaymentMethods => 'Accepted payment methods';
   @override
   String get contactSeller => 'Contact seller';
+  @override
+  String inquiryAboutListing(String listingName) =>
+      "Hi! I'm interested in \"$listingName\". Is it still available?";
   @override
   String get callSeller => 'Call';
   @override

@@ -110,8 +110,13 @@ class _FavoriteTile extends ConsumerWidget {
     final l10n = context.l10n;
     return Card(
       child: ListTile(
-        onTap: () =>
-            context.push('/product/${item.sellerId}/${item.productId}'),
+        onTap: () {
+          if (item.productId.isNotEmpty) {
+            context.push('/product/${item.sellerId}/${item.productId}');
+          } else {
+            context.push('/seller/${item.sellerId}');
+          }
+        },
         contentPadding: const EdgeInsets.all(AppSpacing.sm),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -148,9 +153,14 @@ class _FavoriteTile extends ConsumerWidget {
     try {
       final session = ref.read(userSessionProvider);
       if (session == null || session.isGuest) {
-        await ref
-            .read(appStorageProvider)
-            ?.removeGuestFavoriteItem(item.productId);
+        final storage = ref.read(appStorageProvider);
+        if (item.productId.isEmpty) {
+          await storage?.removeGuestFavoriteSeller(item.sellerId);
+        } else {
+          await storage?.removeGuestFavoriteItem(item.productId);
+        }
+      } else if (item.productId.isEmpty) {
+        await apiServiceProvider.removeFavoriteSeller(item.sellerId);
       } else {
         await apiServiceProvider.removeFavoriteProduct(item.productId);
       }

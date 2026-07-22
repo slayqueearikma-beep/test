@@ -5,12 +5,23 @@ class AppConfig {
   ///
   /// Important: include the colon before the port (`:8000`). A common typo is
   /// `http://192.168.1.108000` which cannot resolve.
-  static final String apiBaseUrl = normalizeApiBaseUrl(
-    const String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8000',
-    ),
-  );
+  static final String apiBaseUrl = _resolveApiBaseUrl();
+
+  static String _resolveApiBaseUrl() {
+    final normalized = normalizeApiBaseUrl(
+      const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://10.0.2.2:8000',
+      ),
+    );
+    assert(
+      !isProduction || normalized.startsWith('https://'),
+      'PRODUCTION builds require an HTTPS API_BASE_URL (got: $normalized)',
+    );
+    // Defense in depth for profile/release where asserts are stripped:
+    // main.dart also throws when PRODUCTION or kReleaseMode.
+    return normalized;
+  }
 
   /// Fixes common `API_BASE_URL` typos such as a missing `:` before the port
   /// (`http://192.168.11.1038000` → `http://192.168.11.103:8000`) and strips

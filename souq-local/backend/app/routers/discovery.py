@@ -2,7 +2,7 @@
 
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.auth import get_current_user, get_current_user_optional
 from app.database import get_db
+from app.limiter import limiter
 from app.models import (
     ContactEvent,
     Favorite,
@@ -20,6 +21,11 @@ from app.models import (
     SellerFollow,
     SellerProfile,
     User,
+)
+from app.services.seller_counters import (
+    bump_contact_click,
+    bump_favorite_count,
+    bump_inquiry_count,
 )
 
 router = APIRouter(tags=["discovery"])
@@ -140,9 +146,7 @@ async def add_favorite_product(
     if fav is None:
         fav = Favorite(id=uuid4(), user_id=user.id, product_id=product_id, seller_id=product.seller_id)
         session.add(fav)
-        seller = await session.get(SellerProfile, product.seller_id)
-        if seller:
-            seller.favorite_count = int(seller.favorite_count or 0) + 1
+        await bump_favorite_count(session, product.seller_id, delta=1)
         await session.commit()
     result = await session.execute(
         select(Favorite)
@@ -167,9 +171,7 @@ async def remove_favorite_product(
     seller_id = fav.seller_id
     await session.delete(fav)
     if seller_id:
-        seller = await session.get(SellerProfile, seller_id)
-        if seller and seller.favorite_count > 0:
-            seller.favorite_count -= 1
+        await bump_favorite_count(session, seller_id, delta=-1)
     await session.commit()
 
 
@@ -193,7 +195,7 @@ async def add_favorite_seller(
     if fav is None:
         fav = Favorite(id=uuid4(), user_id=user.id, seller_id=seller_id)
         session.add(fav)
-        seller.favorite_count = int(seller.favorite_count or 0) + 1
+        await bump_favorite_count(session, seller_id, delta=1)
         await session.commit()
     result = await session.execute(
         select(Favorite).options(selectinload(Favorite.seller)).where(Favorite.id == fav.id)
@@ -218,9 +220,7 @@ async def remove_favorite_seller(
     if fav is None:
         return
     await session.delete(fav)
-    seller = await session.get(SellerProfile, seller_id)
-    if seller and seller.favorite_count > 0:
-        seller.favorite_count -= 1
+    await bump_favorite_count(session, seller_id, delta=-1)
     await session.commit()
 
 
@@ -247,6 +247,7 @@ async def migrate_guest_favorites(
                         seller_id=product.seller_id,
                     )
                 )
+                await bump_favorite_count(session, product.seller_id, delta=1)
         elif item.seller_id:
             seller = await session.get(SellerProfile, item.seller_id)
             if seller is None:
@@ -260,6 +261,7 @@ async def migrate_guest_favorites(
             )
             if exists.scalar_one_or_none() is None:
                 session.add(Favorite(id=uuid4(), user_id=user.id, seller_id=item.seller_id))
+                await bump_favorite_count(session, item.seller_id, delta=1)
     await session.commit()
     return await list_favorites(user=user, session=session)
 
@@ -437,6 +439,16 @@ async def track_recently_viewed(
 ) -> None:
     if not seller_id and not product_id:
         raise HTTPException(status_code=400, detail="Provide seller_id or product_id")
+    if product_id is not None:
+        product = await session.get(Product, product_id)
+        if product is None or product.is_hidden:
+            raise HTTPException(status_code=404, detail="Listing not found")
+        if seller_id is None:
+            seller_id = product.seller_id
+    if seller_id is not None:
+        seller = await session.get(SellerProfile, seller_id)
+        if seller is None:
+            raise HTTPException(status_code=404, detail="Seller not found")
     session.add(
         RecentlyViewed(
             id=uuid4(),
@@ -449,20 +461,33 @@ async def track_recently_viewed(
 
 
 @router.post("/reports", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_report(
+    request: Request,
     payload: ReportCreate,
     session: AsyncSession = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ) -> dict:
     if not payload.seller_id and not payload.product_id:
         raise HTTPException(status_code=400, detail="Provide seller_id or product_id")
+    if payload.product_id is not None:
+        product = await session.get(Product, payload.product_id)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Listing not found")
+    if payload.seller_id is not None:
+        seller = await session.get(SellerProfile, payload.seller_id)
+        if seller is None:
+            raise HTTPException(status_code=404, detail="Seller not found")
+    reason = payload.reason.strip()
+    if not reason or len(reason) > 80:
+        raise HTTPException(status_code=400, detail="Invalid report reason")
     report = Report(
         id=uuid4(),
         reporter_id=user.id if user else None,
         seller_id=payload.seller_id,
         product_id=payload.product_id,
-        reason=payload.reason.strip(),
-        details=payload.details.strip(),
+        reason=reason,
+        details=(payload.details or "").strip()[:2000],
     )
     session.add(report)
     await session.commit()
@@ -470,7 +495,9 @@ async def create_report(
 
 
 @router.post("/contact-events", status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_contact_event(
+    request: Request,
     payload: ContactEventCreate,
     session: AsyncSession = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
@@ -478,6 +505,9 @@ async def create_contact_event(
     seller = await session.get(SellerProfile, payload.seller_id)
     if seller is None:
         raise HTTPException(status_code=404, detail="Seller not found")
+    allowed = {"call", "whatsapp", "email", "message", "website", "sms"}
+    if payload.channel not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid contact channel")
     event = ContactEvent(
         id=uuid4(),
         seller_id=payload.seller_id,
@@ -485,8 +515,8 @@ async def create_contact_event(
         channel=payload.channel,
     )
     session.add(event)
-    seller.contact_click_count = int(seller.contact_click_count or 0) + 1
+    await bump_contact_click(session, payload.seller_id)
     if payload.channel == "message":
-        seller.inquiry_count = int(seller.inquiry_count or 0) + 1
+        await bump_inquiry_count(session, payload.seller_id)
     await session.commit()
     return {"id": str(event.id), "channel": payload.channel}

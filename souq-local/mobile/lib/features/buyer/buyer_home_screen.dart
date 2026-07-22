@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../app.dart';
 import '../../core/config/app_config.dart';
 import '../../core/data/city_coordinates.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/theme_mode_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_brand_logo.dart';
@@ -59,8 +59,9 @@ final buyerFavoriteSellerIdsProvider =
         .where((item) => item.sellerId.isNotEmpty && item.productId.isEmpty)
         .map((item) => item.sellerId)
         .toSet();
-  } catch (_) {
-    return {};
+  } catch (error) {
+    // Surface as provider error instead of looking like an empty favorites list.
+    rethrow;
   }
 });
 
@@ -71,16 +72,14 @@ class BuyerHomeShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final index = ref.watch(buyerTabIndexProvider).clamp(0, 2);
-    final unreadAsync = ref.watch(conversationsUnreadCountProvider);
-    final unread = unreadAsync.valueOrNull ?? 0;
 
     return Scaffold(
       body: IndexedStack(
         index: index,
-        children: const [
-          BuyerHomeScreen(),
-          SearchScreen(),
-          MessagesInboxScreen(),
+        children: [
+          const BuyerHomeScreen(),
+          SearchScreen(autofocusSearch: index == 1),
+          const MessagesInboxScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -100,20 +99,31 @@ class BuyerHomeShell extends ConsumerWidget {
             label: l10n.navSearch,
           ),
           NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text(unread > 99 ? '99+' : '$unread'),
-              child: const Icon(Icons.chat_bubble_outline_rounded),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text(unread > 99 ? '99+' : '$unread'),
-              child: const Icon(Icons.chat_bubble_rounded),
-            ),
+            icon: const _MessagesNavIcon(selected: false),
+            selectedIcon: const _MessagesNavIcon(selected: true),
             label: l10n.navMessages,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MessagesNavIcon extends ConsumerWidget {
+  const _MessagesNavIcon({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(conversationsUnreadCountProvider).valueOrNull ?? 0;
+    final icon = selected
+        ? const Icon(Icons.chat_bubble_rounded)
+        : const Icon(Icons.chat_bubble_outline_rounded);
+    return Badge(
+      isLabelVisible: unread > 0,
+      label: Text(unread > 99 ? '99+' : '$unread'),
+      child: icon,
     );
   }
 }
@@ -155,12 +165,16 @@ class BuyerHomeScreen extends ConsumerWidget {
                     isGuest: isGuest,
                     onCityTap: () => _pickCity(context, ref, city),
                     onNotifications: () {
-                      final dest = isGuest
-                          ? '/login'
-                          : (session.accountType == AccountType.seller
-                              ? '/seller/notifications'
-                              : '/profile');
-                      context.push(dest);
+                      if (isGuest) {
+                        context.push('/login');
+                        return;
+                      }
+                      if (session.accountType == AccountType.seller) {
+                        context.push('/seller/notifications');
+                        return;
+                      }
+                      // Buyer notifications surface is the messages inbox.
+                      ref.read(buyerTabIndexProvider.notifier).state = 2;
                     },
                     onPremium: () => context.push('/premium'),
                     onProfile: () => context.push('/profile'),
@@ -214,7 +228,11 @@ class BuyerHomeScreen extends ConsumerWidget {
                           final selectedChip =
                               isAll ? selected == null : selected == categories[i - 1].slug;
                           final label =
-                              isAll ? l10n.allCategories : categories[i - 1].nameEn;
+                              isAll
+                                  ? l10n.allCategories
+                                  : categories[i - 1].localizedName(
+                                      Localizations.localeOf(context).languageCode,
+                                    );
                           final icon = isAll
                               ? Icons.apps_rounded
                               : _categoryIcon(categories[i - 1].icon);
@@ -299,7 +317,9 @@ class BuyerHomeScreen extends ConsumerWidget {
                       itemBuilder: (_, i) {
                         final seller = featured[i];
                         final category = seller.categories.isNotEmpty
-                            ? seller.categories.first.nameEn
+                            ? seller.categories.first.localizedName(
+                                Localizations.localeOf(context).languageCode,
+                              )
                             : l10n.localBusiness;
                         return FeaturedBusinessCard(
                           businessName: seller.businessName,
@@ -1019,11 +1039,7 @@ class BuyerProfileScreen extends ConsumerWidget {
               trailing: Switch(
                 value: Theme.of(context).brightness == Brightness.dark,
                 onChanged: (_) {
-                  final current = ref.read(themeModeProvider);
-                  ref.read(themeModeProvider.notifier).state =
-                      current == ThemeMode.dark
-                          ? ThemeMode.light
-                          : ThemeMode.dark;
+                  ref.read(themeModeProvider.notifier).toggleLightDark();
                 },
               ),
             ),

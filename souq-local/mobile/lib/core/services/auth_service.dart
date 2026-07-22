@@ -130,6 +130,21 @@ class AuthService {
     _syncTokenProvider();
   }
 
+  Future<AuthSession?> restoreAuthSession() async {
+    await loadStoredToken();
+    if (_accessToken == null || _accessToken!.isEmpty) return null;
+    try {
+      final me = await _api.getJson('/auth/me', auth: true);
+      return AuthSession(
+        accessToken: _accessToken!,
+        refreshToken: _refreshToken ?? '',
+        user: AuthUser.fromJson(me),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
   Future<AuthSession> _saveSession(AuthSession session) async {
     _accessToken = session.accessToken;
     _refreshToken = session.refreshToken;

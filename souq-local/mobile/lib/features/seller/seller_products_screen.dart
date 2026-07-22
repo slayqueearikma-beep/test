@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/models/auth_models.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
@@ -193,11 +192,8 @@ class _SellerProductEditorScreenState extends ConsumerState<SellerProductEditorS
 
         var imageUrl = _imageUrl;
         if (_pickedImage != null) {
-          try {
-            imageUrl = await ref.read(uploadServiceProvider).uploadImage(_pickedImage!);
-          } on ApiException {
-            if (AppConfig.isProduction) rethrow;
-          }
+          // Always fail the save if upload fails — silent skip left empty image_url in DB.
+          imageUrl = await ref.read(uploadServiceProvider).uploadImage(_pickedImage!);
         }
 
         final priceText = _priceController.text.trim();
@@ -233,6 +229,7 @@ class _SellerProductEditorScreenState extends ConsumerState<SellerProductEditorS
       });
 
       ref.invalidate(sellerAccountProvider);
+      ref.invalidate(sellerAnalyticsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.productSaved)));
       context.pop();

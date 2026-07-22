@@ -1,136 +1,77 @@
-# Souq Local — Architecture
+# MarGem — Architecture
+
+MarGem is a **third-party local discovery / connection platform**. Buyers find nearby businesses, compare listings, and contact sellers. Transactions and payments happen **outside** the app. There is no cart, checkout, payment processing, shipping, or in-app refunds.
 
 ## System overview
 
 ```mermaid
 flowchart TB
-    subgraph clients [Mobile Clients]
-        Flutter[Flutter App iOS/Android]
+    subgraph clients [Clients]
+        Flutter[Flutter Android app]
     end
 
-    subgraph auth [Authentication]
-        Firebase[Firebase Authentication]
-    end
-
-    subgraph backend [Backend Azure]
+    subgraph backend [Backend]
         API[FastAPI]
         PG[(PostgreSQL)]
         Blob[Azure Blob Storage]
+        SMTP[SMTP email]
     end
 
-    subgraph external [External Services]
-        GMaps[Google Maps API]
-        FCM[Firebase Cloud Messaging]
-    end
-
-    Flutter --> Firebase
-    Flutter -->|Bearer JWT| API
-    Flutter --> GMaps
+    Flutter -->|JWT Bearer| API
     API --> PG
     API --> Blob
-    API --> FCM
+    API --> SMTP
 ```
 
-## Data model (MVP)
+## Auth model
+
+- Primary: email/password with MarGem JWT access + refresh tokens
+- Optional: Firebase ID tokens when `FIREBASE_*` is configured
+- Roles: `buyer` / `seller` account types; `admin` / `support` staff roles
+- Guests may browse; favorites migrate on signup
+
+## Core domain
 
 ```mermaid
 erDiagram
     User ||--o| SellerProfile : owns
     SellerProfile ||--o{ Product : lists
-    SellerProfile ||--o{ Service : offers
     SellerProfile ||--o{ Review : receives
-    User ||--o{ Review : writes
-    SellerProfile }o--o{ Category : tagged
-    WarningZone ||--|| City : located_in
-
-    User {
-        uuid id PK
-        string firebase_uid UK
-        string email
-        enum account_type
-        string display_name
-    }
-
-    SellerProfile {
-        uuid id PK
-        uuid user_id FK
-        string business_name
-        text description
-        string address
-        string city
-        float latitude
-        float longitude
-        string phone
-        int achievement_stars
-        bool is_active
-    }
-
-    Review {
-        uuid id PK
-        uuid seller_id FK
-        uuid buyer_id FK
-        int rating
-        text comment
-        datetime created_at
-    }
-
-    WarningZone {
-        uuid id PK
-        string name
-        text description
-        float latitude
-        float longitude
-        float radius_meters
-        string city
-    }
+    User ||--o{ Favorite : saves
+    User ||--o{ Conversation : messages
+    Conversation ||--o{ Message : contains
+    SellerProfile ||--o{ Subscription : premium_visibility
 ```
 
-## Achievement star logic
+## API surface (selected)
 
-Achievement stars are derived from **five-star reviews only**:
+| Area | Paths |
+|------|--------|
+| Health | `/live`, `/ready`, `/health` |
+| Auth | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/me` |
+| Discovery | `/sellers`, `/sellers/map`, `/categories`, `/favorites/*`, `/follows`, `/contact-events` |
+| Messaging | `/messages/conversations`, `/messages/sellers/{id}` |
+| Seller ops | `/seller/analytics`, `/notifications`, premium plans |
+| Admin | `/admin/users`, `/admin/sellers/pending`, verify/status (admin-only writes) |
+| Uploads | `/uploads` → Azure Blob (durable public URLs) |
 
-```python
-achievement_stars = five_star_review_count // 100
-```
+## Security highlights
 
-Recomputed on each new review and stored on `SellerProfile.achievement_stars` for fast map/profile display.
+- Production rejects default JWT secrets and `DEBUG=true`
+- ProxyHeaders scoped to `ALLOWED_HOSTS`
+- Request body size hard-capped (including chunked)
+- Media/social URL allowlisting; featured listings gated on premium
+- Rate limits on auth, uploads, messaging, and admin mutations
+- Staff (`SUPPORT`) can list pending sellers/users; only `ADMIN` may verify or suspend
 
-## API surface (MVP)
+## Deployment
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/auth/register` | Register user metadata after Firebase signup |
-| GET | `/auth/me` | Current user profile |
-| GET | `/categories` | List business categories |
-| GET | `/sellers` | List/search sellers (city, category, q) |
-| POST | `/sellers` | Create seller profile (seller accounts) |
-| GET | `/sellers/{id}` | Seller detail + products + services |
-| PATCH | `/sellers/{id}` | Update seller profile |
-| GET | `/sellers/map` | GeoJSON-style pins for map view |
-| POST | `/sellers/{id}/reviews` | Submit review (buyers) |
-| GET | `/sellers/{id}/reviews` | List reviews |
-| GET | `/warning-zones` | Scam-prone area markers by city |
-| POST | `/uploads/presign` | Presigned URL for Azure Blob upload |
+1. **PostgreSQL** — primary datastore (Alembic migrations)
+2. **API container** — FastAPI + non-root user + `/ready` healthcheck
+3. **Azure Blob** — listing media
+4. **Compose** — `docker-compose.yml` (dev), `.home.yml` (LAN), `.budget.yml` (single VM)
+5. **CI** — root workflow `.github/workflows/margem-ci.yml`
 
-## Security
+## Explicit non-goals
 
-- Firebase ID tokens verified on protected routes
-- Sellers can only mutate their own profile
-- Buyers can only submit one review per seller (update allowed)
-- Rate limiting and input validation on public endpoints (production)
-
-## Deployment (Azure)
-
-1. **Azure Database for PostgreSQL** — primary datastore
-2. **Azure Container Apps** — FastAPI container
-3. **Azure Blob Storage** — product/service images
-4. **Azure Key Vault** — secrets (DB, Firebase, Maps keys)
-5. **Firebase** — auth + push (mobile SDK)
-
-## Future phases
-
-- In-app messaging, favorites, reservations, click & collect
-- Premium seller tiers (featured listings, analytics)
-- Admin dashboard, business verification, multi-language (AR/FR/EN)
-- AI-powered search
+Cart, checkout, Stripe/PayPal, card storage, payment intermediary, shipping, warehouse, in-app refunds.

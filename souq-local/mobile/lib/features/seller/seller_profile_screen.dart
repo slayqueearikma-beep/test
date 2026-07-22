@@ -119,12 +119,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
 
   Future<String> _uploadOptional(XFile? file, String existing) async {
     if (file == null) return existing;
-    try {
-      return await ref.read(uploadServiceProvider).uploadImage(file);
-    } on ApiException {
-      if (AppConfig.isProduction) rethrow;
-      return existing;
-    }
+    return ref.read(uploadServiceProvider).uploadImage(file);
   }
 
   Future<void> _save(SellerModel seller) async {

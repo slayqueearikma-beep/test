@@ -1,14 +1,15 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user, require_admin, require_seller
+from app.auth import get_current_user, require_admin, require_seller, require_staff
 from app.database import get_db
+from app.limiter import limiter
 from app.models import (
     AdminAuditLog,
     Conversation,
@@ -25,6 +26,8 @@ from app.models import (
     VerificationStatus,
 )
 from app.services.notifications import notify_user
+from app.services.seller_counters import bump_inquiry_count
+from app.services.security import revoke_all_refresh_tokens
 
 router = APIRouter(tags=["seller-ops"])
 
@@ -59,6 +62,14 @@ class NotificationOut(BaseModel):
 
 class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def strip_nonempty(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Message body cannot be empty")
+        return cleaned
 
 
 class MessageOut(BaseModel):
@@ -201,12 +212,11 @@ async def mark_all_notifications_read(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> None:
-    result = await session.execute(
-        select(Notification).where(Notification.user_id == user.id, Notification.read_at.is_(None))
+    await session.execute(
+        update(Notification)
+        .where(Notification.user_id == user.id, Notification.read_at.is_(None))
+        .values(read_at=datetime.now(UTC))
     )
-    now = datetime.now(UTC)
-    for item in result.scalars().all():
-        item.read_at = now
     await session.commit()
 
 
@@ -214,81 +224,129 @@ async def mark_all_notifications_read(
 async def list_conversations(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ) -> list[ConversationOut]:
     seller = (
         await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
     ).scalar_one_or_none()
 
     if seller:
+        # Include both storefront inbox and any buyer-side threads (seller messaging sellers).
         result = await session.execute(
-            select(Conversation).where(Conversation.seller_id == seller.id).order_by(Conversation.last_message_at.desc())
+            select(Conversation)
+            .where(or_(Conversation.seller_id == seller.id, Conversation.buyer_id == user.id))
+            .order_by(Conversation.last_message_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         conversations = list(result.scalars().all())
-        outs: list[ConversationOut] = []
-        for conversation in conversations:
-            buyer = await session.get(User, conversation.buyer_id)
-            unread = await session.scalar(
-                select(func.count(Message.id)).where(
-                    Message.conversation_id == conversation.id,
-                    Message.sender_id != user.id,
-                    Message.read_at.is_(None),
-                )
-            )
-            last = await session.scalar(
-                select(Message.body)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.desc())
-                .limit(1)
-            )
-            outs.append(
-                ConversationOut(
-                    id=conversation.id,
-                    buyer_id=conversation.buyer_id,
-                    seller_id=conversation.seller_id,
-                    last_message_at=conversation.last_message_at,
-                    peer_name=(buyer.display_name or buyer.email) if buyer else "Buyer",
-                    unread_count=int(unread or 0),
-                    last_message_preview=(last or "")[:160],
-                )
-            )
-        return outs
+        # Peer naming differs per conversation role — resolve in helper with mixed mode.
+        return await _conversation_outs_mixed(session, conversations, user_id=user.id, seller_id=seller.id)
 
     result = await session.execute(
-        select(Conversation).where(Conversation.buyer_id == user.id).order_by(Conversation.last_message_at.desc())
+        select(Conversation)
+        .where(Conversation.buyer_id == user.id)
+        .order_by(Conversation.last_message_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     conversations = list(result.scalars().all())
-    outs = []
-    for conversation in conversations:
-        seller_profile = await session.get(SellerProfile, conversation.seller_id)
-        unread = await session.scalar(
-            select(func.count(Message.id)).where(
-                Message.conversation_id == conversation.id,
-                Message.sender_id != user.id,
-                Message.read_at.is_(None),
-            )
+    return await _conversation_outs(session, conversations, user_id=user.id, as_seller=False)
+
+
+async def _conversation_outs_mixed(
+    session: AsyncSession,
+    conversations: list[Conversation],
+    *,
+    user_id: UUID,
+    seller_id: UUID,
+) -> list[ConversationOut]:
+    if not conversations:
+        return []
+
+    as_seller = [c for c in conversations if c.seller_id == seller_id]
+    as_buyer = [c for c in conversations if c.seller_id != seller_id]
+    seller_outs = await _conversation_outs(session, as_seller, user_id=user_id, as_seller=True)
+    buyer_outs = await _conversation_outs(session, as_buyer, user_id=user_id, as_seller=False)
+    by_id = {item.id: item for item in [*seller_outs, *buyer_outs]}
+    return [by_id[c.id] for c in conversations if c.id in by_id]
+
+
+async def _conversation_outs(
+    session: AsyncSession,
+    conversations: list[Conversation],
+    *,
+    user_id: UUID,
+    as_seller: bool,
+) -> list[ConversationOut]:
+    if not conversations:
+        return []
+
+    conversation_ids = [c.id for c in conversations]
+
+    unread_rows = await session.execute(
+        select(Message.conversation_id, func.count(Message.id))
+        .where(
+            Message.conversation_id.in_(conversation_ids),
+            Message.sender_id != user_id,
+            Message.read_at.is_(None),
         )
-        last = await session.scalar(
-            select(Message.body)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.desc())
-            .limit(1)
-        )
-        outs.append(
+        .group_by(Message.conversation_id)
+    )
+    unread_map = {row[0]: int(row[1]) for row in unread_rows.all()}
+
+    # PostgreSQL DISTINCT ON — one latest message body per conversation.
+    last_rows = await session.execute(
+        select(Message.conversation_id, Message.body)
+        .where(Message.conversation_id.in_(conversation_ids))
+        .distinct(Message.conversation_id)
+        .order_by(Message.conversation_id, Message.created_at.desc())
+    )
+    last_map = {row[0]: (row[1] or "")[:160] for row in last_rows.all()}
+
+    if as_seller:
+        peer_ids = {c.buyer_id for c in conversations}
+        peers = (
+            await session.execute(select(User).where(User.id.in_(peer_ids)))
+        ).scalars().all()
+        peer_map = {p.id: (p.display_name or p.email or "Buyer") for p in peers}
+        return [
             ConversationOut(
-                id=conversation.id,
-                buyer_id=conversation.buyer_id,
-                seller_id=conversation.seller_id,
-                last_message_at=conversation.last_message_at,
-                peer_name=seller_profile.business_name if seller_profile else "Seller",
-                unread_count=int(unread or 0),
-                last_message_preview=(last or "")[:160],
+                id=c.id,
+                buyer_id=c.buyer_id,
+                seller_id=c.seller_id,
+                last_message_at=c.last_message_at,
+                peer_name=peer_map.get(c.buyer_id, "Buyer"),
+                unread_count=unread_map.get(c.id, 0),
+                last_message_preview=last_map.get(c.id, ""),
             )
+            for c in conversations
+        ]
+
+    peer_ids = {c.seller_id for c in conversations}
+    peers = (
+        await session.execute(select(SellerProfile).where(SellerProfile.id.in_(peer_ids)))
+    ).scalars().all()
+    peer_map = {p.id: p.business_name for p in peers}
+    return [
+        ConversationOut(
+            id=c.id,
+            buyer_id=c.buyer_id,
+            seller_id=c.seller_id,
+            last_message_at=c.last_message_at,
+            peer_name=peer_map.get(c.seller_id, "Seller"),
+            unread_count=unread_map.get(c.id, 0),
+            last_message_preview=last_map.get(c.id, ""),
         )
-    return outs
+        for c in conversations
+    ]
 
 
 @router.post("/messages/sellers/{seller_id}", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def start_or_send_to_seller(
+    request: Request,
     seller_id: UUID,
     payload: MessageCreate,
     user: User = Depends(get_current_user),
@@ -314,17 +372,17 @@ async def start_or_send_to_seller(
         id=uuid4(),
         conversation_id=conversation.id,
         sender_id=user.id,
-        body=payload.body.strip(),
+        body=payload.body,
     )
     conversation.last_message_at = datetime.now(UTC)
     session.add(message)
     if is_new:
-        seller.inquiry_count = int(seller.inquiry_count or 0) + 1
+        await bump_inquiry_count(session, seller_id)
     await notify_user(
         session,
         user_id=seller.user_id,
         title="New inquiry",
-        body=payload.body.strip()[:120],
+        body=payload.body[:120],
         kind="message",
         data={"conversation_id": str(conversation.id)},
     )
@@ -338,6 +396,8 @@ async def list_messages(
     conversation_id: UUID,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ) -> list[Message]:
     conversation = await session.get(Conversation, conversation_id)
     if conversation is None:
@@ -347,19 +407,33 @@ async def list_messages(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     result = await session.execute(
-        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     messages = list(result.scalars().all())
-    now = datetime.now(UTC)
-    for message in messages:
-        if message.sender_id != user.id and message.read_at is None:
-            message.read_at = now
-    await session.commit()
+    unread_ids = [m.id for m in messages if m.sender_id != user.id and m.read_at is None]
+    if unread_ids:
+        await session.execute(
+            update(Message)
+            .where(Message.id.in_(unread_ids))
+            .values(read_at=datetime.now(UTC))
+        )
+        await session.commit()
+        for message in messages:
+            if message.id in set(unread_ids):
+                message.read_at = datetime.now(UTC)
+    # Return chronological order for clients.
+    messages.reverse()
     return messages
 
 
 @router.post("/messages/conversations/{conversation_id}", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def reply_message(
+    request: Request,
     conversation_id: UUID,
     payload: MessageCreate,
     user: User = Depends(get_current_user),
@@ -376,7 +450,7 @@ async def reply_message(
         id=uuid4(),
         conversation_id=conversation.id,
         sender_id=user.id,
-        body=payload.body.strip(),
+        body=payload.body,
     )
     conversation.last_message_at = datetime.now(UTC)
     session.add(message)
@@ -385,7 +459,7 @@ async def reply_message(
         session,
         user_id=recipient,
         title="New message",
-        body=payload.body.strip()[:120],
+        body=payload.body[:120],
         kind="message",
         data={"conversation_id": str(conversation.id)},
     )
@@ -437,7 +511,21 @@ async def subscribe(
 
     Membership billing can later plug into an external provider via provider/provider_reference.
     This endpoint never processes marketplace transaction payments.
+
+    In production, free self-activation is disabled — a payment provider webhook or admin
+    grant must set the subscription. Development keeps manual activation for local testing.
     """
+    from app.config import settings
+
+    if settings.app_env in {"production", "prod"}:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Self-serve premium activation is disabled until a billing provider is configured. "
+                "Contact support or use an admin grant."
+            ),
+        )
+
     result = await session.execute(
         select(SubscriptionPlan).where(SubscriptionPlan.code == plan_code, SubscriptionPlan.is_active.is_(True))
     )
@@ -496,7 +584,7 @@ async def subscribe(
 
 @router.get("/admin/users", response_model=list[AdminUserOut])
 async def admin_list_users(
-    user: User = Depends(require_admin),
+    user: User = Depends(require_staff),
     session: AsyncSession = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[AdminUserOut]:
@@ -518,7 +606,9 @@ async def admin_list_users(
 
 
 @router.patch("/admin/users/{user_id}/status", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def admin_set_status(
+    request: Request,
     user_id: UUID,
     status_value: UserStatus = Query(alias="status"),
     user: User = Depends(require_admin),
@@ -528,6 +618,8 @@ async def admin_set_status(
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
     target.status = status_value
+    if status_value in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+        await revoke_all_refresh_tokens(session, target.id)
     session.add(
         AdminAuditLog(
             id=uuid4(),
@@ -541,8 +633,103 @@ async def admin_set_status(
     await session.commit()
 
 
+class AdminPremiumGrant(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=64)
+    days: int = Field(default=30, ge=1, le=366)
+
+
+@router.post("/admin/users/{user_id}/premium", response_model=SubscriptionOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
+async def admin_grant_premium(
+    request: Request,
+    user_id: UUID,
+    payload: AdminPremiumGrant,
+    admin: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+) -> SubscriptionOut:
+    """Admin-only premium visibility grant (no in-app payment)."""
+    target = await session.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    plan = (
+        await session.execute(
+            select(SubscriptionPlan).where(
+                SubscriptionPlan.code == payload.plan_code,
+                SubscriptionPlan.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if plan is None:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    existing = await session.execute(
+        select(Subscription).where(
+            Subscription.user_id == target.id,
+            Subscription.status == SubscriptionStatus.ACTIVE,
+        )
+    )
+    for sub in existing.scalars().all():
+        sub.status = SubscriptionStatus.CANCELED
+
+    now = datetime.now(UTC)
+    subscription = Subscription(
+        id=uuid4(),
+        user_id=target.id,
+        plan_id=plan.id,
+        status=SubscriptionStatus.ACTIVE,
+        current_period_start=now,
+        current_period_end=now + timedelta(days=payload.days),
+        provider="admin_grant",
+        provider_reference=f"admin-{admin.id.hex[:8]}-{uuid4().hex[:8]}",
+    )
+    session.add(subscription)
+    target.is_premium = True
+    target.premium_until = subscription.current_period_end
+    if target.account_type.value == "seller" or plan.code.startswith("seller"):
+        seller = (
+            await session.execute(select(SellerProfile).where(SellerProfile.user_id == target.id))
+        ).scalar_one_or_none()
+        if seller:
+            seller.is_premium = True
+
+    session.add(
+        AdminAuditLog(
+            id=uuid4(),
+            actor_id=admin.id,
+            action="grant_premium",
+            target_type="user",
+            target_id=str(user_id),
+            metadata_={"plan_code": plan.code, "days": payload.days},
+        )
+    )
+    await notify_user(
+        session,
+        user_id=target.id,
+        title="Premium activated",
+        body=f"{plan.name} granted by MarGem staff",
+        kind="premium",
+        data={"plan_code": plan.code},
+    )
+    await session.commit()
+    await session.refresh(subscription)
+    result = await session.execute(
+        select(Subscription).options(selectinload(Subscription.plan)).where(Subscription.id == subscription.id)
+    )
+    subscription = result.scalar_one()
+    return SubscriptionOut(
+        id=subscription.id,
+        plan=PlanOut.model_validate(subscription.plan),
+        status=subscription.status,
+        current_period_start=subscription.current_period_start,
+        current_period_end=subscription.current_period_end,
+        provider=subscription.provider,
+    )
+
+
 @router.post("/admin/sellers/{seller_id}/verify", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def admin_verify_seller(
+    request: Request,
     seller_id: UUID,
     approve: bool = True,
     user: User = Depends(require_admin),
@@ -573,21 +760,37 @@ async def admin_verify_seller(
     await session.commit()
 
 
-@router.get("/admin/sellers/pending", response_model=list[dict])
+class PendingSellerOut(BaseModel):
+    id: UUID
+    business_name: str
+    city: str
+    phone: str
+    user_id: UUID
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/admin/sellers/pending", response_model=list[PendingSellerOut])
 async def admin_pending_sellers(
-    user: User = Depends(require_admin),
+    user: User = Depends(require_staff),
     session: AsyncSession = Depends(get_db),
-) -> list[dict]:
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[PendingSellerOut]:
     result = await session.execute(
-        select(SellerProfile).where(SellerProfile.verification_status == VerificationStatus.PENDING)
+        select(SellerProfile)
+        .where(SellerProfile.verification_status == VerificationStatus.PENDING)
+        .order_by(SellerProfile.created_at.asc())
+        .limit(limit)
+        .offset(offset)
     )
     return [
-        {
-            "id": str(s.id),
-            "business_name": s.business_name,
-            "city": s.city,
-            "phone": s.phone,
-            "user_id": str(s.user_id),
-        }
+        PendingSellerOut(
+            id=s.id,
+            business_name=s.business_name,
+            city=s.city,
+            phone=s.phone,
+            user_id=s.user_id,
+        )
         for s in result.scalars().all()
     ]

@@ -97,6 +97,7 @@ abstract class AppStrings {
   String get sellerDashboard;
   String get yourBusiness;
   String welcomeSeller(String name);
+  String get welcomeExclamation;
   String get manageStoreSubtitle;
   String get profileViews;
   String get products;
@@ -245,6 +246,7 @@ abstract class AppStrings {
   String get priceNegotiable;
   String get acceptedPaymentMethods;
   String get contactSeller;
+  String inquiryAboutListing(String listingName);
   String get callSeller;
   String get whatsapp;
   String get deliveryOptionsLabel;

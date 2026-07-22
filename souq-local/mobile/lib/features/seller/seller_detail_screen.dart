@@ -45,6 +45,32 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
     }
   }
 
+  Future<void> _messageSeller(SellerModel seller) async {
+    final l10n = context.l10n;
+    final session = ref.read(userSessionProvider);
+    if (session == null || session.isGuest) {
+      if (!mounted) return;
+      await context.push('/login');
+      return;
+    }
+    try {
+      await apiServiceProvider.createContactEvent(
+        sellerId: seller.id,
+        channel: 'message',
+      );
+      final message = await apiServiceProvider.startConversationWithSeller(
+        seller.id,
+        l10n.inquiryAboutListing(seller.businessName),
+      );
+      if (!mounted) return;
+      context.push('/messages/${message.conversationId}');
+    } catch (error) {
+      if (!mounted) return;
+      await showAppErrorDialog(context,
+          title: l10n.somethingWentWrong, message: error.toString());
+    }
+  }
+
   Future<void> _recordContact(SellerModel seller, String channel) async {
     try {
       await apiServiceProvider.createContactEvent(
@@ -61,20 +87,6 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
     final uri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-    }
-  }
-
-  Future<void> _openWhatsApp(SellerModel seller) async {
-    final raw = (seller.whatsappNumber.isNotEmpty
-            ? seller.whatsappNumber
-            : seller.phone)
-        .replaceAll(RegExp(r'[^\d+]'), '');
-    if (raw.isEmpty) return;
-    await _recordContact(seller, 'whatsapp');
-    final digits = raw.replaceAll('+', '');
-    final uri = Uri.parse('https://wa.me/$digits');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -258,7 +270,8 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: FilledButton.icon(
-                              onPressed: () => _callSeller(seller),
+                              onPressed:
+                                  seller.phone.trim().isEmpty ? null : () => _callSeller(seller),
                               icon: const Icon(Icons.call_outlined),
                               label: Text(l10n.callSeller),
                             ),
@@ -269,18 +282,18 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _openWhatsApp(seller),
-                              icon: const Icon(Icons.chat),
-                              label: Text(l10n.whatsapp),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
                             child: FilledButton.icon(
                               onPressed: () => _showReviewSheet(seller),
                               icon: const Icon(Icons.rate_review_outlined),
                               label: Text(l10n.review),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _messageSeller(seller),
+                              icon: const Icon(Icons.chat_bubble_outline),
+                              label: Text(l10n.contactSeller),
                             ),
                           ),
                         ],
@@ -380,7 +393,13 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                                                 : 'B')),
                                     title: Row(
                                       children: [
-                                        Text(r.buyerDisplayName),
+                                        Expanded(
+                                          child: Text(
+                                            r.buyerDisplayName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
                                         const SizedBox(width: 8),
                                         ...List.generate(
                                             r.rating,

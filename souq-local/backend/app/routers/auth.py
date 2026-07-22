@@ -156,11 +156,8 @@ async def register(
     log_security_event("register_success", user_id=str(user.id), account_type=user.account_type.value)
 
     response = await _token_response(session, user, request)
-    if delivery.get("mode") == "log" and settings.app_env not in {"production", "prod"}:
-        # Expose token only in non-production so mobile/dev can verify without SMTP.
-        user_out = response.user.model_dump()
-        user_out["dev_email_verify_token"] = verify_token
-        # Keep TokenResponse schema intact; clients ignore unknown fields if any wrapper added later.
+    # TokenResponse schema is fixed; verification tokens are delivered by email / logs only.
+    _ = delivery
     return response
 
 
@@ -206,6 +203,14 @@ async def refresh_tokens(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user.status == UserStatus.SUSPENDED:
+        await revoke_all_refresh_tokens(session, user.id)
+        await session.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+    if user.status == UserStatus.DELETED:
+        await revoke_all_refresh_tokens(session, user.id)
+        await session.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account deleted")
 
     await session.commit()
     return TokenResponse(
@@ -442,20 +447,60 @@ async def delete_account(
     if not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
 
+    from sqlalchemy import delete as sql_delete
+
+    from app.models import (
+        AuthToken,
+        Conversation,
+        Favorite,
+        Message,
+        Notification,
+        RecentlyViewed,
+        Review,
+        SavedSearch,
+        SellerFollow,
+        Subscription,
+    )
+
     seller = await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
     profile = seller.scalar_one_or_none()
+
+    # Remove message history the user authored, then conversations they own as buyer.
+    await session.execute(sql_delete(Message).where(Message.sender_id == user.id))
+    buyer_conversations = (
+        await session.execute(select(Conversation.id).where(Conversation.buyer_id == user.id))
+    ).scalars().all()
+    if buyer_conversations:
+        await session.execute(sql_delete(Message).where(Message.conversation_id.in_(buyer_conversations)))
+        await session.execute(sql_delete(Conversation).where(Conversation.id.in_(buyer_conversations)))
+
     if profile is not None:
+        seller_conversations = (
+            await session.execute(select(Conversation.id).where(Conversation.seller_id == profile.id))
+        ).scalars().all()
+        if seller_conversations:
+            await session.execute(sql_delete(Message).where(Message.conversation_id.in_(seller_conversations)))
+            await session.execute(sql_delete(Conversation).where(Conversation.id.in_(seller_conversations)))
         await session.delete(profile)
 
-    from app.models import Review
-
-    buyer_reviews = await session.execute(select(Review).where(Review.buyer_id == user.id))
-    for review in buyer_reviews.scalars().all():
-        await session.delete(review)
+    for model, column in (
+        (Favorite, Favorite.user_id),
+        (SellerFollow, SellerFollow.user_id),
+        (SavedSearch, SavedSearch.user_id),
+        (RecentlyViewed, RecentlyViewed.user_id),
+        (Notification, Notification.user_id),
+        (Subscription, Subscription.user_id),
+        (AuthToken, AuthToken.user_id),
+        (Review, Review.buyer_id),
+    ):
+        await session.execute(sql_delete(model).where(column == user.id))
 
     await revoke_all_refresh_tokens(session, user.id)
     user.status = UserStatus.DELETED
     user.email = f"deleted+{user.id}@invalid.local"
+    user.display_name = "Deleted user"
     user.password_hash = None
+    user.is_premium = False
+    user.premium_until = None
     await session.commit()
     log_security_event("account_deleted", user_id=str(user.id))

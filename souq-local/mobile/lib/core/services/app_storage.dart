@@ -123,6 +123,7 @@ class AppStorage {
   static const _sellerIdKey = 'seller_id';
   static const _languageCodeKey = 'language_code';
   static const _languageSelectedKey = 'language_selected';
+  static const _themeModeKey = 'theme_mode';
   static const _guestFavoritesKey = 'guest_favorite_items';
   static const _legacyGuestCartKey = 'guest_cart_items';
 
@@ -134,6 +135,26 @@ class AppStorage {
   String get languageCode => _prefs.getString(_languageCodeKey) ?? 'en';
 
   Locale getLocale() => Locale(languageCode);
+
+  ThemeMode getThemeMode() {
+    switch (_prefs.getString(_themeModeKey)) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  Future<void> saveThemeMode(ThemeMode mode) {
+    final value = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
+    return _prefs.setString(_themeModeKey, value);
+  }
 
   Future<void> saveLanguage(String languageCode) async {
     await _prefs.setString(_languageCodeKey, languageCode);

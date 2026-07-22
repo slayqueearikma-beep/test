@@ -3,19 +3,36 @@ class CategoryModel {
     required this.id,
     required this.slug,
     required this.nameEn,
+    this.nameFr = '',
+    this.nameAr = '',
     required this.icon,
   });
 
   final String id;
   final String slug;
   final String nameEn;
+  final String nameFr;
+  final String nameAr;
   final String icon;
+
+  String localizedName(String languageCode) {
+    switch (languageCode) {
+      case 'fr':
+        return nameFr.isNotEmpty ? nameFr : nameEn;
+      case 'ar':
+        return nameAr.isNotEmpty ? nameAr : nameEn;
+      default:
+        return nameEn;
+    }
+  }
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       id: json['id'] as String,
       slug: json['slug'] as String,
-      nameEn: json['name_en'] as String,
+      nameEn: json['name_en'] as String? ?? '',
+      nameFr: json['name_fr'] as String? ?? '',
+      nameAr: json['name_ar'] as String? ?? '',
       icon: json['icon'] as String? ?? 'store',
     );
   }

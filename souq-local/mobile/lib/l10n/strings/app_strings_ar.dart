@@ -202,6 +202,8 @@ class AppStringsAr extends AppStringsEn {
   @override
   String welcomeSeller(String name) => 'مرحباً، $name 👋';
   @override
+  String get welcomeExclamation => 'مرحباً!';
+  @override
   String get manageStoreSubtitle =>
       'أدر ملفك والكتالوج والاستفسارات وتقييمات العملاء.';
   @override
@@ -507,6 +509,9 @@ class AppStringsAr extends AppStringsEn {
   String get acceptedPaymentMethods => 'طرق الدفع المقبولة';
   @override
   String get contactSeller => 'تواصل مع البائع';
+  @override
+  String inquiryAboutListing(String listingName) =>
+      'مرحباً! أنا مهتم بـ "$listingName". هل ما زال متوفراً؟';
   @override
   String get callSeller => 'اتصال';
   @override

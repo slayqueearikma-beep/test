@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/async_error_view.dart';
@@ -374,6 +375,18 @@ class _ConversationThreadScreenState
             apiServiceProvider.fetchConversationMessages(widget.conversationId);
       });
       ref.invalidate(conversationsProvider);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.somethingWentWrong)),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -410,13 +423,17 @@ class _ConversationThreadScreenState
                 if (messages.isEmpty) {
                   return Center(child: Text(l10n.noMessagesYet));
                 }
+                final myId = ref.watch(authSessionProvider)?.user.id;
                 return ListView.builder(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   itemCount: messages.length,
                   itemBuilder: (_, index) {
                     final message = messages[index];
+                    final mine =
+                        myId != null && message.senderId.isNotEmpty && message.senderId == myId;
                     return Align(
-                      alignment: Alignment.centerLeft,
+                      alignment:
+                          mine ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
@@ -427,12 +444,16 @@ class _ConversationThreadScreenState
                           maxWidth: MediaQuery.sizeOf(context).width * 0.78,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.cardSelected,
+                          color: mine
+                              ? AppColors.primary.withValues(alpha: 0.12)
+                              : AppColors.cardSelected,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
                           message.body,
-                          style: const TextStyle(color: AppColors.textPrimary),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
                     );

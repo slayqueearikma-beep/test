@@ -150,6 +150,29 @@ async def test_guest_favorites_migrate_and_report(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_report_rejects_unknown_seller(client: AsyncClient):
+    report = await client.post(
+        "/reports",
+        json={"seller_id": str(uuid4()), "reason": "spam", "details": "x"},
+    )
+    assert report.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_product_rejects_invalid_media_url(client: AsyncClient):
+    seller, seller_body, _ = await _create_seller_with_product(client)
+    bad = await client.post(
+        f"/sellers/{seller_body['id']}/products",
+        headers=seller["headers"],
+        json={
+            "name": "Bad Media",
+            "media_urls": ["javascript:alert(1)"],
+        },
+    )
+    assert bad.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_subscribe_premium_visibility(client: AsyncClient):
     seller = await _register(client, "seller")
     plans = await client.get("/subscriptions/plans")

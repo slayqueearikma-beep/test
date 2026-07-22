@@ -4,6 +4,10 @@ import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
 
+final sellerAnalyticsProvider = FutureProvider.autoDispose((ref) {
+  return apiServiceProvider.fetchSellerAnalytics();
+});
+
 /// Loads and caches the authenticated seller's profile + dashboard stats.
 ///
 /// Important: do **not** `watch` [userSessionProvider] here. Updating the session

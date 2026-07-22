@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/services/app_storage.dart';
+import 'core/services/auth_service.dart';
 import 'core/services/locale_provider.dart';
+import 'core/services/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -30,8 +32,6 @@ import 'features/splash/splash_screen.dart';
 import 'l10n/app_localizations.dart';
 import 'core/models/models.dart';
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
-
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
@@ -44,7 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           path.startsWith('/seller/profile') ||
           path.startsWith('/seller/reviews') ||
           path.startsWith('/seller/notifications') ||
-          path.startsWith('/seller/settings');
+          path.startsWith('/seller/settings') ||
+          path.startsWith('/seller/messages');
       final isAuthProtected = isSellerManagement;
       final isAuthenticated = session != null && !session.isGuest;
       if (isAuthProtected && !isAuthenticated) {
@@ -96,6 +97,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/premium', builder: (_, __) => const PremiumScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const BuyerProfileScreen()),
       GoRoute(
+          path: '/messages',
+          builder: (_, __) => const Scaffold(body: MessagesInboxScreen())),
+      GoRoute(
         path: '/messages/:id',
         builder: (_, state) {
           final extra = state.extra;
@@ -108,6 +112,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/seller/dashboard',
           builder: (_, __) => const SellerDashboardScreen()),
+      GoRoute(
+          path: '/seller/messages',
+          builder: (_, __) => const Scaffold(body: MessagesInboxScreen())),
       GoRoute(
           path: '/seller/products',
           builder: (_, __) => const SellerProductsScreen()),
@@ -147,11 +154,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class MarGemApp extends ConsumerWidget {
+class MarGemApp extends ConsumerStatefulWidget {
   const MarGemApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MarGemApp> createState() => _MarGemAppState();
+}
+
+class _MarGemAppState extends ConsumerState<MarGemApp> {
+  var _sessionBound = false;
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeProvider);
@@ -159,8 +173,24 @@ class MarGemApp extends ConsumerWidget {
     ref.listen(appStorageProvider, (previous, next) {
       if (next != null) {
         ref.read(localeProvider.notifier).updateStorage(next);
+        ref.read(themeModeProvider.notifier).updateStorage(next);
       }
     });
+
+    // Bind once at the app root so the callback outlives SplashScreen disposal.
+    if (!_sessionBound) {
+      _sessionBound = true;
+      ref.read(authServiceProvider).bindApi(
+        onSessionExpired: () async {
+          final prefs = await ref.read(sharedPreferencesProvider.future);
+          await ref.read(authServiceProvider).logout(prefs);
+          await ref.read(appStorageProvider)?.logout();
+          ref.read(userSessionProvider.notifier).state = null;
+          ref.read(authSessionProvider.notifier).state = null;
+          router.go('/login');
+        },
+      );
+    }
 
     return MaterialApp.router(
       title: 'MarGem',

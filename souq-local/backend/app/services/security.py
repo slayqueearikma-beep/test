@@ -3,7 +3,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from passlib.context import CryptContext
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,14 +43,18 @@ def create_access_token(user_id: UUID) -> str:
 
 def decode_access_token(token: str) -> UUID | None:
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         if payload.get("type") != "access":
             return None
         sub = payload.get("sub")
         if not sub:
             return None
         return UUID(sub)
-    except (JWTError, ValueError):
+    except (InvalidTokenError, ValueError, TypeError):
         return None
 
 

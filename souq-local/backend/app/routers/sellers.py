@@ -87,6 +87,27 @@ def _validate_owner_media(url: str, user_id: UUID) -> str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+def _validate_owner_media_list(urls: list[str], user_id: UUID) -> list[str]:
+    return [_validate_owner_media(u, user_id) for u in urls if u and str(u).strip()]
+
+
+def _validate_optional_http_url(url: str, *, field: str) -> str:
+    from app.schemas import _validate_http_url
+
+    try:
+        return _validate_http_url(url or "", field_name=field)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _public_product_visible(product: Product) -> bool:
+    return (
+        not bool(getattr(product, "is_hidden", False))
+        and bool(getattr(product, "is_available", True))
+        and not bool(getattr(product, "is_paused", False))
+    )
+
+
 @router.get("", response_model=list[SellerSummary])
 async def list_sellers(
     city: str | None = None,
@@ -103,7 +124,8 @@ async def list_sellers(
     )
 
     if city:
-        stmt = stmt.where(SellerProfile.city.ilike(city))
+        safe_city = _escape_ilike(city[:80])
+        stmt = stmt.where(SellerProfile.city.ilike(safe_city))
     if q:
         safe_q = _escape_ilike(q[:120])
         pattern = f"%{safe_q}%"
@@ -130,7 +152,9 @@ async def map_pins(
     category: str | None = None,
     session: AsyncSession = Depends(get_db),
 ) -> list[MapPin]:
-    sellers = await list_sellers(city=city, category=category, q=None, session=session)
+    sellers = await list_sellers(
+        city=city, category=category, q=None, limit=_MAX_PAGE_SIZE, offset=0, session=session
+    )
     return [
         MapPin(
             id=s.id,
@@ -233,10 +257,10 @@ async def create_seller(
         cover_image_url=cover,
         logo_image_url=logo,
         opening_hours=_opening_hours_dict(payload.opening_hours),
-        website_url=payload.website_url.strip(),
-        instagram_url=payload.instagram_url.strip(),
-        facebook_url=payload.facebook_url.strip(),
-        tiktok_url=payload.tiktok_url.strip(),
+        website_url=_validate_optional_http_url(payload.website_url, field="website_url"),
+        instagram_url=_validate_optional_http_url(payload.instagram_url, field="instagram_url"),
+        facebook_url=_validate_optional_http_url(payload.facebook_url, field="facebook_url"),
+        tiktok_url=_validate_optional_http_url(payload.tiktok_url, field="tiktok_url"),
         whatsapp_number=payload.whatsapp_number.strip() or payload.phone.strip(),
         payment_methods=payload.payment_methods or ["cash"],
         delivery_methods=payload.delivery_methods or ["in_store"],
@@ -261,11 +285,17 @@ async def get_seller(
 
     # Count public views; skip when the owner is browsing their own storefront.
     if not is_owner:
-        seller.profile_view_count = int(seller.profile_view_count or 0) + 1
+        from sqlalchemy import update as sql_update
+
+        await session.execute(
+            sql_update(SellerProfile)
+            .where(SellerProfile.id == seller_id)
+            .values(profile_view_count=SellerProfile.profile_view_count + 1)
+        )
         await session.commit()
         seller = await _load_seller_detail(session, seller_id)
-        # Hide moderated / hidden inventory from public shoppers.
-        seller.products = [p for p in seller.products if not p.is_hidden]
+        # Hide moderated / unavailable / paused inventory from public shoppers.
+        seller.products = [p for p in seller.products if _public_product_visible(p)]
         seller.services = [s for s in seller.services if s.is_available]
 
     return seller
@@ -288,6 +318,9 @@ async def update_seller(
         data["cover_image_url"] = _validate_owner_media(data["cover_image_url"] or "", user.id)
     if "logo_image_url" in data:
         data["logo_image_url"] = _validate_owner_media(data["logo_image_url"] or "", user.id)
+    for url_field in ("website_url", "instagram_url", "facebook_url", "tiktok_url"):
+        if url_field in data and data[url_field] is not None:
+            data[url_field] = _validate_optional_http_url(data[url_field] or "", field=url_field)
     if opening_hours is not None:
         data["opening_hours"] = opening_hours
 
@@ -314,6 +347,11 @@ async def add_product(
     image_url = _validate_owner_media(payload.image_url, user.id)
     product_data = payload.model_dump()
     product_data["image_url"] = image_url
+    product_data["media_urls"] = _validate_owner_media_list(list(payload.media_urls or []), user.id)
+    product_data["video_url"] = _validate_owner_media(payload.video_url or "", user.id)
+    if payload.is_featured and not user.is_premium:
+        # Featured placement is a premium visibility perk.
+        product_data["is_featured"] = False
     product = Product(seller_id=seller_id, **product_data)
     session.add(product)
     await session.commit()
@@ -356,6 +394,12 @@ async def update_product(
     data = payload.model_dump(exclude_unset=True)
     if "image_url" in data:
         data["image_url"] = _validate_owner_media(data["image_url"] or "", user.id)
+    if "media_urls" in data and data["media_urls"] is not None:
+        data["media_urls"] = _validate_owner_media_list(list(data["media_urls"] or []), user.id)
+    if "video_url" in data:
+        data["video_url"] = _validate_owner_media(data["video_url"] or "", user.id)
+    if data.get("is_featured") is True and not user.is_premium:
+        data["is_featured"] = False
 
     for key, value in data.items():
         setattr(product, key, value)

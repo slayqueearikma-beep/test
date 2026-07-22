@@ -48,6 +48,13 @@ async def _resolve_user_from_credentials(
             return None
         return user
 
+    # Invalid/expired local JWTs must not fall through to Firebase and surface 503
+    # when Firebase is intentionally unset (email/password-only deployments).
+    if not settings.firebase_credentials_path:
+        if required:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        return None
+
     # Firebase ID token (mobile Firebase Auth)
     try:
         firebase_uid = await verify_firebase_token(token)
@@ -71,12 +78,26 @@ async def get_current_user(
 ) -> User:
     user = await _resolve_user_from_credentials(credentials, session, required=True)
     assert user is not None
-    from app.models import UserStatus
+    from datetime import UTC, datetime
+
+    from app.models import SellerProfile, UserStatus
 
     if getattr(user, "status", None) == UserStatus.SUSPENDED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
     if getattr(user, "status", None) == UserStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account deleted")
+
+    # Soft-expire premium flags when the paid period has ended.
+    premium_until = getattr(user, "premium_until", None)
+    if user.is_premium and premium_until is not None and premium_until < datetime.now(UTC):
+        user.is_premium = False
+        seller = (
+            await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
+        ).scalar_one_or_none()
+        if seller is not None and seller.is_premium:
+            seller.is_premium = False
+        await session.commit()
+        await session.refresh(user)
     return user
 
 
@@ -129,8 +150,17 @@ async def require_buyer(user: User = Depends(get_current_user)) -> User:
 async def require_admin(user: User = Depends(get_current_user)) -> User:
     from app.models import UserRole
 
-    if user.role not in {UserRole.ADMIN, UserRole.SUPPORT}:
+    if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+async def require_staff(user: User = Depends(get_current_user)) -> User:
+    """Admin or support — read-oriented staff tools only."""
+    from app.models import UserRole
+
+    if user.role not in {UserRole.ADMIN, UserRole.SUPPORT}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff access required")
     return user
 
 

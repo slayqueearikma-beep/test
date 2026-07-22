@@ -15,10 +15,6 @@ import '../../l10n/app_localizations.dart';
 import '../settings/language_settings_tile.dart';
 import 'seller_account_provider.dart';
 
-final sellerAnalyticsProvider = FutureProvider.autoDispose((ref) {
-  return apiServiceProvider.fetchSellerAnalytics();
-});
-
 class SellerDashboardScreen extends ConsumerWidget {
   const SellerDashboardScreen({super.key});
 
@@ -47,7 +43,12 @@ class SellerDashboardScreen extends ConsumerWidget {
                 : null;
 
             return RefreshIndicator(
-              onRefresh: () async => ref.invalidate(sellerAccountProvider),
+              onRefresh: () async {
+                ref.invalidate(sellerAccountProvider);
+                ref.invalidate(sellerAnalyticsProvider);
+                await ref.read(sellerAccountProvider.future);
+                await ref.read(sellerAnalyticsProvider.future);
+              },
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -85,6 +86,8 @@ class SellerDashboardScreen extends ConsumerWidget {
                                     ),
                                     Text(
                                       businessName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -128,9 +131,13 @@ class SellerDashboardScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  l10n.welcomeSeller(
-                                      session?.name.split(' ').first ??
-                                          l10n.sellerDefault),
+                                  _welcomeGreeting(
+                                    l10n,
+                                    businessName: businessName,
+                                    sessionName: session?.name,
+                                    authDisplayName:
+                                        ref.watch(authSessionProvider)?.user.displayName,
+                                  ),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 18,
@@ -162,50 +169,64 @@ class SellerDashboardScreen extends ConsumerWidget {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.45,
-                      ),
-                      delegate: SliverChildListDelegate([
-                        StatCard(
-                          label: l10n.profileViews,
-                          value: analytics?.profileViewCount.toString() ??
-                              stats.formattedViews,
-                          icon: Icons.visibility_outlined,
-                        ),
-                        StatCard(
-                          label: l10n.products,
-                          value:
-                              '${analytics?.productCount ?? stats.productCount}',
-                          icon: Icons.inventory_2_outlined,
-                          trend: l10n.availableCount(
-                              analytics?.availableProductCount ??
-                                  stats.availableProductCount),
-                        ),
-                        StatCard(
-                          label: l10n.inquiries,
-                          value:
-                              '${analytics?.inquiryCount ?? stats.inquiryCount}',
-                          icon: Icons.chat_bubble_outline,
-                          trend: analytics == null
-                              ? null
-                              : l10n.avgResponseMinutes(
-                                  analytics.avgResponseMinutes),
-                        ),
-                        StatCard(
-                          label: l10n.favorites,
-                          value:
-                              '${analytics?.favoriteCount ?? stats.favoriteCount}',
-                          icon: Icons.favorite_border,
-                          trend: analytics == null
-                              ? null
-                              : l10n.contactClicks(analytics.contactClickCount),
-                        ),
-                      ]),
+                    sliver: SliverLayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.crossAxisExtent;
+                        final crossAxisCount = width >= 720 ? 4 : 2;
+                        // Taller cards avoid RenderFlex overflow when trend text is present.
+                        final aspect = width >= 720 ? 1.35 : 1.22;
+                        final profileViews =
+                            analytics?.profileViewCount ?? stats.profileViewCount;
+                        final productCount =
+                            analytics?.productCount ?? stats.productCount;
+                        final availableCount = analytics?.availableProductCount ??
+                            stats.availableProductCount;
+                        final inquiryCount =
+                            analytics?.inquiryCount ?? stats.inquiryCount;
+                        final favoriteCount =
+                            analytics?.favoriteCount ?? stats.favoriteCount;
+
+                        return SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: aspect,
+                          ),
+                          delegate: SliverChildListDelegate([
+                            StatCard(
+                              label: l10n.profileViews,
+                              value: '$profileViews',
+                              icon: Icons.visibility_outlined,
+                            ),
+                            StatCard(
+                              label: l10n.products,
+                              value: '$productCount',
+                              icon: Icons.inventory_2_outlined,
+                              trend: l10n.availableCount(availableCount),
+                            ),
+                            StatCard(
+                              label: l10n.inquiries,
+                              value: '$inquiryCount',
+                              icon: Icons.chat_bubble_outline,
+                              trend: analytics == null
+                                  ? null
+                                  : l10n.avgResponseMinutes(
+                                      analytics.avgResponseMinutes),
+                            ),
+                            StatCard(
+                              label: l10n.favorites,
+                              value: '$favoriteCount',
+                              icon: Icons.favorite_border,
+                              trend: analytics == null
+                                  ? null
+                                  : l10n.contactClicks(
+                                      analytics.contactClickCount),
+                            ),
+                          ]),
+                        );
+                      },
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -236,7 +257,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                           badge: analytics != null && analytics.inquiryCount > 0
                               ? '${analytics.inquiryCount}'
                               : null,
-                          onTap: () => _showAnalytics(context, analytics),
+                          onTap: () => context.push('/seller/messages'),
                         ),
                         DashboardMenuTile(
                           title: l10n.analytics,
@@ -366,6 +387,36 @@ class SellerDashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _welcomeGreeting(
+  AppStrings l10n, {
+  required String businessName,
+  String? sessionName,
+  String? authDisplayName,
+}) {
+  // Prefer storefront / auth identity over short registration typos.
+  for (final candidate in [
+    businessName,
+    authDisplayName ?? '',
+    sessionName ?? '',
+  ]) {
+    final cleaned = candidate.trim();
+    if (_isUsableDisplayName(cleaned)) {
+      final first = cleaned.split(RegExp(r'\s+')).first;
+      return l10n.welcomeSeller(first);
+    }
+  }
+  return l10n.welcomeExclamation;
+}
+
+bool _isUsableDisplayName(String value) {
+  if (value.length < 2) return false;
+  final compact = value.replaceAll(RegExp(r'[^A-Za-zÀ-ÿ0-9]'), '');
+  if (compact.length < 3) return false;
+  // Reject keyboard-mash / placeholder tokens like "ooo", "aaa", "xxx".
+  if (RegExp(r'^(.)\1+$', caseSensitive: false).hasMatch(compact)) return false;
+  return true;
 }
 
 class _AnalyticsRow extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/models.dart';
@@ -8,6 +9,7 @@ import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/async_error_view.dart';
 import '../../core/widgets/error_dialog.dart';
 import '../../core/widgets/network_image_view.dart';
 import '../../l10n/app_localizations.dart';
@@ -58,7 +60,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         if (snapshot.hasError || !snapshot.hasData) {
           return Scaffold(
             appBar: AppBar(),
-            body: Center(child: Text(context.l10n.somethingWentWrong)),
+            body: AsyncErrorView.fromError(
+              snapshot.error ?? Exception(context.l10n.somethingWentWrong),
+              onRetry: () => setState(() {
+                _future = apiServiceProvider.fetchSeller(widget.sellerId);
+              }),
+            ),
           );
         }
 
@@ -143,29 +150,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 label: Text(context.l10n.contactSeller),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: seller.phone.isEmpty
-                          ? null
-                          : () => _callSeller(seller),
-                      icon: const Icon(Icons.call_outlined),
-                      label: Text(context.l10n.callSeller),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: (seller.whatsappNumber.isEmpty &&
-                              seller.phone.isEmpty)
-                          ? null
-                          : () => _openWhatsapp(seller),
-                      icon: const Icon(Icons.chat_outlined),
-                      label: Text(context.l10n.whatsapp),
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed:
+                    seller.phone.isEmpty ? null : () => _callSeller(seller),
+                icon: const Icon(Icons.call_outlined),
+                label: Text(context.l10n.callSeller),
               ),
               const SizedBox(height: AppSpacing.sm),
               OutlinedButton.icon(
@@ -193,6 +182,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     try {
       await apiServiceProvider.createContactEvent(
           sellerId: seller.id, channel: channel);
+      if (channel == 'message') {
+        final session = ref.read(userSessionProvider);
+        if (session == null || session.isGuest) {
+          if (mounted) await context.push('/login');
+          return;
+        }
+        final message = await apiServiceProvider.startConversationWithSeller(
+          seller.id,
+          l10n.inquiryAboutListing(_productName(seller)),
+        );
+        if (!mounted) return;
+        context.push('/messages/${message.conversationId}');
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.contactRecorded(seller.businessName))),
@@ -208,6 +211,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
   }
 
+  String _productName(SellerModel seller) {
+    final match = seller.products.where((p) => p.id == widget.productId);
+    if (match.isEmpty) return seller.businessName;
+    return match.first.name;
+  }
+
   Future<void> _callSeller(SellerModel seller) async {
     await _recordContact(seller, 'call');
     final uri = Uri(scheme: 'tel', path: seller.phone);
@@ -216,22 +225,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${context.l10n.phoneNumber}: ${seller.phone}')),
-      );
-    }
-  }
-
-  Future<void> _openWhatsapp(SellerModel seller) async {
-    await _recordContact(seller, 'whatsapp');
-    final number = (seller.whatsappNumber.isNotEmpty
-            ? seller.whatsappNumber
-            : seller.phone)
-        .replaceAll(RegExp(r'[^0-9]'), '');
-    final uri = Uri.parse('https://wa.me/$number');
-    if (number.isNotEmpty && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.l10n.whatsapp}: $number')),
       );
     }
   }

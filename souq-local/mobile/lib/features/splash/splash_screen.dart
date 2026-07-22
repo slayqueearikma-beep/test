@@ -49,16 +49,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     await ref.read(authServiceProvider).loadStoredToken();
-    ref.read(authServiceProvider).bindApi(
-      onSessionExpired: () async {
-        final prefs = await ref.read(sharedPreferencesProvider.future);
-        await ref.read(authServiceProvider).logout(prefs);
-        await ref.read(appStorageProvider)?.logout();
-        ref.read(userSessionProvider.notifier).state = null;
-        ref.read(authSessionProvider.notifier).state = null;
-        if (mounted) context.go('/login');
-      },
-    );
+    final restored = await ref.read(authServiceProvider).restoreAuthSession();
+    if (restored != null) {
+      ref.read(authSessionProvider.notifier).state = restored;
+    }
 
     if (!storage.isLanguageSelected) {
       if (!mounted) return;

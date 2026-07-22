@@ -8,7 +8,9 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -216,7 +218,7 @@ class Product(Base):
     seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id"), index=True)
     name: Mapped[str] = mapped_column(String(160))
     description: Mapped[str] = mapped_column(Text, default="")
-    price_mad: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_mad: Mapped[float | None] = mapped_column(Numeric(12, 2, asdecimal=False), nullable=True)
     price_negotiable: Mapped[bool] = mapped_column(Boolean, default=False)
     availability_note: Mapped[str] = mapped_column(String(160), default="")
     accepted_payment_methods: Mapped[list] = mapped_column(JSONB, default=list)
@@ -242,7 +244,7 @@ class Service(Base):
     seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id"), index=True)
     name: Mapped[str] = mapped_column(String(160))
     description: Mapped[str] = mapped_column(Text, default="")
-    price_mad: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_mad: Mapped[float | None] = mapped_column(Numeric(12, 2, asdecimal=False), nullable=True)
     price_negotiable: Mapped[bool] = mapped_column(Boolean, default=False)
     coverage_areas: Mapped[list] = mapped_column(JSONB, default=list)
     image_url: Mapped[str] = mapped_column(String(512), default="")
@@ -286,6 +288,11 @@ class WarningZone(Base):
 
 class Favorite(Base):
     __tablename__ = "favorites"
+    __table_args__ = (
+        # Partial uniqueness is enforced in migration 008; keep ORM indexes aligned.
+        Index("ix_favorites_user_product", "user_id", "product_id"),
+        Index("ix_favorites_user_seller", "user_id", "seller_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -308,7 +315,7 @@ class SellerFollow(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id", ondelete="CASCADE"))
+    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -410,7 +417,7 @@ class SubscriptionPlan(Base):
     code: Mapped[str] = mapped_column(String(40), unique=True)
     name: Mapped[str] = mapped_column(String(80))
     description: Mapped[str] = mapped_column(Text, default="")
-    price_mad: Mapped[float] = mapped_column(Float)
+    price_mad: Mapped[float] = mapped_column(Numeric(12, 2, asdecimal=False))
     billing_period_days: Mapped[int] = mapped_column(Integer, default=30)
     features: Mapped[list] = mapped_column(JSONB, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

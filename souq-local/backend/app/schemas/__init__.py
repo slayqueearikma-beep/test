@@ -1,10 +1,29 @@
 from datetime import datetime
 from enum import Enum
+from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.services.password_policy import validate_password_strength
+
+
+def _validate_http_url(value: str, *, field_name: str = "url") -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        return ""
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"{field_name} must be an absolute http(s) URL")
+    if len(cleaned) > 2048:
+        raise ValueError(f"{field_name} is too long")
+    return cleaned
+
+
+def _validate_media_urls(urls: list[str]) -> list[str]:
+    if len(urls) > 12:
+        raise ValueError("At most 12 media URLs are allowed")
+    return [_validate_http_url(u, field_name="media_urls") for u in urls if u and u.strip()]
 
 
 class AccountType(str, Enum):
@@ -125,6 +144,16 @@ class ProductCreate(BaseModel):
     stock_quantity: int = Field(default=1, ge=0, le=1_000_000)
     is_featured: bool = False
 
+    @field_validator("image_url", "video_url")
+    @classmethod
+    def validate_optional_urls(cls, value: str) -> str:
+        return _validate_http_url(value)
+
+    @field_validator("media_urls")
+    @classmethod
+    def validate_media(cls, value: list[str]) -> list[str]:
+        return _validate_media_urls(value)
+
 
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
@@ -143,6 +172,20 @@ class ProductUpdate(BaseModel):
     is_hidden: bool | None = None
     is_featured: bool | None = None
     is_paused: bool | None = None
+
+    @field_validator("image_url", "video_url")
+    @classmethod
+    def validate_optional_urls(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _validate_http_url(value)
+
+    @field_validator("media_urls")
+    @classmethod
+    def validate_media(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return _validate_media_urls(value)
 
 
 class ProductOut(BaseModel):

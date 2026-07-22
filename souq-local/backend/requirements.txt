@@ -9,10 +9,9 @@ pydantic[email]==2.10.3
 python-multipart==0.0.20
 firebase-admin==6.6.0
 httpx==0.28.1
-python-jose[cryptography]==3.3.0
+PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
 bcrypt==4.2.1
 slowapi==0.1.9
 azure-storage-blob==12.24.0
-pytest==8.3.4
-pytest-asyncio==0.25.0
+redis==5.2.1

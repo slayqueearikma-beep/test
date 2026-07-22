@@ -4,6 +4,8 @@ Discover Morocco's hidden gems. Buyers find shops, services, and local sellers; 
 
 MarGem is a **discovery and connection** platform — not a traditional e-commerce checkout app. Transactions happen outside the platform. Full product capabilities are documented in [docs/MARKETPLACE_PRODUCTION.md](docs/MARKETPLACE_PRODUCTION.md).
 
+Production readiness (score, blockers, checklist): [docs/PRODUCTION_READINESS_AUDIT.md](docs/PRODUCTION_READINESS_AUDIT.md).
+
 ## Stack
 
 | Layer | Technology |
@@ -46,12 +48,12 @@ terraform init && terraform apply
 ## Security features
 
 - bcrypt password hashing
-- JWT access tokens (7-day expiry, configurable)
-- Rate limiting (120 req/min default)
+- JWT access tokens (default 60 minutes) + refresh tokens (default 7 days)
+- Rate limiting (default 300/minute global, 30/minute auth)
 - Security headers (HSTS, X-Frame-Options, nosniff)
-- CORS restricted via environment
-- `AUTH_DEV_BYPASS=false` in production
-- Azure Key Vault for secrets
+- CORS / ALLOWED_HOSTS restricted in production (no wildcards)
+- `AUTH_DEV_BYPASS=false` and non-default JWT required in production
+- Azure Key Vault for secrets (Terraform path)
 - PostgreSQL SSL in Azure
 
 ## Project structure
