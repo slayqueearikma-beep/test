@@ -95,6 +95,7 @@ def _validate_owner_media(url: str, user_id: UUID) -> str:
             url or "",
             owner_user_id=user_id,
             container=settings.azure_storage_container,
+            public_api_url=settings.public_api_url,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

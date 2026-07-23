@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -21,6 +22,7 @@ from app.middleware.request_limits import RequestSizeLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 from app.models import SubscriptionPlan
 from app.routers import auth, catalog, discovery, seller_ops, sellers, uploads
+from app.services.local_storage import media_root
 from app.telemetry import configure_telemetry
 
 configure_logging(json_logs=settings.app_env in {"production", "prod"})
@@ -114,6 +116,13 @@ app.include_router(sellers.router)
 app.include_router(uploads.router)
 app.include_router(discovery.router)
 app.include_router(seller_ops.router)
+
+if settings.storage_backend == "local":
+    app.mount(
+        "/media",
+        StaticFiles(directory=str(media_root())),
+        name="media",
+    )
 
 
 def _request_id(request: Request) -> str:

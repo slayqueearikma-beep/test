@@ -25,3 +25,25 @@ def test_media_url_owner_prefix():
     assert validate_media_url("", owner_user_id=user_id, container="margem-media") == ""
     with pytest.raises(ValueError):
         validate_media_url("http://evil.com/x.jpg", owner_user_id=user_id, container="margem-media")
+
+
+def test_local_media_url_allowed_on_public_api_host():
+    user_id = uuid4()
+    url = f"http://192.168.1.10:8000/media/{user_id}/photo.jpg"
+    assert (
+        validate_media_url(
+            url,
+            owner_user_id=user_id,
+            container="margem-media",
+            public_api_url="http://192.168.1.10:8000",
+        )
+        == url
+    )
+    with pytest.raises(ValueError):
+        validate_media_url(
+            url,
+            owner_user_id=uuid4(),
+            container="margem-media",
+            public_api_url="http://192.168.1.10:8000",
+        )
+

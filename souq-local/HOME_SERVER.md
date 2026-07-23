@@ -1,18 +1,29 @@
-# MarGem Home Server — Laptop + Azure Blob
+# MarGem Home Server — Laptop API + local (or Azure) images
 
-Run the API and database on **your laptop**, store images in **Azure Blob** (~$1–3/month).
+Run the API and database on **your laptop**. Images default to **local disk** on the
+laptop (no Azure required). Optionally point `STORAGE_BACKEND=azure` at Blob (~$1–3/month).
 
 ## Architecture
 
 ```
-Your laptop (Linux)          Azure (~$1-3/mo)
-┌─────────────────────┐      ┌──────────────────┐
-│ Docker              │      │ Blob Storage     │
-│  ├── Postgres       │      │  margem-media/   │
-│  └── FastAPI :8000  │─────▶│  (images only)   │
-└─────────────────────┘      └──────────────────┘
+Your laptop (Linux)
+┌─────────────────────────────┐
+│ Docker                      │
+│  ├── Postgres               │
+│  ├── FastAPI :8000          │
+│  └── /data/media (images)   │
+└─────────────────────────────┘
          ▲
     Phone / users
+```
+
+Optional Azure mode:
+
+```
+Your laptop                    Azure (~$1-3/mo)
+┌─────────────────────┐      ┌──────────────────┐
+│ Docker API+Postgres │─────▶│ Blob margem-media│
+└─────────────────────┘      └──────────────────┘
 ```
 
 ## Setup (one time)
@@ -29,26 +40,10 @@ git clone <your-repo>
 cd souq-local
 ```
 
-### On Windows (setup Azure blob from your dev PC)
-
-```powershell
-cd souq-local
-.\setup_azure_blob.ps1
-```
-
-Or on the laptop with Terraform:
-
-```bash
-cd infra/terraform-storage
-cp terraform.tfvars.example terraform.tfvars
-# edit subscription_id
-terraform init && terraform apply
-```
-
 ### Configure `.env.home`
 
-```powershell
-copy env.home.example .env.home
+```bash
+cp env.home.example .env.home
 ```
 
 Edit `.env.home`:
@@ -57,9 +52,11 @@ Edit `.env.home`:
 |----------|---------|
 | `POSTGRES_PASSWORD` | Strong password |
 | `JWT_SECRET_KEY` | 32+ random chars |
-| `AZURE_STORAGE_CONNECTION_STRING` | From `setup_azure_blob.ps1` |
-| `ALLOWED_HOSTS` | `["192.168.1.50","192.168.1.50:8000"]` — your laptop LAN IP |
-| `CORS_ORIGINS` | `["http://192.168.1.50:8000"]` |
+| `STORAGE_BACKEND` | `local` (default) or `azure` |
+| `PUBLIC_API_URL` | `http://192.168.1.50:8000` — **must** be the LAN IP your phone uses |
+| `ALLOWED_HOSTS` | `localhost,127.0.0.1,192.168.1.50` |
+| `CORS_ORIGINS` | `http://192.168.1.50:8000` |
+| `AZURE_STORAGE_CONNECTION_STRING` | Only if `STORAGE_BACKEND=azure` |
 
 Find laptop IP:
 
@@ -98,6 +95,7 @@ docker compose -f docker-compose.home.yml --env-file .env.home down
 ```
 
 **Windows (if laptop runs Windows):**
+
 
 ```powershell
 .\start_home_server.ps1

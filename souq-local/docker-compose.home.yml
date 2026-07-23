@@ -1,5 +1,8 @@
-# MarGem home server — laptop runs API + Postgres, Azure Blob stores images
+# MarGem home server — laptop runs API + Postgres + local image storage
 # Usage: docker compose -f docker-compose.home.yml --env-file .env.home up -d --build
+#
+# Default STORAGE_BACKEND=local stores images on the laptop (no Azure required).
+# Set STORAGE_BACKEND=azure + AZURE_STORAGE_CONNECTION_STRING to use Blob instead.
 
 services:
   postgres:
@@ -32,7 +35,9 @@ services:
       AUTH_DEV_BYPASS: "false"
       DATABASE_URL: postgresql+asyncpg://margemadmin:${POSTGRES_PASSWORD}@postgres:5432/margem
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_MEDIA_ROOT: /data/media
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
       AZURE_STORAGE_CONTAINER: margem-media
       CORS_ORIGINS: ${CORS_ORIGINS}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
@@ -41,12 +46,15 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-MarGem <noreply@margem.ma>}
+      ALLOW_INSECURE_EMAIL_FALLBACK: ${ALLOW_INSECURE_EMAIL_FALLBACK:-true}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8000}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
       JWT_ACCESS_EXPIRE_MINUTES: "60"
       JWT_REFRESH_EXPIRE_DAYS: "7"
       RATE_LIMIT: ${RATE_LIMIT:-300/minute}
       AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-30/minute}
+    volumes:
+      - margem_home_media:/data/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,3 +67,4 @@ services:
 
 volumes:
   margem_home_pg:
+  margem_home_media:

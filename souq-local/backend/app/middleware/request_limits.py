@@ -25,6 +25,12 @@ class RequestSizeLimitMiddleware:
             return
 
         max_bytes = self.max_bytes
+        path = scope.get("path") or ""
+        if isinstance(path, bytes):
+            path = path.decode("latin-1", errors="ignore")
+        if path.startswith("/uploads/local"):
+            max_bytes = max(max_bytes, int(getattr(settings, "max_upload_bytes", 8_388_608)))
+
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
         content_length = headers.get("content-length")
         if content_length is not None:
