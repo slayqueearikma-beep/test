@@ -72,24 +72,22 @@ async def _resolve_user_from_credentials(
     return user
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-    session: AsyncSession = Depends(get_db),
-) -> User:
-    user = await _resolve_user_from_credentials(credentials, session, required=True)
-    assert user is not None
+async def _enforce_account_state(user: User, session: AsyncSession) -> User:
+    """Reject suspended/deleted accounts and soft-expire premium flags."""
     from datetime import UTC, datetime
 
     from app.models import SellerProfile, UserStatus
+    from app.services.premium import is_premium_active
 
     if getattr(user, "status", None) == UserStatus.SUSPENDED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
     if getattr(user, "status", None) == UserStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account deleted")
 
-    # Soft-expire premium flags when the paid period has ended.
     premium_until = getattr(user, "premium_until", None)
-    if user.is_premium and premium_until is not None and premium_until < datetime.now(UTC):
+    if user.is_premium and not is_premium_active(
+        is_premium=True, premium_until=premium_until
+    ):
         user.is_premium = False
         seller = (
             await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
@@ -101,11 +99,23 @@ async def get_current_user(
     return user
 
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    session: AsyncSession = Depends(get_db),
+) -> User:
+    user = await _resolve_user_from_credentials(credentials, session, required=True)
+    assert user is not None
+    return await _enforce_account_state(user, session)
+
+
 async def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     session: AsyncSession = Depends(get_db),
 ) -> User | None:
-    return await _resolve_user_from_credentials(credentials, session, required=False)
+    user = await _resolve_user_from_credentials(credentials, session, required=False)
+    if user is None:
+        return None
+    return await _enforce_account_state(user, session)
 
 
 async def verify_firebase_token(token: str) -> str:

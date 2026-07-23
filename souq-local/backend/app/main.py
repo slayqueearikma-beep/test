@@ -21,8 +21,10 @@ from app.middleware.request_limits import RequestSizeLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 from app.models import SubscriptionPlan
 from app.routers import auth, catalog, discovery, seller_ops, sellers, uploads
+from app.telemetry import configure_telemetry
 
 configure_logging(json_logs=settings.app_env in {"production", "prod"})
+configure_telemetry()
 
 
 @asynccontextmanager

@@ -603,6 +603,29 @@ class AppStringsEn extends AppStrings {
   @override
   String get noPremiumPlans => 'No premium plans are available right now.';
   @override
+  String get premiumBillingUnavailable =>
+      'Self-serve billing is not enabled yet. Contact MarGem support or ask an admin to grant premium visibility.';
+  @override
+  String get premiumContactSupport => 'Contact support';
+  @override
+  String get verifyEmailTitle => 'Verify your email';
+  @override
+  String get verifyEmailSubtitle =>
+      'Enter the verification code from your email, or open the link we sent you.';
+  @override
+  String get verifyEmailAction => 'Verify email';
+  @override
+  String get verificationCode => 'Verification code';
+  @override
+  String get verificationCodeRequired =>
+      'Enter the verification code from your email';
+  @override
+  String get emailVerifiedSuccess => 'Your email is verified';
+  @override
+  String get verificationEmailSent => 'Verification email sent';
+  @override
+  String get resendVerificationEmail => 'Resend verification email';
+  @override
   String get premiumTitle => 'Grow with MarGem Premium';
   @override
   String get premiumSubtitle =>

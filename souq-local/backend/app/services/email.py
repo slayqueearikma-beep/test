@@ -24,13 +24,25 @@ def _safe_preview(text: str, limit: int = 200) -> str:
     return redacted.replace("\n", " ")[:limit]
 
 
+def _mask_email(address: str) -> str:
+    """Reduce PII in logs while keeping enough shape for ops triage."""
+    value = (address or "").strip()
+    if "@" not in value:
+        return "[redacted]"
+    local, _, domain = value.partition("@")
+    if not local:
+        return f"[redacted]@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
 class EmailService:
     def send(self, *, to: str, subject: str, text_body: str, html_body: str | None = None) -> dict:
         """Send email. Never raises to callers — SMTP outages are logged and returned."""
+        masked = _mask_email(to)
         if not settings.smtp_host:
             logger.info(
                 "email_dev_fallback to=%s subject=%s body=%s",
-                to,
+                masked,
                 subject,
                 _safe_preview(text_body),
             )
@@ -52,10 +64,10 @@ class EmailService:
                     smtp.login(settings.smtp_username, settings.smtp_password)
                 smtp.send_message(message)
         except (OSError, smtplib.SMTPException) as exc:
-            logger.exception("email_send_failed to=%s subject=%s error=%s", to, subject, exc)
+            logger.exception("email_send_failed to=%s subject=%s error=%s", masked, subject, exc)
             return {"delivered": False, "mode": "smtp_error", "error": type(exc).__name__}
 
-        logger.info("email_sent to=%s subject=%s", to, subject)
+        logger.info("email_sent to=%s subject=%s", masked, subject)
         return {"delivered": True, "mode": "smtp"}
 
 

@@ -288,6 +288,16 @@ abstract class AppStrings {
   String get emptyFavoritesSubtitle;
   String get premiumActivated;
   String get noPremiumPlans;
+  String get premiumBillingUnavailable;
+  String get premiumContactSupport;
+  String get verifyEmailTitle;
+  String get verifyEmailSubtitle;
+  String get verifyEmailAction;
+  String get verificationCode;
+  String get verificationCodeRequired;
+  String get emailVerifiedSuccess;
+  String get verificationEmailSent;
+  String get resendVerificationEmail;
   String get premiumTitle;
   String get premiumSubtitle;
   String activePlan(String name);

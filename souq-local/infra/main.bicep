@@ -16,6 +16,29 @@ param postgresAdminPassword string
 @secure()
 param jwtSecretKey string
 
+@description('SMTP host for transactional email')
+param smtpHost string
+
+@description('SMTP port')
+param smtpPort int = 587
+
+@description('SMTP username')
+@secure()
+param smtpUsername string = ''
+
+@description('SMTP password')
+@secure()
+param smtpPassword string = ''
+
+@description('SMTP from address')
+param smtpFrom string = 'MarGem <noreply@margem.ma>'
+
+@description('Public app URL used in email deep links')
+param publicAppUrl string = 'https://margem.ma'
+
+@description('Public API URL')
+param publicApiUrl string = 'https://api.margem.ma'
+
 @description('Container image for the MarGem API (ACR or Docker Hub)')
 param apiImage string = 'margemapi:latest'
 
@@ -136,6 +159,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'storage-conn'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
         }
+        {
+          name: 'smtp-password'
+          value: smtpPassword
+        }
       ]
     }
     template: {
@@ -159,13 +186,21 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'ALLOWED_HOSTS', value: 'api.margem.ma,localhost,127.0.0.1' }
             { name: 'AUTH_RATE_LIMIT', value: '30/minute' }
             { name: 'RATE_LIMIT', value: '300/minute' }
-            { name: 'PUBLIC_APP_URL', value: 'https://margem.ma' }
+            { name: 'PUBLIC_APP_URL', value: publicAppUrl }
+            { name: 'PUBLIC_API_URL', value: publicApiUrl }
+            { name: 'SMTP_HOST', value: smtpHost }
+            { name: 'SMTP_PORT', value: string(smtpPort) }
+            { name: 'SMTP_USERNAME', value: smtpUsername }
+            { name: 'SMTP_PASSWORD', secretRef: 'smtp-password' }
+            { name: 'SMTP_FROM', value: smtpFrom }
+            { name: 'SMTP_USE_TLS', value: 'true' }
+            { name: 'ALLOW_INSECURE_EMAIL_FALLBACK', value: 'false' }
           ]
         }
       ]
       scale: {
-        minReplicas: 0
-        maxReplicas: 3
+        minReplicas: 1
+        maxReplicas: 1
       }
     }
   }

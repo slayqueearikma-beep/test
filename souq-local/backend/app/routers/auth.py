@@ -40,6 +40,19 @@ from app.services.security import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _auth_action_body(*, path: str, token: str, intro: str) -> str:
+    """Include HTTPS web + custom-scheme deep links so mobile opens the app with the token."""
+    base = settings.public_app_url.rstrip("/")
+    web = f"{base}{path}?token={token}"
+    deep = f"margem://app{path}?token={token}"
+    return (
+        f"{intro}\n\n"
+        f"Open in the MarGem app:\n{deep}\n\n"
+        f"Or use this link:\n{web}\n\n"
+        f"Code: {token}"
+    )
+
+
 class EmailRequest(BaseModel):
     email: EmailStr
 
@@ -147,11 +160,14 @@ async def register(
     await session.flush()
 
     verify_token = await _issue_auth_token(session, user.id, "email_verify", hours=48)
-    verify_link = f"{settings.public_app_url}/verify-email?token={verify_token}"
     delivery = email_service.send(
         to=user.email,
         subject="Verify your MarGem email",
-        text_body=f"Welcome to MarGem.\n\nVerify your email:\n{verify_link}\n\nCode: {verify_token}",
+        text_body=_auth_action_body(
+            path="/verify-email",
+            token=verify_token,
+            intro="Welcome to MarGem. Verify your email to secure your account.",
+        ),
     )
     log_security_event("register_success", user_id=str(user.id), account_type=user.account_type.value)
 
@@ -353,7 +369,11 @@ async def request_email_verification(
     email_service.send(
         to=user.email,
         subject="Verify your MarGem email",
-        text_body=f"Verify your email:\n{settings.public_app_url}/verify-email?token={token}\n\nCode: {token}",
+        text_body=_auth_action_body(
+            path="/verify-email",
+            token=token,
+            intro="Verify your MarGem email address.",
+        ),
     )
 
 
@@ -398,9 +418,10 @@ async def request_password_reset(
     email_service.send(
         to=user.email,
         subject="Reset your MarGem password",
-        text_body=(
-            f"Reset your password:\n{settings.public_app_url}/reset-password?token={token}\n\n"
-            f"If you did not request this, ignore this email.\nCode: {token}"
+        text_body=_auth_action_body(
+            path="/reset-password",
+            token=token,
+            intro="Reset your MarGem password. If you did not request this, ignore this email.",
         ),
     )
 
@@ -475,12 +496,19 @@ async def delete_account(
         await session.execute(sql_delete(Conversation).where(Conversation.id.in_(buyer_conversations)))
 
     if profile is not None:
+        from app.models import Product, SellerCategory, Service
+
         seller_conversations = (
             await session.execute(select(Conversation.id).where(Conversation.seller_id == profile.id))
         ).scalars().all()
         if seller_conversations:
             await session.execute(sql_delete(Message).where(Message.conversation_id.in_(seller_conversations)))
             await session.execute(sql_delete(Conversation).where(Conversation.id.in_(seller_conversations)))
+        # Clear association + owned rows before deleting the storefront (no ON DELETE CASCADE).
+        await session.execute(sql_delete(SellerCategory).where(SellerCategory.seller_id == profile.id))
+        await session.execute(sql_delete(Product).where(Product.seller_id == profile.id))
+        await session.execute(sql_delete(Service).where(Service.seller_id == profile.id))
+        await session.execute(sql_delete(Review).where(Review.seller_id == profile.id))
         await session.delete(profile)
 
     for model, column in (

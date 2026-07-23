@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
@@ -50,8 +52,11 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
       }
     } on ApiException catch (error) {
       if (mounted) {
+        final message = error.statusCode == 503
+            ? l10n.premiumBillingUnavailable
+            : error.message;
         await showAppErrorDialog(context,
-            title: l10n.somethingWentWrong, message: error.message);
+            title: l10n.somethingWentWrong, message: message);
       }
     } finally {
       if (mounted) setState(() => _subscribingCode = null);
@@ -133,6 +138,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     plan: plan,
                     active: active?.plan.code == plan.code,
                     loading: _subscribingCode == plan.code,
+                    selfServeEnabled: !AppConfig.isProduction,
                     onSubscribe: () => _subscribe(plan),
                   ),
                 ),
@@ -150,12 +156,14 @@ class _PlanCard extends StatelessWidget {
     required this.plan,
     required this.active,
     required this.loading,
+    required this.selfServeEnabled,
     required this.onSubscribe,
   });
 
   final SubscriptionPlanModel plan;
   final bool active;
   final bool loading;
+  final bool selfServeEnabled;
   final VoidCallback onSubscribe;
 
   @override
@@ -210,15 +218,41 @@ class _PlanCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppSpacing.md),
-            FilledButton(
-              onPressed: active || loading ? null : onSubscribe,
-              child: loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(active ? l10n.currentPlan : l10n.subscribe),
-            ),
+            if (!selfServeEnabled && !active) ...[
+              Text(
+                l10n.premiumBillingUnavailable,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: () async {
+                  final uri = Uri(
+                    scheme: 'mailto',
+                    path: 'support@margem.ma',
+                    queryParameters: {
+                      'subject': 'MarGem Premium',
+                    },
+                  );
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+                child: Text(l10n.premiumContactSupport),
+              ),
+            ] else
+              FilledButton(
+                onPressed: active || loading ? null : onSubscribe,
+                child: loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(active ? l10n.currentPlan : l10n.subscribe),
+              ),
           ],
         ),
       ),

@@ -141,6 +141,15 @@ class _SellerSettingsScreenState extends ConsumerState<SellerSettingsScreen> {
             },
           ),
           const SizedBox(height: AppSpacing.xl),
+          Text(l10n.verifyEmailTitle, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.mark_email_unread_outlined),
+            title: Text(l10n.resendVerificationEmail),
+            onTap: () => context.push('/verify-email'),
+          ),
+          const SizedBox(height: AppSpacing.xl),
           Text(l10n.changePassword, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.md),
           TextField(

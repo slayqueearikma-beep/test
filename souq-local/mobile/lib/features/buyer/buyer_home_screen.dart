@@ -1033,6 +1033,18 @@ class BuyerProfileScreen extends ConsumerWidget {
               subtitle: Text(session?.city ?? '—'),
             ),
             const LanguageSettingsTile(),
+            if (!isGuest)
+              ListTile(
+                leading: const Icon(Icons.mark_email_unread_outlined),
+                title: Text(l10n.verifyEmailTitle),
+                onTap: () => context.push('/verify-email'),
+              ),
+            if (!isGuest)
+              ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: Text(l10n.changePassword),
+                onTap: () => _changePasswordDialog(context),
+              ),
             ListTile(
               leading: const Icon(Icons.dark_mode_outlined),
               title: Text(l10n.darkMode),
@@ -1076,6 +1088,73 @@ class BuyerProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _changePasswordDialog(BuildContext context) async {
+    final l10n = context.l10n;
+    final current = TextEditingController();
+    final next = TextEditingController();
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.changePassword),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: current,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.currentPassword),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: next,
+                obscureText: true,
+                decoration: InputDecoration(labelText: l10n.newPassword),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.saveChanges),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+      if (current.text.isEmpty || next.text.length < 8) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.completeRequiredStep)),
+        );
+        return;
+      }
+      await apiServiceProvider.changePassword(
+        currentPassword: current.text,
+        newPassword: next.text,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.passwordChanged)),
+        );
+      }
+    } on ApiException catch (error) {
+      if (context.mounted) {
+        await showAppErrorDialog(
+          context,
+          title: l10n.somethingWentWrong,
+          message: error.message,
+        );
+      }
+    } finally {
+      current.dispose();
+      next.dispose();
+    }
   }
 
   Future<void> _confirmDeleteAccount(

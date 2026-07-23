@@ -52,12 +52,19 @@ async def _load_seller_detail(session: AsyncSession, seller_id: UUID) -> SellerP
             selectinload(SellerProfile.categories),
             selectinload(SellerProfile.products),
             selectinload(SellerProfile.services),
+            selectinload(SellerProfile.user),
         )
         .where(SellerProfile.id == seller_id)
     )
     seller = result.scalar_one_or_none()
     if seller is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seller not found")
+    from app.services.premium import apply_seller_premium_expiry
+
+    before = seller.is_premium
+    apply_seller_premium_expiry(seller, persist=True)
+    if before and not seller.is_premium:
+        await session.commit()
     return seller
 
 
@@ -119,7 +126,10 @@ async def list_sellers(
 ) -> list[SellerProfile]:
     stmt = (
         select(SellerProfile)
-        .options(selectinload(SellerProfile.categories))
+        .options(
+            selectinload(SellerProfile.categories),
+            selectinload(SellerProfile.user),
+        )
         .where(SellerProfile.is_active.is_(True))
     )
 
@@ -143,7 +153,20 @@ async def list_sellers(
         .limit(limit)
         .offset(offset)
     )
-    return list(result.scalars().unique().all())
+    sellers = list(result.scalars().unique().all())
+    from app.services.premium import apply_seller_premium_expiry
+
+    dirty = False
+    for seller in sellers:
+        before = seller.is_premium
+        apply_seller_premium_expiry(seller, persist=True)
+        if before and not seller.is_premium:
+            dirty = True
+    if dirty:
+        await session.commit()
+    # Prefer still-premium first after expiry corrections.
+    sellers.sort(key=lambda s: (not s.is_premium, -(s.average_rating or 0.0)))
+    return sellers
 
 
 @router.get("/map", response_model=list[MapPin])

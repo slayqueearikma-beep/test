@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     auth_rate_limit: str = "30/minute"
     max_request_body_bytes: int = 1_048_576
     redis_url: str = ""
+    allow_insecure_email_fallback: bool = False
 
     smtp_host: str = ""
     smtp_port: int = 587
@@ -119,13 +120,20 @@ class Settings(BaseSettings):
                 raise ValueError("ALLOWED_HOSTS must not include '*' in production")
             if not self.azure_storage_connection_string:
                 raise ValueError("AZURE_STORAGE_CONNECTION_STRING is required in production")
-            if not self.smtp_host:
+            if not self.smtp_host and not self.allow_insecure_email_fallback:
+                raise ValueError(
+                    "SMTP_HOST is required in production (set ALLOW_INSECURE_EMAIL_FALLBACK=true "
+                    "only for emergency break-glass when outbound mail is unavailable)"
+                )
+            if not self.smtp_host and self.allow_insecure_email_fallback:
                 logger.warning(
-                    "SMTP_HOST is empty in production — password reset and verification emails "
-                    "will only be logged, not delivered"
+                    "ALLOW_INSECURE_EMAIL_FALLBACK enabled — password reset and verification "
+                    "emails will only be logged, not delivered"
                 )
             if self.public_api_url.startswith("http://") and "localhost" not in self.public_api_url:
-                logger.warning("PUBLIC_API_URL should use HTTPS in production")
+                raise ValueError("PUBLIC_API_URL must use HTTPS in production (non-localhost)")
+            if self.public_app_url.startswith("http://") and "localhost" not in self.public_app_url:
+                raise ValueError("PUBLIC_APP_URL must use HTTPS in production (non-localhost)")
         return self
 
 

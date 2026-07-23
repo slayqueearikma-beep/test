@@ -613,6 +613,29 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get noPremiumPlans => 'Aucun plan premium disponible pour le moment.';
   @override
+  String get premiumBillingUnavailable =>
+      'La facturation libre-service n’est pas encore activée. Contactez le support MarGem ou un administrateur pour activer le premium.';
+  @override
+  String get premiumContactSupport => 'Contacter le support';
+  @override
+  String get verifyEmailTitle => 'Vérifiez votre e-mail';
+  @override
+  String get verifyEmailSubtitle =>
+      'Saisissez le code reçu par e-mail, ou ouvrez le lien que nous vous avons envoyé.';
+  @override
+  String get verifyEmailAction => 'Vérifier l’e-mail';
+  @override
+  String get verificationCode => 'Code de vérification';
+  @override
+  String get verificationCodeRequired =>
+      'Saisissez le code de vérification reçu par e-mail';
+  @override
+  String get emailVerifiedSuccess => 'Votre e-mail est vérifié';
+  @override
+  String get verificationEmailSent => 'E-mail de vérification envoyé';
+  @override
+  String get resendVerificationEmail => 'Renvoyer l’e-mail de vérification';
+  @override
   String get premiumTitle => 'Développez-vous avec MarGem Premium';
   @override
   String get premiumSubtitle =>

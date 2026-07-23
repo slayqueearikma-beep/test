@@ -165,9 +165,15 @@ resource "azurerm_container_app" "api" {
     identity            = azurerm_user_assigned_identity.api.id
   }
 
+  secret {
+    name                = "smtp-password"
+    key_vault_secret_id = azurerm_key_vault_secret.smtp_password.versionless_id
+    identity            = azurerm_user_assigned_identity.api.id
+  }
+
   template {
     min_replicas = var.min_replicas
-    max_replicas = 3
+    max_replicas = 1
 
     container {
       name   = "margem-api"
@@ -221,7 +227,47 @@ resource "azurerm_container_app" "api" {
       }
       env {
         name  = "AUTH_RATE_LIMIT"
-        value = "5/minute"
+        value = "30/minute"
+      }
+      env {
+        name  = "RATE_LIMIT"
+        value = "300/minute"
+      }
+      env {
+        name  = "PUBLIC_APP_URL"
+        value = var.public_app_url
+      }
+      env {
+        name  = "PUBLIC_API_URL"
+        value = var.public_api_url
+      }
+      env {
+        name  = "SMTP_HOST"
+        value = var.smtp_host
+      }
+      env {
+        name  = "SMTP_PORT"
+        value = tostring(var.smtp_port)
+      }
+      env {
+        name  = "SMTP_USERNAME"
+        value = var.smtp_username
+      }
+      env {
+        name        = "SMTP_PASSWORD"
+        secret_name = "smtp-password"
+      }
+      env {
+        name  = "SMTP_FROM"
+        value = var.smtp_from
+      }
+      env {
+        name  = "SMTP_USE_TLS"
+        value = tostring(var.smtp_use_tls)
+      }
+      env {
+        name  = "ALLOW_INSECURE_EMAIL_FALLBACK"
+        value = "false"
       }
       env {
         name  = "APPLICATIONINSIGHTS_CONNECTION_STRING"
@@ -247,5 +293,6 @@ resource "azurerm_container_app" "api" {
     azurerm_key_vault_secret.database_url,
     azurerm_key_vault_secret.jwt_secret,
     azurerm_key_vault_secret.storage_connection,
+    azurerm_key_vault_secret.smtp_password,
   ]
 }

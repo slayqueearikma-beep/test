@@ -26,9 +26,42 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Enable Flutter engine deep linking for margem:// and https://margem.ma -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Deep links for password reset and email verification -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="margem" android:host="app" android:pathPrefix="/reset-password"/>
+                <data android:scheme="margem" android:host="app" android:pathPrefix="/verify-email"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="margem.ma"
+                    android:pathPrefix="/reset-password"/>
+                <data
+                    android:scheme="https"
+                    android:host="margem.ma"
+                    android:pathPrefix="/verify-email"/>
+                <data
+                    android:scheme="https"
+                    android:host="www.margem.ma"
+                    android:pathPrefix="/reset-password"/>
+                <data
+                    android:scheme="https"
+                    android:host="www.margem.ma"
+                    android:pathPrefix="/verify-email"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

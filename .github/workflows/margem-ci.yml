@@ -50,6 +50,45 @@ jobs:
           PYTHONPATH: .
           DATABASE_URL: postgresql+asyncpg://souq:souq_local_dev@localhost:5432/souq_local
           JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters-long
+      - name: Production settings smoke
+        run: |
+          python - <<'PY'
+          from pydantic import ValidationError
+          from app.config import Settings
+          Settings(
+              _env_file=None,
+              app_env="production",
+              debug=False,
+              auth_dev_bypass=False,
+              jwt_secret_key="ci-production-secret-key-32chars-minxx",
+              cors_origins=["https://margem.ma"],
+              allowed_hosts=["api.margem.ma"],
+              azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
+              smtp_host="smtp.example.com",
+              public_app_url="https://margem.ma",
+              public_api_url="https://api.margem.ma",
+          )
+          try:
+              Settings(
+                  _env_file=None,
+                  app_env="production",
+                  debug=False,
+                  auth_dev_bypass=False,
+                  jwt_secret_key="ci-production-secret-key-32chars-minxx",
+                  cors_origins=["https://margem.ma"],
+                  allowed_hosts=["api.margem.ma"],
+                  azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
+                  smtp_host="",
+                  public_app_url="https://margem.ma",
+                  public_api_url="https://api.margem.ma",
+              )
+              raise SystemExit("expected SMTP validation failure")
+          except ValidationError:
+              pass
+          print("production settings smoke ok")
+          PY
+        env:
+          PYTHONPATH: .
 
   api-image:
     runs-on: ubuntu-latest
@@ -91,3 +130,6 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Assemble release APK (unsigned)
+        run: flutter build apk --release --dart-define=API_BASE_URL=https://api.margem.ma --dart-define=PRODUCTION=true
+        continue-on-error: false

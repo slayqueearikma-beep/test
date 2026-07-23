@@ -30,6 +30,12 @@ resource "azurerm_key_vault_secret" "storage_connection" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
+resource "azurerm_key_vault_secret" "smtp_password" {
+  name         = "smtp-password"
+  value        = var.smtp_password
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
 resource "azurerm_role_assignment" "api_key_vault_secrets_user" {
   scope                = azurerm_key_vault.kv.id
   role_definition_name = "Key Vault Secrets User"

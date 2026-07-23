@@ -10,6 +10,7 @@ import 'core/services/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/verify_email_screen.dart';
 import 'features/buyer/buyer_home_screen.dart';
 import 'features/map/map_screen.dart';
 import 'features/messages/messages_inbox_screen.dart';
@@ -87,6 +88,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reset-password',
         builder: (_, state) => ForgotPasswordScreen(
           resetMode: true,
+          initialToken: state.uri.queryParameters['token'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (_, state) => VerifyEmailScreen(
           initialToken: state.uri.queryParameters['token'] ?? '',
         ),
       ),

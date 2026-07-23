@@ -17,6 +17,9 @@ def test_production_rejects_default_jwt_secret():
             cors_origins=["https://margem.ma"],
             allowed_hosts=["api.margem.ma"],
             azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
+            smtp_host="smtp.example.com",
+            public_app_url="https://margem.ma",
+            public_api_url="https://api.margem.ma",
         )
 
 
@@ -31,6 +34,9 @@ def test_production_rejects_debug_true():
             cors_origins=["https://margem.ma"],
             allowed_hosts=["api.margem.ma"],
             azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
+            smtp_host="smtp.example.com",
+            public_app_url="https://margem.ma",
+            public_api_url="https://api.margem.ma",
         )
 
 
@@ -45,6 +51,8 @@ def test_production_accepts_rotated_secret():
         allowed_hosts=["api.margem.ma"],
         azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
         smtp_host="smtp.example.com",
+        public_app_url="https://margem.ma",
+        public_api_url="https://api.margem.ma",
     )
     assert settings.app_env == "production"
 

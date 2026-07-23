@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/services/crash_reporting.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Config-only base URL — never render it in the UI.
@@ -23,8 +24,16 @@ void main() {
     }
   }
 
+  await CrashReporting.ensureInitialized();
+
   FlutterError.onError = (details) {
+    CrashReporting.recordFlutterError(details);
     FlutterError.presentError(details);
   };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    CrashReporting.recordError(error, stack, fatal: true);
+    return true;
+  };
+
   runApp(const ProviderScope(child: MarGemApp()));
 }

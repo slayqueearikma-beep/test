@@ -600,6 +600,28 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get noPremiumPlans => 'لا توجد خطط بريميوم متاحة حالياً.';
   @override
+  String get premiumBillingUnavailable =>
+      'الاشتراك الذاتي غير مفعّل بعد. تواصل مع دعم MarGem أو اطلب من المسؤول منح البريميوم.';
+  @override
+  String get premiumContactSupport => 'تواصل مع الدعم';
+  @override
+  String get verifyEmailTitle => 'تحقق من بريدك';
+  @override
+  String get verifyEmailSubtitle =>
+      'أدخل رمز التحقق من بريدك، أو افتح الرابط الذي أرسلناه إليك.';
+  @override
+  String get verifyEmailAction => 'تحقق من البريد';
+  @override
+  String get verificationCode => 'رمز التحقق';
+  @override
+  String get verificationCodeRequired => 'أدخل رمز التحقق من بريدك';
+  @override
+  String get emailVerifiedSuccess => 'تم التحقق من بريدك';
+  @override
+  String get verificationEmailSent => 'تم إرسال رسالة التحقق';
+  @override
+  String get resendVerificationEmail => 'إعادة إرسال رسالة التحقق';
+  @override
   String get premiumTitle => 'نمّ عملك مع MarGem بريميوم';
   @override
   String get premiumSubtitle =>

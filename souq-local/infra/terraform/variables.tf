@@ -86,6 +86,55 @@ variable "allowed_hosts" {
   default     = "[\"margem-prod-api.azurecontainerapps.io\"]"
 }
 
+variable "public_app_url" {
+  description = "Public app / deep-link base URL used in transactional emails"
+  type        = string
+  default     = "https://margem.ma"
+}
+
+variable "public_api_url" {
+  description = "Public HTTPS API base URL"
+  type        = string
+  default     = "https://api.margem.ma"
+}
+
+variable "smtp_host" {
+  description = "SMTP host for transactional email (required for production mail delivery)"
+  type        = string
+}
+
+variable "smtp_port" {
+  description = "SMTP port"
+  type        = number
+  default     = 587
+}
+
+variable "smtp_username" {
+  description = "SMTP username"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "smtp_password" {
+  description = "SMTP password"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "smtp_from" {
+  description = "From header for transactional email"
+  type        = string
+  default     = "MarGem <noreply@margem.ma>"
+}
+
+variable "smtp_use_tls" {
+  description = "Whether to STARTTLS on the SMTP connection"
+  type        = bool
+  default     = true
+}
+
 variable "enable_key_vault_purge_protection" {
   description = "Enable Key Vault purge protection (recommended for production)"
   type        = bool

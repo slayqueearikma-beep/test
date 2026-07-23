@@ -7,8 +7,8 @@ ENV PYTHONUNBUFFERED=1
 
 RUN groupadd --system margem && useradd --system --gid margem --create-home margem
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-telemetry.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-telemetry.txt
 
 COPY app ./app
 COPY scripts ./scripts

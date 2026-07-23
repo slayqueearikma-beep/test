@@ -1,0 +1,4 @@
+# Optional APM for Azure Container Apps / App Insights.
+# Install into the production image when APPLICATIONINSIGHTS_CONNECTION_STRING is set:
+#   pip install -r requirements-telemetry.txt
+azure-monitor-opentelemetry==1.6.13

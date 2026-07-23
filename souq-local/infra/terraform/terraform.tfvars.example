@@ -30,3 +30,14 @@ allowed_hosts = "[\"margem-prod-sub1-api.azurecontainerapps.io\"]"
 
 # Restrict to your mobile app / web origins — no wildcard in production
 cors_origins = "[\"https://margem.app\"]"
+
+public_app_url = "https://margem.ma"
+public_api_url = "https://api.margem.ma"
+
+# Transactional email (required — API will refuse to boot in production without SMTP_HOST)
+smtp_host     = "smtp.example.com"
+smtp_port     = 587
+smtp_username = "apikey"
+smtp_password = "CHANGE_ME_SMTP_PASSWORD"
+smtp_from     = "MarGem <noreply@margem.ma>"
+smtp_use_tls  = true
