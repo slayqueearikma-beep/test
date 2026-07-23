@@ -195,6 +195,10 @@ class SellerProfile(Base):
     achievement_stars: Mapped[int] = mapped_column(Integer, default=0)
     average_rating: Mapped[float] = mapped_column(Float, default=0.0)
     review_count: Mapped[int] = mapped_column(Integer, default=0)
+    avg_product_quality: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_customer_service: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_communication: Mapped[float] = mapped_column(Float, default=0.0)
+    avg_trustworthiness: Mapped[float] = mapped_column(Float, default=0.0)
     verification_status: Mapped[VerificationStatus] = mapped_column(
         verification_status_enum, default=VerificationStatus.UNVERIFIED
     )
@@ -262,7 +266,12 @@ class Review(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id"), index=True)
     buyer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # Computed overall (rounded mean of the four category scores).
     rating: Mapped[int] = mapped_column(Integer)
+    product_quality: Mapped[int] = mapped_column(Integer)
+    customer_service: Mapped[int] = mapped_column(Integer)
+    communication: Mapped[int] = mapped_column(Integer)
+    trustworthiness: Mapped[int] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -271,6 +280,19 @@ class Review(Base):
 
     seller: Mapped[SellerProfile] = relationship(back_populates="reviews")
     buyer: Mapped[User] = relationship(back_populates="reviews_written")
+
+    @property
+    def overall_rating(self) -> float:
+        return round(
+            (
+                self.product_quality
+                + self.customer_service
+                + self.communication
+                + self.trustworthiness
+            )
+            / 4.0,
+            2,
+        )
 
 
 class WarningZone(Base):

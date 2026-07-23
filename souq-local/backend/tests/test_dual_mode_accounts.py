@@ -114,6 +114,33 @@ async def test_seller_can_review_another_business(client: AsyncClient):
     review = await client.post(
         f"/sellers/{store_b.json()['id']}/reviews",
         headers=seller_a["headers"],
-        json={"rating": 5, "comment": "Great neighbor shop"},
+        json={
+            "product_quality": 5,
+            "customer_service": 5,
+            "communication": 5,
+            "trustworthiness": 5,
+            "comment": "Great neighbor shop",
+        },
+    )
+    assert review.status_code == 403, review.text
+
+    contact = await client.post(
+        "/contact-events",
+        headers=seller_a["headers"],
+        json={"seller_id": store_b.json()["id"], "channel": "message"},
+    )
+    assert contact.status_code == 201, contact.text
+
+    review = await client.post(
+        f"/sellers/{store_b.json()['id']}/reviews",
+        headers=seller_a["headers"],
+        json={
+            "product_quality": 5,
+            "customer_service": 5,
+            "communication": 5,
+            "trustworthiness": 5,
+            "comment": "Great neighbor shop",
+        },
     )
     assert review.status_code == 201, review.text
+    assert review.json()["overall_rating"] == 5.0

@@ -12,6 +12,7 @@ import '../../core/widgets/async_error_view.dart';
 import '../../core/widgets/error_dialog.dart';
 import '../../core/widgets/network_image_view.dart';
 import '../../l10n/app_localizations.dart';
+import 'rate_seller_sheet.dart';
 
 class SellerDetailScreen extends ConsumerStatefulWidget {
   const SellerDetailScreen({super.key, required this.sellerId});
@@ -292,17 +293,22 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () => _showReviewSheet(seller),
-                              icon: const Icon(Icons.rate_review_outlined),
-                              label: Text(l10n.review),
+                      if (!isOwnStore)
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _openRateSeller(seller),
+                            icon: const Icon(Icons.star_rate_rounded),
+                            label: Text(l10n.rateSeller),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
                             ),
                           ),
-                          if (!isOwnStore) ...[
-                            const SizedBox(width: 12),
+                        ),
+                      if (!isOwnStore) const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (!isOwnStore)
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _messageSeller(seller),
@@ -310,17 +316,15 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                                 label: Text(l10n.messageBusiness),
                               ),
                             ),
-                          ],
+                          if (!isOwnStore) const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _followSeller(seller),
+                              icon: const Icon(Icons.person_add_alt_1_outlined),
+                              label: Text(l10n.followBusiness),
+                            ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _followSeller(seller),
-                          icon: const Icon(Icons.person_add_alt_1_outlined),
-                          label: Text(l10n.followBusiness),
-                        ),
                       ),
                       const SizedBox(height: 24),
                       Text(l10n.products,
@@ -416,14 +420,38 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        ...List.generate(
-                                            r.rating,
-                                            (_) => const Icon(Icons.star,
-                                                size: 14,
-                                                color: AppColors.star)),
+                                        RatingBarIndicator(
+                                          rating: r.overallRating,
+                                          itemBuilder: (_, __) =>
+                                              const Icon(Icons.star,
+                                                  color: AppColors.star),
+                                          itemCount: 5,
+                                          itemSize: 14,
+                                        ),
                                       ],
                                     ),
-                                    subtitle: Text(r.comment),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (r.comment.isNotEmpty) Text(r.comment),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${l10n.ratingProductQuality}: ${r.productQuality} · '
+                                          '${l10n.ratingCustomerService}: ${r.customerService} · '
+                                          '${l10n.ratingCommunication}: ${r.communication} · '
+                                          '${l10n.ratingTrustworthiness}: ${r.trustworthiness}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -441,7 +469,7 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
     );
   }
 
-  Future<void> _showReviewSheet(SellerModel seller) async {
+  Future<void> _openRateSeller(SellerModel seller) async {
     final l10n = context.l10n;
     final session = ref.read(userSessionProvider);
     if (session == null || session.isGuest) {
@@ -458,84 +486,40 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
       return;
     }
 
-    var rating = 5.0;
-    var submitting = false;
-    final controller = TextEditingController();
+    try {
+      final eligibility =
+          await apiServiceProvider.fetchReviewEligibility(seller.id);
+      if (!mounted) return;
+      if (!eligibility.canReview) {
+        final message = switch (eligibility.reason) {
+          'own_store' => l10n.cannotReviewOwnStore,
+          'no_completed_transaction' => l10n.reviewRequiresCompletedTransaction,
+          _ => l10n.somethingWentWrong,
+        };
+        await showAppErrorDialog(context,
+            title: l10n.somethingWentWrong, message: message);
+        return;
+      }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                  20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${l10n.review} ${seller.businessName}',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  RatingBar.builder(
-                    initialRating: rating,
-                    minRating: 1,
-                    itemBuilder: (_, __) =>
-                        const Icon(Icons.star, color: AppColors.star),
-                    onRatingUpdate: (value) => rating = value,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    maxLines: 3,
-                    enabled: !submitting,
-                    decoration: InputDecoration(hintText: l10n.shareExperience),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: submitting
-                          ? null
-                          : () async {
-                              setModalState(() => submitting = true);
-                              try {
-                                await apiServiceProvider.submitReview(
-                                  seller.id,
-                                  rating: rating.round(),
-                                  comment: controller.text,
-                                );
-                                if (sheetContext.mounted) {
-                                  Navigator.pop(sheetContext);
-                                }
-                                if (mounted) _reload();
-                              } on Object catch (e) {
-                                setModalState(() => submitting = false);
-                                if (context.mounted) {
-                                  await showAppErrorDialog(
-                                    context,
-                                    title: l10n.somethingWentWrong,
-                                    message: e.toString(),
-                                  );
-                                }
-                              }
-                            },
-                      child: submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(l10n.submitReview),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+      final submitted = await showRateSellerSheet(
+        context: context,
+        seller: seller,
+      );
+      if (!mounted) return;
+      if (submitted) {
+        _reload();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.reviewSubmittedSuccess),
+            backgroundColor: AppColors.success,
+          ),
         );
-      },
-    );
+      }
+    } on Object catch (error) {
+      if (!mounted) return;
+      await showAppErrorDialog(context,
+          title: l10n.somethingWentWrong, message: error.toString());
+    }
   }
 }
 

@@ -261,6 +261,16 @@ abstract class AppStrings {
   String get switchToBuyerMode;
   String get switchToBuyerModeSub;
   String get cannotReviewOwnStore;
+  String get rateSeller;
+  String get rateSellerTitle;
+  String get overallRating;
+  String get ratingProductQuality;
+  String get ratingCustomerService;
+  String get ratingCommunication;
+  String get ratingTrustworthiness;
+  String get rateAllCategoriesRequired;
+  String get reviewRequiresCompletedTransaction;
+  String get reviewSubmittedSuccess;
   String inquiryAboutListing(String listingName);
   String get callSeller;
   String get whatsapp;

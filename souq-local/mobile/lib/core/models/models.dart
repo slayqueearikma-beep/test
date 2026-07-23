@@ -88,6 +88,10 @@ class SellerModel {
     required this.achievementStars,
     required this.averageRating,
     required this.reviewCount,
+    this.avgProductQuality = 0,
+    this.avgCustomerService = 0,
+    this.avgCommunication = 0,
+    this.avgTrustworthiness = 0,
     this.logoImageUrl = '',
     this.address = '',
     this.phone = '',
@@ -123,6 +127,10 @@ class SellerModel {
   final int achievementStars;
   final double averageRating;
   final int reviewCount;
+  final double avgProductQuality;
+  final double avgCustomerService;
+  final double avgCommunication;
+  final double avgTrustworthiness;
   final String address;
   final String phone;
   final String websiteUrl;
@@ -158,6 +166,13 @@ class SellerModel {
       achievementStars: json['achievement_stars'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       reviewCount: json['review_count'] as int? ?? 0,
+      avgProductQuality:
+          (json['avg_product_quality'] as num?)?.toDouble() ?? 0,
+      avgCustomerService:
+          (json['avg_customer_service'] as num?)?.toDouble() ?? 0,
+      avgCommunication: (json['avg_communication'] as num?)?.toDouble() ?? 0,
+      avgTrustworthiness:
+          (json['avg_trustworthiness'] as num?)?.toDouble() ?? 0,
       address: json['address'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       websiteUrl: json['website_url'] as String? ?? '',
@@ -375,6 +390,11 @@ class ReviewModel {
   const ReviewModel({
     required this.id,
     required this.rating,
+    required this.overallRating,
+    required this.productQuality,
+    required this.customerService,
+    required this.communication,
+    required this.trustworthiness,
     required this.comment,
     required this.buyerDisplayName,
     required this.createdAt,
@@ -382,17 +402,54 @@ class ReviewModel {
 
   final String id;
   final int rating;
+  final double overallRating;
+  final int productQuality;
+  final int customerService;
+  final int communication;
+  final int trustworthiness;
   final String comment;
   final String buyerDisplayName;
   final String createdAt;
 
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
+    final productQuality = json['product_quality'] as int? ?? json['rating'] as int? ?? 0;
+    final customerService = json['customer_service'] as int? ?? productQuality;
+    final communication = json['communication'] as int? ?? productQuality;
+    final trustworthiness = json['trustworthiness'] as int? ?? productQuality;
+    final overall = (json['overall_rating'] as num?)?.toDouble() ??
+        ((productQuality + customerService + communication + trustworthiness) /
+            4.0);
     return ReviewModel(
       id: json['id'] as String,
-      rating: json['rating'] as int,
+      rating: json['rating'] as int? ?? overall.round(),
+      overallRating: overall,
+      productQuality: productQuality,
+      customerService: customerService,
+      communication: communication,
+      trustworthiness: trustworthiness,
       comment: json['comment'] as String? ?? '',
       buyerDisplayName: json['buyer_display_name'] as String? ?? 'Buyer',
       createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+class ReviewEligibilityModel {
+  const ReviewEligibilityModel({
+    required this.canReview,
+    required this.reason,
+    required this.hasReviewed,
+  });
+
+  final bool canReview;
+  final String reason;
+  final bool hasReviewed;
+
+  factory ReviewEligibilityModel.fromJson(Map<String, dynamic> json) {
+    return ReviewEligibilityModel(
+      canReview: json['can_review'] as bool? ?? false,
+      reason: json['reason'] as String? ?? 'unknown',
+      hasReviewed: json['has_reviewed'] as bool? ?? false,
     );
   }
 }

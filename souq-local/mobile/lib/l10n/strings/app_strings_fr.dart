@@ -560,6 +560,28 @@ class AppStringsFr extends AppStringsEn {
   String get cannotReviewOwnStore =>
       'Vous ne pouvez pas noter votre propre commerce.';
   @override
+  String get rateSeller => 'Noter le vendeur';
+  @override
+  String get rateSellerTitle => 'Noter ce vendeur';
+  @override
+  String get overallRating => 'Note globale';
+  @override
+  String get ratingProductQuality => 'Qualité du produit';
+  @override
+  String get ratingCustomerService => 'Service client';
+  @override
+  String get ratingCommunication => 'Communication';
+  @override
+  String get ratingTrustworthiness => 'Fiabilité';
+  @override
+  String get rateAllCategoriesRequired =>
+      'Veuillez noter les quatre catégories avant d\'envoyer.';
+  @override
+  String get reviewRequiresCompletedTransaction =>
+      'Vous pouvez noter ce vendeur après l\'avoir appelé, contacté ou lui avoir écrit.';
+  @override
+  String get reviewSubmittedSuccess => 'Merci ! Votre avis a été envoyé.';
+  @override
   String inquiryAboutListing(String listingName) =>
       'Bonjour ! Je suis intéressé(e) par « $listingName ». Est-ce toujours disponible ?';
   @override

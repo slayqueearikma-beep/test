@@ -543,6 +543,28 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get cannotReviewOwnStore => 'لا يمكنك تقييم متجرك الخاص.';
   @override
+  String get rateSeller => 'قيّم البائع';
+  @override
+  String get rateSellerTitle => 'قيّم هذا البائع';
+  @override
+  String get overallRating => 'التقييم الإجمالي';
+  @override
+  String get ratingProductQuality => 'جودة المنتج';
+  @override
+  String get ratingCustomerService => 'خدمة العملاء';
+  @override
+  String get ratingCommunication => 'التواصل';
+  @override
+  String get ratingTrustworthiness => 'الموثوقية';
+  @override
+  String get rateAllCategoriesRequired =>
+      'يرجى تقييم الفئات الأربع قبل الإرسال.';
+  @override
+  String get reviewRequiresCompletedTransaction =>
+      'يمكنك تقييم هذا البائع بعد الاتصال به أو مراسلته أو التواصل معه.';
+  @override
+  String get reviewSubmittedSuccess => 'شكراً! تم إرسال تقييمك.';
+  @override
   String inquiryAboutListing(String listingName) =>
       'مرحباً! أنا مهتم بـ "$listingName". هل ما زال متوفراً؟';
   @override

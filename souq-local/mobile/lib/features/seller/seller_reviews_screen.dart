@@ -117,6 +117,11 @@ class _ReviewsBodyState extends ConsumerState<_ReviewsBody> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
+                        Text(
+                          review.overallRating.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 4),
                         ...List.generate(
                           review.rating.clamp(0, 5),
                           (_) => const Icon(Icons.star_rounded,
@@ -127,6 +132,18 @@ class _ReviewsBodyState extends ConsumerState<_ReviewsBody> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          '${l10n.ratingProductQuality} ${review.productQuality}/5 · '
+                          '${l10n.ratingCustomerService} ${review.customerService}/5 · '
+                          '${l10n.ratingCommunication} ${review.communication}/5 · '
+                          '${l10n.ratingTrustworthiness} ${review.trustworthiness}/5',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
                         if (review.comment.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(review.comment),

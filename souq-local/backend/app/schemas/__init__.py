@@ -353,6 +353,10 @@ class SellerSummary(BaseModel):
     achievement_stars: int
     average_rating: float
     review_count: int
+    avg_product_quality: float = 0.0
+    avg_customer_service: float = 0.0
+    avg_communication: float = 0.0
+    avg_trustworthiness: float = 0.0
     is_premium: bool = False
     verification_status: str = "unverified"
     avg_response_minutes: int = 0
@@ -428,12 +432,20 @@ class MapPin(BaseModel):
 
 
 class ReviewCreate(BaseModel):
-    rating: int = Field(ge=1, le=5)
-    comment: str = Field(default="", max_length=2000)
+    product_quality: int = Field(ge=1, le=5)
+    customer_service: int = Field(ge=1, le=5)
+    communication: int = Field(ge=1, le=5)
+    trustworthiness: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=500)
 
-    @field_validator("rating")
+    @field_validator(
+        "product_quality",
+        "customer_service",
+        "communication",
+        "trustworthiness",
+    )
     @classmethod
-    def validate_rating(cls, value: int) -> int:
+    def validate_category_rating(cls, value: int) -> int:
         if not 1 <= value <= 5:
             raise ValueError("Rating must be between 1 and 5")
         return value
@@ -442,11 +454,22 @@ class ReviewCreate(BaseModel):
 class ReviewOut(BaseModel):
     id: UUID
     rating: int
+    overall_rating: float
+    product_quality: int
+    customer_service: int
+    communication: int
+    trustworthiness: int
     comment: str
     buyer_display_name: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ReviewEligibilityOut(BaseModel):
+    can_review: bool
+    reason: str
+    has_reviewed: bool = False
 
 
 class WarningZoneOut(BaseModel):

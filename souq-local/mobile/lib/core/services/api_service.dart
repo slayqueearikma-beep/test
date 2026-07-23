@@ -397,17 +397,46 @@ class ApiService {
         .toList();
   }
 
-  Future<void> submitReview(String sellerId,
-      {required int rating, String comment = ''}) async {
+  Future<ReviewEligibilityModel> fetchReviewEligibility(String sellerId) async {
     final response = await _request(
-      () => _post(
-        _uri('/sellers/$sellerId/reviews'),
+      () => _get(
+        _uri('/sellers/$sellerId/reviews/eligibility'),
         headers: _jsonHeaders(auth: true),
-        body: jsonEncode({'rating': rating, 'comment': comment}),
       ),
       auth: true,
     );
     _ensureSuccess(response);
+    return ReviewEligibilityModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<ReviewModel> submitReview(
+    String sellerId, {
+    required int productQuality,
+    required int customerService,
+    required int communication,
+    required int trustworthiness,
+    String comment = '',
+  }) async {
+    final response = await _request(
+      () => _post(
+        _uri('/sellers/$sellerId/reviews'),
+        headers: _jsonHeaders(auth: true),
+        body: jsonEncode({
+          'product_quality': productQuality,
+          'customer_service': customerService,
+          'communication': communication,
+          'trustworthiness': trustworthiness,
+          'comment': comment,
+        }),
+      ),
+      auth: true,
+    );
+    _ensureSuccess(response);
+    return ReviewModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<FavoriteItemModel>> fetchFavorites() async {

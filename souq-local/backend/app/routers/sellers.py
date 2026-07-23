@@ -16,6 +16,7 @@ from app.schemas import (
     ProductOut,
     ProductUpdate,
     ReviewCreate,
+    ReviewEligibilityOut,
     ReviewOut,
     SellerCreate,
     SellerDashboardStats,
@@ -26,7 +27,12 @@ from app.schemas import (
     ServiceOut,
     ServiceUpdate,
 )
-from app.services.ratings import refresh_seller_ratings
+from app.services.ratings import (
+    overall_from_categories,
+    refresh_seller_ratings,
+    rounded_overall,
+)
+from app.services.reviews import get_review_eligibility
 from app.services.upload_security import validate_media_url
 
 router = APIRouter(prefix="/sellers", tags=["sellers"])
@@ -531,6 +537,38 @@ async def delete_service(
     await session.commit()
 
 
+def _review_out(review: Review, buyer_display_name: str) -> ReviewOut:
+    return ReviewOut(
+        id=review.id,
+        rating=review.rating,
+        overall_rating=overall_from_categories(
+            review.product_quality,
+            review.customer_service,
+            review.communication,
+            review.trustworthiness,
+        ),
+        product_quality=review.product_quality,
+        customer_service=review.customer_service,
+        communication=review.communication,
+        trustworthiness=review.trustworthiness,
+        comment=review.comment,
+        buyer_display_name=buyer_display_name or "Buyer",
+        created_at=review.created_at,
+    )
+
+
+@router.get("/{seller_id}/reviews/eligibility", response_model=ReviewEligibilityOut)
+async def review_eligibility(
+    seller_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> ReviewEligibilityOut:
+    seller = await session.get(SellerProfile, seller_id)
+    if seller is None or not seller.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seller not found")
+    return ReviewEligibilityOut(**await get_review_eligibility(session, user=user, seller=seller))
+
+
 @router.get("/{seller_id}/reviews", response_model=list[ReviewOut])
 async def list_reviews(
     seller_id: UUID,
@@ -547,13 +585,7 @@ async def list_reviews(
         .offset(offset)
     )
     return [
-        ReviewOut(
-            id=review.id,
-            rating=review.rating,
-            comment=review.comment,
-            buyer_display_name=display_name or "Buyer",
-            created_at=review.created_at,
-        )
+        _review_out(review, display_name or "Buyer")
         for review, display_name in result.all()
     ]
 
@@ -568,28 +600,50 @@ async def create_review(
     seller = await session.get(SellerProfile, seller_id)
     if seller is None or not seller.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seller not found")
-    if seller.user_id == user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot review your own business")
+
+    eligibility = await get_review_eligibility(session, user=user, seller=seller)
+    if not eligibility["can_review"]:
+        detail = (
+            "Cannot review your own business"
+            if eligibility["reason"] == "own_store"
+            else "A completed interaction with this seller is required before reviewing"
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+    overall = rounded_overall(
+        payload.product_quality,
+        payload.customer_service,
+        payload.communication,
+        payload.trustworthiness,
+    )
+    comment = (payload.comment or "").strip()
 
     existing = await session.execute(
         select(Review).where(Review.seller_id == seller_id, Review.buyer_id == user.id)
     )
     review = existing.scalar_one_or_none()
     if review:
-        review.rating = payload.rating
-        review.comment = payload.comment
+        review.product_quality = payload.product_quality
+        review.customer_service = payload.customer_service
+        review.communication = payload.communication
+        review.trustworthiness = payload.trustworthiness
+        review.rating = overall
+        review.comment = comment
     else:
-        review = Review(seller_id=seller_id, buyer_id=user.id, **payload.model_dump())
+        review = Review(
+            seller_id=seller_id,
+            buyer_id=user.id,
+            product_quality=payload.product_quality,
+            customer_service=payload.customer_service,
+            communication=payload.communication,
+            trustworthiness=payload.trustworthiness,
+            rating=overall,
+            comment=comment,
+        )
         session.add(review)
 
     await session.commit()
     await refresh_seller_ratings(session, seller_id)
     await session.refresh(review)
 
-    return ReviewOut(
-        id=review.id,
-        rating=review.rating,
-        comment=review.comment,
-        buyer_display_name=user.display_name or "Buyer",
-        created_at=review.created_at,
-    )
+    return _review_out(review, user.display_name or "Buyer")

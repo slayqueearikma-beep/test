@@ -546,6 +546,28 @@ class AppStringsEn extends AppStrings {
   @override
   String get cannotReviewOwnStore => 'You cannot review your own business.';
   @override
+  String get rateSeller => 'Rate Seller';
+  @override
+  String get rateSellerTitle => 'Rate this seller';
+  @override
+  String get overallRating => 'Overall rating';
+  @override
+  String get ratingProductQuality => 'Product quality';
+  @override
+  String get ratingCustomerService => 'Customer service';
+  @override
+  String get ratingCommunication => 'Communication';
+  @override
+  String get ratingTrustworthiness => 'Trustworthiness';
+  @override
+  String get rateAllCategoriesRequired =>
+      'Please rate all four categories before submitting.';
+  @override
+  String get reviewRequiresCompletedTransaction =>
+      'You can rate this seller after calling, messaging, or contacting them.';
+  @override
+  String get reviewSubmittedSuccess => 'Thanks! Your review was submitted.';
+  @override
   String inquiryAboutListing(String listingName) =>
       "Hi! I'm interested in \"$listingName\". Is it still available?";
   @override
