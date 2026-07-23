@@ -125,6 +125,7 @@ abstract class AppStrings {
   String get storeInactiveHint;
   String availableCount(int count);
   String achievementStars(int count);
+  String goldenCrowns(int count);
   String get addProduct;
   String get editProduct;
   String get saveChanges;

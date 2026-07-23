@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/async_error_view.dart';
 import '../../core/widgets/error_dialog.dart';
 import '../../core/widgets/network_image_view.dart';
+import '../../core/widgets/achievement_badges.dart';
 import '../../l10n/app_localizations.dart';
 import 'rate_seller_sheet.dart';
 
@@ -194,12 +195,11 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                           if (seller.isPremium)
                             const Icon(Icons.workspace_premium,
                                 color: Color(0xFFC9A227), size: 22),
-                          if (seller.achievementStars > 0)
-                            ...List.generate(
-                              seller.achievementStars.clamp(0, 5),
-                              (_) =>
-                                  const Icon(Icons.star, color: AppColors.star),
-                            ),
+                          AchievementBadges(
+                            goldenCrowns: seller.goldenCrowns,
+                            achievementStars: seller.achievementStars,
+                            iconSize: 20,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),

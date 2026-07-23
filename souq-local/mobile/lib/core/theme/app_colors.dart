@@ -29,6 +29,7 @@ class AppColors {
   static const darkBorder = Color(0xFF2E2E3A);
 
   static const star = Color(0xFFFFB800);
+  static const goldenCrown = Color(0xFFD4AF37);
   static const success = Color(0xFF34C759);
   static const warning = Color(0xFFFF9500);
   static const danger = Color(0xFFFF3B30);

@@ -357,6 +357,7 @@ class SellerSummary(BaseModel):
     avg_customer_service: float = 0.0
     avg_communication: float = 0.0
     avg_trustworthiness: float = 0.0
+    golden_crowns: int = 0
     is_premium: bool = False
     verification_status: str = "unverified"
     avg_response_minutes: int = 0
@@ -400,6 +401,7 @@ class SellerDashboardStats(BaseModel):
     review_count: int
     average_rating: float
     achievement_stars: int
+    golden_crowns: int = 0
     recent_review_count: int
     inquiry_count: int = 0
     favorite_count: int = 0
@@ -427,6 +429,7 @@ class MapPin(BaseModel):
     latitude: float
     longitude: float
     achievement_stars: int
+    golden_crowns: int = 0
     average_rating: float
     category_slugs: list[str]
 

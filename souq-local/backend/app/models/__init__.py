@@ -193,6 +193,7 @@ class SellerProfile(Base):
     contact_click_count: Mapped[int] = mapped_column(Integer, default=0)
     profile_view_count: Mapped[int] = mapped_column(Integer, default=0)
     achievement_stars: Mapped[int] = mapped_column(Integer, default=0)
+    golden_crowns: Mapped[int] = mapped_column(Integer, default=0)
     average_rating: Mapped[float] = mapped_column(Float, default=0.0)
     review_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_product_quality: Mapped[float] = mapped_column(Float, default=0.0)

@@ -103,12 +103,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               position: LatLng(pin.latitude, pin.longitude),
               infoWindow: InfoWindow(
                 title: pin.businessName,
-                snippet: '${pin.averageRating} ★ · ${pin.achievementStars} achievement stars',
+                snippet: pin.goldenCrowns > 0
+                    ? '${pin.averageRating} ★ · ${pin.goldenCrowns} golden crown(s)'
+                    : '${pin.averageRating} ★ · ${pin.achievementStars} achievement stars',
                 onTap: () => context.push('/seller/${pin.id}'),
               ),
-              icon: pin.achievementStars > 0
-                  ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange)
-                  : BitmapDescriptor.defaultMarker,
+              icon: pin.goldenCrowns > 0
+                  ? BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueYellow)
+                  : pin.achievementStars > 0
+                      ? BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueOrange)
+                      : BitmapDescriptor.defaultMarker,
             );
           }),
           ...warnings.map((zone) {

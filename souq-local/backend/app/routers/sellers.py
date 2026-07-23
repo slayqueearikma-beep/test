@@ -191,6 +191,7 @@ async def map_pins(
             latitude=s.latitude,
             longitude=s.longitude,
             achievement_stars=s.achievement_stars,
+            golden_crowns=s.golden_crowns,
             average_rating=s.average_rating,
             category_slugs=[c.slug for c in s.categories],
         )
@@ -243,6 +244,7 @@ async def get_my_dashboard(
         review_count=seller.review_count,
         average_rating=seller.average_rating,
         achievement_stars=seller.achievement_stars,
+        golden_crowns=seller.golden_crowns,
         recent_review_count=int(recent_review_count or 0),
         inquiry_count=int(seller.inquiry_count or 0),
         favorite_count=int(seller.favorite_count or 0),

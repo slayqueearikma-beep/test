@@ -262,6 +262,9 @@ class AppStringsEn extends AppStrings {
   @override
   String achievementStars(int count) => '$count achievement stars';
   @override
+  String goldenCrowns(int count) =>
+      count == 1 ? '1 golden crown' : '$count golden crowns';
+  @override
   String get addProduct => 'Add product';
   @override
   String get editProduct => 'Edit product';

@@ -260,6 +260,9 @@ class AppStringsAr extends AppStringsEn {
   @override
   String achievementStars(int count) => '$count نجوم إنجاز';
   @override
+  String goldenCrowns(int count) =>
+      count == 1 ? 'تاج ذهبي واحد' : '$count تيجان ذهبية';
+  @override
   String get addProduct => 'إضافة منتج';
   @override
   String get editProduct => 'تعديل المنتج';

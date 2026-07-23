@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'achievement_badges.dart';
 import 'network_image_view.dart';
 
 class OnboardingIllustration extends StatelessWidget {
@@ -247,6 +248,7 @@ class SellerCard extends StatelessWidget {
     required this.city,
     this.imageUrl = '',
     this.achievementStars = 0,
+    this.goldenCrowns = 0,
     this.onTap,
     this.compact = false,
   });
@@ -258,6 +260,7 @@ class SellerCard extends StatelessWidget {
   final String city;
   final String imageUrl;
   final int achievementStars;
+  final int goldenCrowns;
   final VoidCallback? onTap;
   final bool compact;
 
@@ -296,15 +299,13 @@ class SellerCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (achievementStars > 0)
-                        ...List.generate(
-                          achievementStars.clamp(0, 3),
-                          (_) => const Padding(
-                            padding: EdgeInsets.only(left: 2),
-                            child: Icon(Icons.star_rounded,
-                                size: 14, color: AppColors.star),
-                          ),
-                        ),
+                      AchievementBadges(
+                        goldenCrowns: goldenCrowns,
+                        achievementStars: achievementStars,
+                        iconSize: 14,
+                        maxCrowns: 2,
+                        maxStars: 3,
+                      ),
                     ],
                   ),
                   if (!compact) ...[

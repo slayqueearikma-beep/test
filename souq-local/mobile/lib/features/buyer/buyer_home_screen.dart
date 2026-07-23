@@ -353,6 +353,7 @@ class BuyerHomeScreen extends ConsumerWidget {
                           city: s.city,
                           imageUrl: s.coverImageUrl,
                           achievementStars: s.achievementStars,
+                          goldenCrowns: s.goldenCrowns,
                           onTap: () => context.push('/seller/${s.id}'),
                         ),
                       ),

@@ -4,10 +4,21 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Review, SellerProfile
 
+# One achievement star per 100 overall five-star reviews.
+# Every 1000 five-star reviews convert into one golden crown.
+_STARS_PER_ACHIEVEMENT = 100
+_FIVE_STARS_PER_CROWN = 1000
+
+
+def compute_golden_crowns(five_star_count: int) -> int:
+    """One golden crown per 1000 five-star (overall) reviews."""
+    return max(0, int(five_star_count)) // _FIVE_STARS_PER_CROWN
+
 
 def compute_achievement_stars(five_star_count: int) -> int:
-    """One achievement star per 100 five-star (overall) reviews."""
-    return five_star_count // 100
+    """One achievement star per 100 five-star reviews; remainder after crowns."""
+    remaining = max(0, int(five_star_count)) % _FIVE_STARS_PER_CROWN
+    return remaining // _STARS_PER_ACHIEVEMENT
 
 
 def overall_from_categories(
@@ -70,13 +81,15 @@ async def refresh_seller_ratings(session: AsyncSession, seller_id) -> None:
         five_star_count,
     ) = stats.one()
 
+    five_stars = int(five_star_count or 0)
     seller.review_count = int(review_count or 0)
     seller.average_rating = round(float(average_rating or 0.0), 2)
     seller.avg_product_quality = round(float(avg_product_quality or 0.0), 2)
     seller.avg_customer_service = round(float(avg_customer_service or 0.0), 2)
     seller.avg_communication = round(float(avg_communication or 0.0), 2)
     seller.avg_trustworthiness = round(float(avg_trustworthiness or 0.0), 2)
-    seller.achievement_stars = compute_achievement_stars(int(five_star_count or 0))
+    seller.golden_crowns = compute_golden_crowns(five_stars)
+    seller.achievement_stars = compute_achievement_stars(five_stars)
     await session.commit()
 
 

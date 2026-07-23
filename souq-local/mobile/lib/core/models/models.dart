@@ -88,6 +88,7 @@ class SellerModel {
     required this.achievementStars,
     required this.averageRating,
     required this.reviewCount,
+    this.goldenCrowns = 0,
     this.avgProductQuality = 0,
     this.avgCustomerService = 0,
     this.avgCommunication = 0,
@@ -125,6 +126,7 @@ class SellerModel {
   final String coverImageUrl;
   final String logoImageUrl;
   final int achievementStars;
+  final int goldenCrowns;
   final double averageRating;
   final int reviewCount;
   final double avgProductQuality;
@@ -164,6 +166,7 @@ class SellerModel {
       coverImageUrl: json['cover_image_url'] as String? ?? '',
       logoImageUrl: json['logo_image_url'] as String? ?? '',
       achievementStars: json['achievement_stars'] as int? ?? 0,
+      goldenCrowns: json['golden_crowns'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       reviewCount: json['review_count'] as int? ?? 0,
       avgProductQuality:
@@ -228,6 +231,7 @@ class SellerDashboardStats {
     required this.achievementStars,
     required this.recentReviewCount,
     required this.isActive,
+    this.goldenCrowns = 0,
     this.inquiryCount = 0,
     this.favoriteCount = 0,
     this.contactClickCount = 0,
@@ -245,6 +249,7 @@ class SellerDashboardStats {
   final int reviewCount;
   final double averageRating;
   final int achievementStars;
+  final int goldenCrowns;
   final int recentReviewCount;
   final bool isActive;
   final int inquiryCount;
@@ -265,6 +270,7 @@ class SellerDashboardStats {
       reviewCount: json['review_count'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       achievementStars: json['achievement_stars'] as int? ?? 0,
+      goldenCrowns: json['golden_crowns'] as int? ?? 0,
       recentReviewCount: json['recent_review_count'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
       inquiryCount: json['inquiry_count'] as int? ?? 0,
@@ -463,6 +469,7 @@ class MapPinModel {
     required this.achievementStars,
     required this.averageRating,
     required this.categorySlugs,
+    this.goldenCrowns = 0,
   });
 
   final String id;
@@ -470,6 +477,7 @@ class MapPinModel {
   final double latitude;
   final double longitude;
   final int achievementStars;
+  final int goldenCrowns;
   final double averageRating;
   final List<String> categorySlugs;
 
@@ -480,6 +488,7 @@ class MapPinModel {
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       achievementStars: json['achievement_stars'] as int? ?? 0,
+      goldenCrowns: json['golden_crowns'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       categorySlugs: (json['category_slugs'] as List<dynamic>? ?? [])
           .map((e) => e as String)

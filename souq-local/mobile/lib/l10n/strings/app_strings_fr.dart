@@ -269,6 +269,9 @@ class AppStringsFr extends AppStringsEn {
   @override
   String achievementStars(int count) => '$count étoiles de réussite';
   @override
+  String goldenCrowns(int count) =>
+      count == 1 ? '1 couronne d\'or' : '$count couronnes d\'or';
+  @override
   String get addProduct => 'Ajouter un produit';
   @override
   String get editProduct => 'Modifier le produit';
