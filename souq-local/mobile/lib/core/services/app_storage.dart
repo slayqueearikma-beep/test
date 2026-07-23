@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum AccountType { buyer, seller, guest }
 
+/// Client preference for which shell to show. Capability still comes from sellerId/profile.
+enum AppMode { buyer, seller }
+
 class GuestFavoriteItem {
   const GuestFavoriteItem({
     required this.productId,
@@ -88,6 +91,7 @@ class UserSession {
   final String? sellerId;
   bool get isGuest => accountType == AccountType.guest;
   bool get isAuthenticated => !isGuest;
+  bool get hasSellerProfile => sellerId != null && sellerId!.isNotEmpty;
 
   UserSession copyWith({
     String? name,
@@ -116,6 +120,7 @@ class AppStorage {
   static const _onboardingCompleteKey = 'onboarding_complete';
   static const _loggedInKey = 'logged_in';
   static const _accountTypeKey = 'account_type';
+  static const _appModeKey = 'app_mode';
   static const _userNameKey = 'user_name';
   static const _userEmailKey = 'user_email';
   static const _userCityKey = 'user_city';
@@ -131,6 +136,30 @@ class AppStorage {
       _prefs.getBool(_onboardingCompleteKey) ?? false;
   bool get isLoggedIn => _prefs.getBool(_loggedInKey) ?? false;
   bool get isLanguageSelected => _prefs.getBool(_languageSelectedKey) ?? false;
+
+  AppMode getAppMode({UserSession? session}) {
+    final raw = _prefs.getString(_appModeKey);
+    if (raw == AppMode.seller.name) {
+      final s = session ?? getSession();
+      if (s != null && s.hasSellerProfile) return AppMode.seller;
+    }
+    if (raw == AppMode.buyer.name) return AppMode.buyer;
+    final s = session ?? getSession();
+    if (s != null && s.hasSellerProfile && s.accountType == AccountType.seller) {
+      return AppMode.seller;
+    }
+    return AppMode.buyer;
+  }
+
+  Future<void> saveAppMode(AppMode mode) =>
+      _prefs.setString(_appModeKey, mode.name);
+
+  String homeRouteFor(UserSession session) {
+    return getAppMode(session: session) == AppMode.seller &&
+            session.hasSellerProfile
+        ? '/seller/dashboard'
+        : '/buyer/home';
+  }
 
   String get languageCode => _prefs.getString(_languageCodeKey) ?? 'en';
 
@@ -217,6 +246,7 @@ class AppStorage {
   Future<void> logout() async {
     await _prefs.remove(_loggedInKey);
     await _prefs.remove(_accountTypeKey);
+    await _prefs.remove(_appModeKey);
     await _prefs.remove(_userNameKey);
     await _prefs.remove(_userEmailKey);
     await _prefs.remove(_userCityKey);

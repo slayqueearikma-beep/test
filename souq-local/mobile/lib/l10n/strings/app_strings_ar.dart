@@ -71,7 +71,7 @@ class AppStringsAr extends AppStringsEn {
   String get chooseAccountType => 'اختر نوع حسابك';
   @override
   String get chooseAccountTypeSubtitle =>
-      'حدد كيف تريد استخدام MarGem. يمكنك تحديث ملفك لاحقاً.';
+      'حساب واحد للاثنين. ابدأ كمتسوّق أو أنشئ متجراً — يمكنك التبديل في أي وقت بنفس البريد وكلمة المرور.';
   @override
   String get buyer => 'مشتري';
   @override
@@ -512,13 +512,36 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get acceptedPaymentMethods => 'طرق الدفع المقبولة';
   @override
+  @override
   String get contactSeller => 'تواصل مع البائع';
+  @override
   String get messageBusiness => 'مراسلة';
+  @override
   String get cannotMessageOwnStore => 'لا يمكنك مراسلة متجرك الخاص.';
+  @override
   String get discoverBusinesses => 'اكتشف الأعمال';
+  @override
   String get discoverBusinessesSub =>
       'تصفّح البائعين الآخرين وراسلهم مباشرة';
+  @override
   String get findPeopleToMessage => 'ابحث عمّن تراسله';
+  @override
+  String get becomeSeller => 'افتح واجهة متجر';
+  @override
+  String get becomeSellerSubtitle =>
+      'احتفظ بنفس البريد وكلمة المرور. أضف عملك وبدّل إلى وضع البائع في أي وقت.';
+  @override
+  String get openStorefront => 'إنشاء المتجر';
+  @override
+  String get switchToSellerMode => 'لوحة البائع';
+  @override
+  String get switchToSellerModeSub => 'إدارة متجرك وقوائمك واستفساراتك';
+  @override
+  String get switchToBuyerMode => 'تصفّح كمشترٍ';
+  @override
+  String get switchToBuyerModeSub => 'اكتشف الأعمال بنفس الحساب';
+  @override
+  String get cannotReviewOwnStore => 'لا يمكنك تقييم متجرك الخاص.';
   @override
   String inquiryAboutListing(String listingName) =>
       'مرحباً! أنا مهتم بـ "$listingName". هل ما زال متوفراً؟';

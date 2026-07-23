@@ -141,19 +141,27 @@ async def verify_firebase_token(token: str) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
 
 
-async def require_seller(user: User = Depends(get_current_user)) -> User:
+async def user_has_seller_profile(session: AsyncSession, user_id) -> bool:
+    from app.models import SellerProfile
+
+    result = await session.execute(select(SellerProfile.id).where(SellerProfile.user_id == user_id).limit(1))
+    return result.scalar_one_or_none() is not None
+
+
+async def require_seller(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_db)) -> User:
+    """Require a storefront capability (SellerProfile), not a permanently XOR'd account type."""
     from app.models import AccountType
 
-    if user.account_type != AccountType.SELLER:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seller account required")
-    return user
+    if await user_has_seller_profile(session, user.id):
+        return user
+    # Legacy: seller accounts mid-onboarding before profile creation still pass.
+    if user.account_type == AccountType.SELLER:
+        return user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seller storefront required")
 
 
 async def require_buyer(user: User = Depends(get_current_user)) -> User:
-    from app.models import AccountType
-
-    if user.account_type != AccountType.BUYER:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer account required")
+    """Any authenticated non-deleted user may act as a buyer (dual-mode accounts)."""
     return user
 
 

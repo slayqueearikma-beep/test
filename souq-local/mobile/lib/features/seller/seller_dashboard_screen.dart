@@ -283,7 +283,21 @@ class SellerDashboardScreen extends ConsumerWidget {
                           title: l10n.discoverBusinesses,
                           subtitle: l10n.discoverBusinessesSub,
                           icon: Icons.travel_explore_outlined,
-                          onTap: () => context.push('/buyer/home'),
+                          onTap: () async {
+                            final storage = ref.read(appStorageProvider);
+                            await storage?.saveAppMode(AppMode.buyer);
+                            if (context.mounted) context.push('/buyer/home');
+                          },
+                        ),
+                        DashboardMenuTile(
+                          title: l10n.switchToBuyerMode,
+                          subtitle: l10n.switchToBuyerModeSub,
+                          icon: Icons.shopping_bag_outlined,
+                          onTap: () async {
+                            final storage = ref.read(appStorageProvider);
+                            await storage?.saveAppMode(AppMode.buyer);
+                            if (context.mounted) context.go('/buyer/home');
+                          },
                         ),
                         DashboardMenuTile(
                           title: l10n.analytics,

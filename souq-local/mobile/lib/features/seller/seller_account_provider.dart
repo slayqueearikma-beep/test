@@ -14,7 +14,7 @@ final sellerAnalyticsProvider = FutureProvider.autoDispose((ref) {
 /// after a successful fetch would re-trigger this provider and spam the API.
 final sellerAccountProvider = FutureProvider.autoDispose<SellerAccountData>((ref) async {
   final session = ref.read(userSessionProvider);
-  if (session == null || session.accountType != AccountType.seller) {
+  if (session == null || (!session.hasSellerProfile && session.accountType != AccountType.seller)) {
     throw ApiException('Seller session required');
   }
 

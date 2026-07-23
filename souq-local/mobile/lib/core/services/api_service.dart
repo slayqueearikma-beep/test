@@ -239,9 +239,9 @@ class ApiService {
     return 'Cannot reach the API at $base. Check your network connection and API_BASE_URL.$tip';
   }
 
-  Future<String> createSeller(SellerCreatePayload payload) async {
+  Future<SellerModel> createSeller(SellerCreatePayload payload) async {
     final data = await postJson('/sellers', payload.toJson(), auth: true);
-    return data['id'] as String;
+    return SellerModel.fromJson(data);
   }
 
   Future<SellerModel> fetchMySeller() async {

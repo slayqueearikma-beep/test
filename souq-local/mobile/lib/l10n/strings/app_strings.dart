@@ -253,6 +253,14 @@ abstract class AppStrings {
   String get discoverBusinesses;
   String get discoverBusinessesSub;
   String get findPeopleToMessage;
+  String get becomeSeller;
+  String get becomeSellerSubtitle;
+  String get openStorefront;
+  String get switchToSellerMode;
+  String get switchToSellerModeSub;
+  String get switchToBuyerMode;
+  String get switchToBuyerModeSub;
+  String get cannotReviewOwnStore;
   String inquiryAboutListing(String listingName);
   String get callSeller;
   String get whatsapp;

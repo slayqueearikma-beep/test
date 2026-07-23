@@ -449,10 +449,12 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
       await context.push('/login');
       return;
     }
-    if (session.accountType != AccountType.buyer) {
+    if (session.sellerId != null &&
+        session.sellerId!.isNotEmpty &&
+        session.sellerId == seller.id) {
       if (!mounted) return;
       await showAppErrorDialog(context,
-          title: l10n.somethingWentWrong, message: l10n.somethingWentWrong);
+          title: l10n.somethingWentWrong, message: l10n.cannotReviewOwnStore);
       return;
     }
 

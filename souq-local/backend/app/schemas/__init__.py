@@ -34,7 +34,8 @@ class AccountType(str, Enum):
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    account_type: AccountType
+    # Optional — defaults to buyer. Sellers unlock storefront later on the same account.
+    account_type: AccountType = AccountType.BUYER
     display_name: str = Field(default="", max_length=120)
 
     @field_validator("password")
@@ -47,7 +48,7 @@ class UserRegister(BaseModel):
 class UserRegisterFirebase(BaseModel):
     firebase_uid: str
     email: EmailStr
-    account_type: AccountType
+    account_type: AccountType = AccountType.BUYER
     display_name: str = ""
 
 
@@ -68,12 +69,13 @@ class UserOut(BaseModel):
     role: str = "buyer"
     status: str = "active"
     mfa_enabled: bool = False
+    has_seller_profile: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_user(cls, user) -> "UserOut":
+    def from_user(cls, user, *, has_seller_profile: bool = False) -> "UserOut":
         return cls(
             id=user.id,
             email=user.email,
@@ -86,6 +88,7 @@ class UserOut(BaseModel):
             role=getattr(user, "role", None).value if getattr(user, "role", None) else "buyer",
             status=getattr(user, "status", None).value if getattr(user, "status", None) else "active",
             mfa_enabled=bool(getattr(user, "mfa_enabled", False)),
+            has_seller_profile=has_seller_profile,
             created_at=user.created_at,
         )
 

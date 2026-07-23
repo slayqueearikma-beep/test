@@ -96,6 +96,8 @@ async def _issue_auth_token(session: AsyncSession, user_id: UUID, purpose: str, 
 
 
 async def _token_response(session: AsyncSession, user: User, request: Request | None = None) -> TokenResponse:
+    from app.auth import user_has_seller_profile
+
     device = ""
     ip = ""
     ua = ""
@@ -120,12 +122,13 @@ async def _token_response(session: AsyncSession, user: User, request: Request | 
         stored.last_seen_at = datetime.now(UTC)
 
     user.last_login_at = datetime.now(UTC)
+    has_store = await user_has_seller_profile(session, user.id)
     await session.commit()
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=refresh_token,
         expires_in=settings.jwt_access_expire_minutes * 60,
-        user=UserOut.from_user(user),
+        user=UserOut.from_user(user, has_seller_profile=has_store),
     )
 
 
@@ -229,11 +232,14 @@ async def refresh_tokens(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account deleted")
 
     await session.commit()
+    from app.auth import user_has_seller_profile
+
+    has_store = await user_has_seller_profile(session, user.id)
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=new_refresh,
         expires_in=settings.jwt_access_expire_minutes * 60,
-        user=UserOut.from_user(user),
+        user=UserOut.from_user(user, has_seller_profile=has_store),
     )
 
 
@@ -276,12 +282,18 @@ async def register_firebase(
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return UserOut.from_user(user)
+    return UserOut.from_user(user, has_seller_profile=False)
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut.from_user(user)
+async def me(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> UserOut:
+    from app.auth import user_has_seller_profile
+
+    has_store = await user_has_seller_profile(session, user.id)
+    return UserOut.from_user(user, has_seller_profile=has_store)
 
 
 @router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)

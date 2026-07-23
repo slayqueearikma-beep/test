@@ -70,7 +70,7 @@ class AppStringsEn extends AppStrings {
   String get chooseAccountType => 'Choose your account type';
   @override
   String get chooseAccountTypeSubtitle =>
-      'Select how you want to use MarGem. You can always update your profile later.';
+      'One account for both. Start as a shopper or set up a business — you can switch anytime with the same email and password.';
   @override
   String get buyer => 'Buyer';
   @override
@@ -515,13 +515,36 @@ class AppStringsEn extends AppStrings {
   @override
   String get acceptedPaymentMethods => 'Accepted payment methods';
   @override
+  @override
   String get contactSeller => 'Contact seller';
+  @override
   String get messageBusiness => 'Message';
+  @override
   String get cannotMessageOwnStore => 'You cannot message your own store.';
+  @override
   String get discoverBusinesses => 'Discover businesses';
+  @override
   String get discoverBusinessesSub =>
       'Browse other sellers and message them like WhatsApp';
+  @override
   String get findPeopleToMessage => 'Find someone to message';
+  @override
+  String get becomeSeller => 'Open a storefront';
+  @override
+  String get becomeSellerSubtitle =>
+      'Keep this email and password. Add your business and switch to seller mode anytime.';
+  @override
+  String get openStorefront => 'Create storefront';
+  @override
+  String get switchToSellerMode => 'Seller dashboard';
+  @override
+  String get switchToSellerModeSub => 'Manage your store, listings, and inquiries';
+  @override
+  String get switchToBuyerMode => 'Browse as shopper';
+  @override
+  String get switchToBuyerModeSub => 'Discover businesses with the same account';
+  @override
+  String get cannotReviewOwnStore => 'You cannot review your own business.';
   @override
   String inquiryAboutListing(String listingName) =>
       "Hi! I'm interested in \"$listingName\". Is it still available?";

@@ -27,7 +27,7 @@ flowchart TB
 
 - Primary: email/password with MarGem JWT access + refresh tokens
 - Optional: Firebase ID tokens when `FIREBASE_*` is configured
-- Roles: `buyer` / `seller` account types; `admin` / `support` staff roles
+- Roles: one identity per email; buyer browsing + optional seller storefront (dual-mode)
 - Guests may browse; favorites migrate on signup
 
 ## Core domain
@@ -43,6 +43,7 @@ erDiagram
     SellerProfile ||--o{ Subscription : premium_visibility
 ```
 
+Capability is `SellerProfile` presence (not mutually exclusive account types). Client `app_mode` chooses buyer shell vs seller dashboard.
 ## API surface (selected)
 
 | Area | Paths |

@@ -71,7 +71,7 @@ class AppStringsFr extends AppStringsEn {
   String get chooseAccountType => 'Choisissez votre type de compte';
   @override
   String get chooseAccountTypeSubtitle =>
-      'Sélectionnez comment vous souhaitez utiliser MarGem. Vous pourrez modifier votre profil plus tard.';
+      'Un seul compte pour les deux. Commencez comme acheteur ou créez une boutique — changez à tout moment avec le même e-mail et mot de passe.';
   @override
   String get buyer => 'Acheteur';
   @override
@@ -525,14 +525,40 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get acceptedPaymentMethods => 'Moyens de paiement acceptés';
   @override
+  @override
   String get contactSeller => 'Contacter le vendeur';
+  @override
   String get messageBusiness => 'Message';
+  @override
   String get cannotMessageOwnStore =>
       'Vous ne pouvez pas envoyer un message à votre propre boutique.';
+  @override
   String get discoverBusinesses => 'Découvrir des commerces';
+  @override
   String get discoverBusinessesSub =>
       'Parcourez d’autres vendeurs et discutez avec eux';
+  @override
   String get findPeopleToMessage => 'Trouver quelqu’un à messager';
+  @override
+  String get becomeSeller => 'Ouvrir une boutique';
+  @override
+  String get becomeSellerSubtitle =>
+      'Gardez cet e-mail et ce mot de passe. Ajoutez votre commerce et passez en mode vendeur quand vous voulez.';
+  @override
+  String get openStorefront => 'Créer la boutique';
+  @override
+  String get switchToSellerMode => 'Tableau de bord vendeur';
+  @override
+  String get switchToSellerModeSub =>
+      'Gérez votre boutique, annonces et messages';
+  @override
+  String get switchToBuyerMode => 'Parcourir comme acheteur';
+  @override
+  String get switchToBuyerModeSub =>
+      'Découvrez des commerces avec le même compte';
+  @override
+  String get cannotReviewOwnStore =>
+      'Vous ne pouvez pas noter votre propre commerce.';
   @override
   String inquiryAboutListing(String listingName) =>
       'Bonjour ! Je suis intéressé(e) par « $listingName ». Est-ce toujours disponible ?';

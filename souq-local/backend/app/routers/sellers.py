@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user_optional, require_buyer, require_seller
+from app.auth import get_current_user, get_current_user_optional, require_seller
 from app.config import settings
 from app.database import get_db
 from app.models import Category, Product, Review, SellerProfile, Service, User
@@ -253,9 +253,12 @@ async def get_my_dashboard(
 @router.post("", response_model=SellerDetail, status_code=status.HTTP_201_CREATED)
 async def create_seller(
     payload: SellerCreate,
-    user: User = Depends(require_seller),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> SellerProfile:
+    """Create a storefront on the current account (buyer can upgrade in place)."""
+    from app.models import AccountType, UserRole
+
     existing = await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Seller profile already exists")
@@ -291,6 +294,9 @@ async def create_seller(
         categories=categories,
     )
     session.add(seller)
+    # Dual-mode: keep one identity; mark account as seller-capable.
+    user.account_type = AccountType.SELLER
+    user.role = UserRole.SELLER
     await session.commit()
     return await _load_seller_detail(session, seller.id)
 
@@ -556,7 +562,7 @@ async def list_reviews(
 async def create_review(
     seller_id: UUID,
     payload: ReviewCreate,
-    user: User = Depends(require_buyer),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> ReviewOut:
     seller = await session.get(SellerProfile, seller_id)

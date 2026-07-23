@@ -95,6 +95,7 @@ class _BuyerRegistrationScreenState
 
         await storage.completeOnboarding();
         await storage.saveSession(userSession);
+        await storage.saveAppMode(AppMode.buyer);
         ref.read(userSessionProvider.notifier).state = userSession;
         ref.read(authSessionProvider.notifier).state = session;
 

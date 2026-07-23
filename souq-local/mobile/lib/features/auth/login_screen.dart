@@ -79,16 +79,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               : l10n.returningUser,
           email: session.user.email,
           accountType:
-              session.user.isSeller ? AccountType.seller : AccountType.buyer,
+              session.user.canSell ? AccountType.seller : AccountType.buyer,
           city: existing?.city ?? AppConfig.moroccanCities.first,
           businessName: existing?.businessName,
           sellerId: existing?.sellerId,
         );
 
-        if (session.user.isSeller) {
+        if (session.user.canSell || session.user.hasSellerProfile) {
           try {
             final seller = await apiServiceProvider.fetchMySeller();
             userSession = userSession.copyWith(
+              accountType: AccountType.seller,
               sellerId: seller.id,
               businessName: seller.businessName,
               city: seller.city,
@@ -98,20 +99,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
 
-        if (session.user.isBuyer) {
-          final guestItems = guestFavoritesMigrationPayload(storage);
-          if (guestItems.isNotEmpty) {
-            await apiServiceProvider.migrateGuestFavorites(guestItems);
-            await storage.clearGuestFavorites();
-          }
+        // Guest favorites migrate for any signed-in user (dual-mode).
+        final guestItems = guestFavoritesMigrationPayload(storage);
+        if (guestItems.isNotEmpty) {
+          await apiServiceProvider.migrateGuestFavorites(guestItems);
+          await storage.clearGuestFavorites();
         }
 
         await storage.saveSession(userSession);
+        // Keep previous mode when possible; default sellers to seller shell once.
+        if (userSession.hasSellerProfile &&
+            storage.getAppMode(session: userSession) == AppMode.buyer &&
+            session.user.accountType == 'seller') {
+          // First login after seller signup — prefer seller dashboard.
+          await storage.saveAppMode(AppMode.seller);
+        }
         ref.read(userSessionProvider.notifier).state = userSession;
         ref.read(authSessionProvider.notifier).state = session;
 
         if (!mounted) return;
-        context.go(session.user.isSeller ? '/seller/dashboard' : '/buyer/home');
+        context.go(storage.homeRouteFor(userSession));
       });
     } on ApiException catch (e) {
       if (!mounted) return;

@@ -172,7 +172,7 @@ class _SellerRegistrationScreenState
           logoUrl = await uploader.uploadImage(_logoImage!);
         }
 
-        final sellerId = await apiServiceProvider.createSeller(
+        final seller = await apiServiceProvider.createSeller(
           SellerCreatePayload(
             businessName: _businessNameController.text.trim(),
             description: _descriptionController.text.trim(),
@@ -193,6 +193,7 @@ class _SellerRegistrationScreenState
             categoryIds: categoryId != null ? [categoryId] : [],
           ),
         );
+        final sellerId = seller.id;
 
         for (final product in _products) {
           final name = product.nameController.text.trim();
@@ -230,6 +231,7 @@ class _SellerRegistrationScreenState
 
         await storage.completeOnboarding();
         await storage.saveSession(userSession);
+        await storage.saveAppMode(AppMode.seller);
         ref.read(userSessionProvider.notifier).state = userSession;
         ref.read(authSessionProvider.notifier).state = session;
 

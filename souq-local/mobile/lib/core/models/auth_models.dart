@@ -4,12 +4,14 @@ class AuthUser {
     required this.email,
     required this.accountType,
     required this.displayName,
+    this.hasSellerProfile = false,
   });
 
   final String id;
   final String email;
   final String accountType;
   final String displayName;
+  final bool hasSellerProfile;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
@@ -17,11 +19,13 @@ class AuthUser {
       email: json['email'] as String,
       accountType: json['account_type'] as String,
       displayName: json['display_name'] as String? ?? '',
+      hasSellerProfile: json['has_seller_profile'] as bool? ?? false,
     );
   }
 
-  bool get isBuyer => accountType == 'buyer';
-  bool get isSeller => accountType == 'seller';
+  bool get isBuyer => accountType == 'buyer' || !hasSellerProfile;
+  bool get isSeller => accountType == 'seller' || hasSellerProfile;
+  bool get canSell => hasSellerProfile || accountType == 'seller';
 }
 
 class AuthSession {

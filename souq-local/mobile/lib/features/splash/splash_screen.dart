@@ -76,9 +76,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         return;
       }
       if (mounted) {
-        context.go(session.accountType == AccountType.seller
-            ? '/seller/dashboard'
-            : '/buyer/home');
+        context.go(storage.homeRouteFor(session));
       }
       return;
     }

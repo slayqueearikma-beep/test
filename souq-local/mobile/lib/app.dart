@@ -15,6 +15,7 @@ import 'features/buyer/buyer_home_screen.dart';
 import 'features/map/map_screen.dart';
 import 'features/messages/messages_inbox_screen.dart';
 import 'features/onboarding/account_type_onboarding_screen.dart';
+import 'features/onboarding/become_seller_screen.dart';
 import 'features/onboarding/buyer_registration_screen.dart';
 import 'features/onboarding/onboarding_welcome_screen.dart';
 import 'features/onboarding/seller_registration_screen.dart';
@@ -54,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (isSellerManagement &&
           isAuthenticated &&
+          !session.hasSellerProfile &&
           session.accountType != AccountType.seller) {
         return '/buyer/home';
       }
@@ -80,6 +82,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/onboarding/seller-register',
           builder: (_, __) => const SellerRegistrationScreen()),
+      GoRoute(
+          path: '/onboarding/become-seller',
+          builder: (_, __) => const BecomeSellerScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
           path: '/forgot-password',
