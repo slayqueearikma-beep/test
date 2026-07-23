@@ -30,7 +30,7 @@ class _BuyerRegistrationScreenState
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _city = AppConfig.moroccanCities.first;
+  final String _city = AppConfig.launchCity;
   XFile? _profileImage;
   bool _loading = false;
 
@@ -186,22 +186,9 @@ class _BuyerRegistrationScreenState
           const SizedBox(height: AppSpacing.md),
           AppTextField(
             label: l10n.city,
-            hint: _city,
+            hint: AppConfig.launchCity,
             readOnly: true,
             prefixIcon: Icons.location_city_outlined,
-            onTap: () async {
-              final selected = await showModalBottomSheet<String>(
-                context: context,
-                builder: (ctx) => ListView(
-                  children: AppConfig.moroccanCities
-                      .map((city) => ListTile(
-                          title: Text(city),
-                          onTap: () => Navigator.pop(ctx, city)))
-                      .toList(),
-                ),
-              );
-              if (selected != null) setState(() => _city = selected);
-            },
           ),
         ],
       ),

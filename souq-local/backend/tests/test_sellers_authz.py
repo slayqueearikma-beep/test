@@ -65,7 +65,7 @@ async def test_buyer_can_review_active_seller():
                 "business_name": "Public Shop",
                 "description": "Nice",
                 "address": "2 Main Street",
-                "city": "Rabat",
+                "city": "Casablanca",
                 "latitude": 34.0,
                 "longitude": -6.8,
                 "phone": "",

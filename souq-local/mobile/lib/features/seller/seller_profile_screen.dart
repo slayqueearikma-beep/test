@@ -34,8 +34,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  String _city = AppConfig.moroccanCities.first;
-  LatLng _location = CityCoordinates.centerFor(AppConfig.moroccanCities.first);
+  LatLng _location = CityCoordinates.casablanca;
   bool _isActive = true;
   bool _loading = false;
   bool _hydrated = false;
@@ -83,7 +82,6 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
     _descriptionController.text = seller.description;
     _addressController.text = seller.address;
     _phoneController.text = seller.phone;
-    _city = seller.city;
     _location = LatLng(seller.latitude, seller.longitude);
     _coverUrl = seller.coverImageUrl;
     _logoUrl = seller.logoImageUrl;
@@ -142,7 +140,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
             businessName: _businessNameController.text.trim(),
             description: _descriptionController.text.trim(),
             address: _addressController.text.trim(),
-            city: _city,
+            city: AppConfig.launchCity,
             latitude: _location.latitude,
             longitude: _location.longitude,
             phone: _phoneController.text.trim(),
@@ -209,21 +207,9 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
                 decoration: InputDecoration(labelText: l10n.businessDescription),
               ),
               const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                value: _city,
+              InputDecorator(
                 decoration: InputDecoration(labelText: l10n.reviewCity),
-                items: AppConfig.moroccanCities
-                    .map((city) => DropdownMenuItem(value: city, child: Text(city)))
-                    .toList(),
-                onChanged: _loading
-                    ? null
-                    : (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _city = value;
-                          _location = CityCoordinates.centerFor(value);
-                        });
-                      },
+                child: const Text(AppConfig.launchCity),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(

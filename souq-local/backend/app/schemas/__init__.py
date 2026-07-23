@@ -289,6 +289,19 @@ class SellerCreate(BaseModel):
     service_areas: list[str] = Field(default_factory=list)
     category_ids: list[UUID] = Field(default_factory=list)
 
+    @field_validator("city")
+    @classmethod
+    def launch_city_only(cls, value: str) -> str:
+        from app.config import settings
+
+        cleaned = value.strip()
+        for city in settings.default_cities:
+            if city.casefold() == cleaned.casefold():
+                return city
+        raise ValueError(
+            f"MarGem currently supports {', '.join(settings.default_cities)} only"
+        )
+
 
 class SellerUpdate(BaseModel):
     business_name: str | None = Field(default=None, min_length=2, max_length=160)
@@ -311,6 +324,21 @@ class SellerUpdate(BaseModel):
     service_areas: list[str] | None = None
     category_ids: list[UUID] | None = None
     is_active: bool | None = None
+
+    @field_validator("city")
+    @classmethod
+    def launch_city_only(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from app.config import settings
+
+        cleaned = value.strip()
+        for city in settings.default_cities:
+            if city.casefold() == cleaned.casefold():
+                return city
+        raise ValueError(
+            f"MarGem currently supports {', '.join(settings.default_cities)} only"
+        )
 
 
 class SellerSummary(BaseModel):

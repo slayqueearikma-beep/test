@@ -95,7 +95,7 @@ class _AccountTypeOnboardingScreenState
     final storage = ref.read(appStorageProvider);
     if (storage == null) return;
     await storage.completeOnboarding();
-    await storage.saveGuestSession(city: AppConfig.moroccanCities.first);
+    await storage.saveGuestSession(city: AppConfig.launchCity);
     ref.read(userSessionProvider.notifier).state = storage.getSession();
     if (mounted) context.go('/buyer/home');
   }

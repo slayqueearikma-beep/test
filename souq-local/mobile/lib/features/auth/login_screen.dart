@@ -80,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: session.user.email,
           accountType:
               session.user.canSell ? AccountType.seller : AccountType.buyer,
-          city: existing?.city ?? AppConfig.moroccanCities.first,
+          city: AppConfig.launchCity,
           businessName: existing?.businessName,
           sellerId: existing?.sellerId,
         );
@@ -230,7 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final storage = ref.read(appStorageProvider);
     if (storage == null) return;
     await storage.completeOnboarding();
-    await storage.saveGuestSession(city: AppConfig.moroccanCities.first);
+    await storage.saveGuestSession(city: AppConfig.launchCity);
     ref.read(userSessionProvider.notifier).state = storage.getSession();
     if (mounted) context.go('/buyer/home');
   }

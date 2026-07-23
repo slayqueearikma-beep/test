@@ -25,7 +25,6 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
   final _description = TextEditingController();
   final _address = TextEditingController();
   final _phone = TextEditingController();
-  String _city = AppConfig.moroccanCities.first;
   bool _loading = false;
 
   @override
@@ -55,13 +54,13 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
 
     setState(() => _loading = true);
     try {
-      final coords = CityCoordinates.centerFor(_city);
+      final coords = CityCoordinates.casablanca;
       final seller = await apiServiceProvider.createSeller(
         SellerCreatePayload(
           businessName: _businessName.text.trim(),
           description: _description.text.trim(),
           address: _address.text.trim(),
-          city: _city,
+          city: AppConfig.launchCity,
           latitude: coords.latitude,
           longitude: coords.longitude,
           phone: _phone.text.trim(),
@@ -122,15 +121,9 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
               decoration: InputDecoration(labelText: l10n.fullAddress),
             ),
             const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
-              value: _city,
+            InputDecorator(
               decoration: InputDecoration(labelText: l10n.city),
-              items: AppConfig.moroccanCities
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _city = value);
-              },
+              child: const Text(AppConfig.launchCity),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(

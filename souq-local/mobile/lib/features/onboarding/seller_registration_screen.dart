@@ -44,10 +44,10 @@ class _SellerRegistrationScreenState
 
   // Step 2
   String _category = 'Food';
-  String _city = AppConfig.moroccanCities.first;
+  final String _city = AppConfig.launchCity;
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-  LatLng _location = CityCoordinates.centerFor(AppConfig.moroccanCities.first);
+  LatLng _location = CityCoordinates.casablanca;
 
   // Step 3
   final _descriptionController = TextEditingController();
@@ -350,26 +350,9 @@ class _SellerRegistrationScreenState
         const SizedBox(height: AppSpacing.md),
         AppTextField(
           label: l10n.city,
-          hint: _city,
+          hint: AppConfig.launchCity,
           readOnly: true,
           prefixIcon: Icons.location_city_outlined,
-          onTap: () async {
-            final selected = await showModalBottomSheet<String>(
-              context: context,
-              builder: (ctx) => ListView(
-                children: AppConfig.moroccanCities
-                    .map((c) => ListTile(
-                        title: Text(c), onTap: () => Navigator.pop(ctx, c)))
-                    .toList(),
-              ),
-            );
-            if (selected != null) {
-              setState(() {
-                _city = selected;
-                _location = CityCoordinates.centerFor(selected);
-              });
-            }
-          },
         ),
         const SizedBox(height: AppSpacing.md),
         AppTextField(

@@ -24,8 +24,8 @@ import '../search/search_screen.dart';
 import '../settings/language_settings_tile.dart';
 
 final buyerCityProvider = StateProvider<String>((ref) {
-  final session = ref.watch(userSessionProvider);
-  return session?.city ?? AppConfig.moroccanCities.first;
+  // Casablanca-only launch — ignore any other saved city.
+  return AppConfig.launchCity;
 });
 
 final buyerCategorySlugProvider = StateProvider<String?>((ref) => null);
@@ -163,7 +163,7 @@ class BuyerHomeScreen extends ConsumerWidget {
                     ),
                     city: city,
                     isGuest: isGuest,
-                    onCityTap: () => _pickCity(context, ref, city),
+                    onCityTap: null,
                     onNotifications: () {
                       if (isGuest) {
                         context.push('/login');
@@ -449,33 +449,6 @@ class BuyerHomeScreen extends ConsumerWidget {
       }
     }
   }
-
-  Future<void> _pickCity(
-    BuildContext context,
-    WidgetRef ref,
-    String current,
-  ) async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => ListView(
-        children: AppConfig.moroccanCities
-            .map(
-              (c) => ListTile(
-                title: Text(c),
-                trailing: c == current
-                    ? const Icon(Icons.check, color: AppColors.primary)
-                    : null,
-                onTap: () => Navigator.pop(ctx, c),
-              ),
-            )
-            .toList(),
-      ),
-    );
-    if (selected != null) {
-      ref.read(buyerCityProvider.notifier).state = selected;
-    }
-  }
 }
 
 class _HomeTopBar extends StatelessWidget {
@@ -483,7 +456,7 @@ class _HomeTopBar extends StatelessWidget {
     required this.greeting,
     required this.city,
     required this.isGuest,
-    required this.onCityTap,
+    this.onCityTap,
     required this.onNotifications,
     required this.onPremium,
     required this.onProfile,
@@ -492,7 +465,7 @@ class _HomeTopBar extends StatelessWidget {
   final String greeting;
   final String city;
   final bool isGuest;
-  final VoidCallback onCityTap;
+  final VoidCallback? onCityTap;
   final VoidCallback onNotifications;
   final VoidCallback onPremium;
   final VoidCallback onProfile;
@@ -515,24 +488,33 @@ class _HomeTopBar extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
               ),
-              InkWell(
-                onTap: onCityTap,
-                borderRadius: BorderRadius.circular(8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        city,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+              if (onCityTap == null)
+                Text(
+                  city,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                  ],
+                )
+              else
+                InkWell(
+                  onTap: onCityTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          city,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),

@@ -56,13 +56,6 @@ class Settings(BaseSettings):
 
     default_cities: list[str] = [
         "Casablanca",
-        "Rabat",
-        "Marrakech",
-        "Fes",
-        "Tangier",
-        "Agadir",
-        "Meknes",
-        "Oujda",
     ]
 
     @field_validator("azure_storage_connection_string", "azure_storage_container", mode="before")

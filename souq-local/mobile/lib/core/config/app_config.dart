@@ -99,12 +99,8 @@ class AppConfig {
 
   static const List<String> moroccanCities = [
     'Casablanca',
-    'Rabat',
-    'Marrakech',
-    'Fes',
-    'Tangier',
-    'Agadir',
-    'Meknes',
-    'Oujda',
   ];
+
+  /// Launch city — MarGem is Casablanca-only for now.
+  static const String launchCity = 'Casablanca';
 }
