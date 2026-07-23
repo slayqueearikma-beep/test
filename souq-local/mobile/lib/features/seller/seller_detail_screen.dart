@@ -53,6 +53,15 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
       await context.push('/login');
       return;
     }
+    // Sellers messaging their own storefront is blocked by the API — hide early.
+    final mySellerId = session.sellerId;
+    if (mySellerId != null && mySellerId.isNotEmpty && mySellerId == seller.id) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.cannotMessageOwnStore)),
+      );
+      return;
+    }
     try {
       await apiServiceProvider.createContactEvent(
         sellerId: seller.id,
@@ -138,6 +147,10 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
           }
           final seller = snapshot.data!;
           final l10n = context.l10n;
+          final session = ref.watch(userSessionProvider);
+          final isOwnStore = session?.sellerId != null &&
+              session!.sellerId!.isNotEmpty &&
+              session.sellerId == seller.id;
 
           return CustomScrollView(
             slivers: [
@@ -288,14 +301,16 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
                               label: Text(l10n.review),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _messageSeller(seller),
-                              icon: const Icon(Icons.chat_bubble_outline),
-                              label: Text(l10n.contactSeller),
+                          if (!isOwnStore) ...[
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _messageSeller(seller),
+                                icon: const Icon(Icons.chat_bubble_outline),
+                                label: Text(l10n.messageBusiness),
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 12),

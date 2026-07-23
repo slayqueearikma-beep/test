@@ -145,12 +145,12 @@ class AppStringsAr extends AppStringsEn {
   String get searchConversations => 'البحث في المحادثات';
   @override
   String get noConversationsYet =>
-      'لا توجد محادثات بعد. تواصل مع نشاط تجاري لبدء الدردشة.';
+      'لا توجد محادثات بعد. راسل أي نشاط تجاري — بما في ذلك البائعين الآخرين.';
   @override
-  String get signInToMessage => 'سجّل الدخول لمراسلة البائعين';
+  String get signInToMessage => 'سجّل الدخول لمراسلة أي شخص';
   @override
   String get signInToMessageSubtitle =>
-      'ستظهر استفساراتك وردودك هنا بعد تسجيل الدخول.';
+      'ستظهر محادثاتك مع المشترين والبائعين هنا بعد تسجيل الدخول.';
   @override
   String get noMessagesYet => 'لا توجد رسائل في هذه المحادثة بعد.';
   @override
@@ -513,6 +513,12 @@ class AppStringsAr extends AppStringsEn {
   String get acceptedPaymentMethods => 'طرق الدفع المقبولة';
   @override
   String get contactSeller => 'تواصل مع البائع';
+  String get messageBusiness => 'مراسلة';
+  String get cannotMessageOwnStore => 'لا يمكنك مراسلة متجرك الخاص.';
+  String get discoverBusinesses => 'اكتشف الأعمال';
+  String get discoverBusinessesSub =>
+      'تصفّح البائعين الآخرين وراسلهم مباشرة';
+  String get findPeopleToMessage => 'ابحث عمّن تراسله';
   @override
   String inquiryAboutListing(String listingName) =>
       'مرحباً! أنا مهتم بـ "$listingName". هل ما زال متوفراً؟';

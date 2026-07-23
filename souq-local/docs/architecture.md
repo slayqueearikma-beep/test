@@ -50,7 +50,7 @@ erDiagram
 | Health | `/live`, `/ready`, `/health` |
 | Auth | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/me` |
 | Discovery | `/sellers`, `/sellers/map`, `/categories`, `/favorites/*`, `/follows`, `/contact-events` |
-| Messaging | `/messages/conversations`, `/messages/sellers/{id}` |
+| Messaging | `/messages/conversations`, `/messages/sellers/{id}`, `/messages/users/{id}` |
 | Seller ops | `/seller/analytics`, `/notifications`, premium plans |
 | Admin | `/admin/users`, `/admin/sellers/pending`, verify/status (admin-only writes) |
 | Uploads | `/uploads` → Azure Blob (durable public URLs) |

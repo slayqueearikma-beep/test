@@ -148,12 +148,12 @@ class AppStringsFr extends AppStringsEn {
   String get searchConversations => 'Rechercher des conversations';
   @override
   String get noConversationsYet =>
-      'Aucune conversation pour le moment. Contactez un commerce pour discuter.';
+      'Aucune conversation pour le moment. Envoyez un message à n’importe quel commerce — y compris d’autres vendeurs.';
   @override
-  String get signInToMessage => 'Connectez-vous pour écrire aux vendeurs';
+  String get signInToMessage => 'Connectez-vous pour discuter avec tout le monde';
   @override
   String get signInToMessageSubtitle =>
-      'Vos demandes et réponses apparaîtront ici une fois connecté.';
+      'Discutez avec acheteurs et vendeurs ici une fois connecté.';
   @override
   String get noMessagesYet => 'Aucun message dans cette conversation.';
   @override
@@ -526,6 +526,13 @@ class AppStringsFr extends AppStringsEn {
   String get acceptedPaymentMethods => 'Moyens de paiement acceptés';
   @override
   String get contactSeller => 'Contacter le vendeur';
+  String get messageBusiness => 'Message';
+  String get cannotMessageOwnStore =>
+      'Vous ne pouvez pas envoyer un message à votre propre boutique.';
+  String get discoverBusinesses => 'Découvrir des commerces';
+  String get discoverBusinessesSub =>
+      'Parcourez d’autres vendeurs et discutez avec eux';
+  String get findPeopleToMessage => 'Trouver quelqu’un à messager';
   @override
   String inquiryAboutListing(String listingName) =>
       'Bonjour ! Je suis intéressé(e) par « $listingName ». Est-ce toujours disponible ?';

@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -26,7 +26,6 @@ from app.models import (
     VerificationStatus,
 )
 from app.services.notifications import notify_user
-from app.services.seller_counters import bump_inquiry_count
 from app.services.security import revoke_all_refresh_tokens
 
 router = APIRouter(tags=["seller-ops"])
@@ -85,8 +84,10 @@ class MessageOut(BaseModel):
 
 class ConversationOut(BaseModel):
     id: UUID
+    # Legacy aliases kept for older clients: buyer_id ≈ peer when viewing as store owner historically.
     buyer_id: UUID
-    seller_id: UUID
+    seller_id: UUID | None = None
+    peer_user_id: UUID
     last_message_at: datetime
     peer_name: str = ""
     unread_count: int = 0
@@ -227,50 +228,17 @@ async def list_conversations(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[ConversationOut]:
-    seller = (
-        await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
-    ).scalar_one_or_none()
-
-    if seller:
-        # Include both storefront inbox and any buyer-side threads (seller messaging sellers).
-        result = await session.execute(
-            select(Conversation)
-            .where(or_(Conversation.seller_id == seller.id, Conversation.buyer_id == user.id))
-            .order_by(Conversation.last_message_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-        conversations = list(result.scalars().all())
-        # Peer naming differs per conversation role — resolve in helper with mixed mode.
-        return await _conversation_outs_mixed(session, conversations, user_id=user.id, seller_id=seller.id)
+    from app.services.messaging import conversation_participant_filter, peer_display_names
 
     result = await session.execute(
         select(Conversation)
-        .where(Conversation.buyer_id == user.id)
+        .where(conversation_participant_filter(user.id))
         .order_by(Conversation.last_message_at.desc())
         .limit(limit)
         .offset(offset)
     )
     conversations = list(result.scalars().all())
-    return await _conversation_outs(session, conversations, user_id=user.id, as_seller=False)
-
-
-async def _conversation_outs_mixed(
-    session: AsyncSession,
-    conversations: list[Conversation],
-    *,
-    user_id: UUID,
-    seller_id: UUID,
-) -> list[ConversationOut]:
-    if not conversations:
-        return []
-
-    as_seller = [c for c in conversations if c.seller_id == seller_id]
-    as_buyer = [c for c in conversations if c.seller_id != seller_id]
-    seller_outs = await _conversation_outs(session, as_seller, user_id=user_id, as_seller=True)
-    buyer_outs = await _conversation_outs(session, as_buyer, user_id=user_id, as_seller=False)
-    by_id = {item.id: item for item in [*seller_outs, *buyer_outs]}
-    return [by_id[c.id] for c in conversations if c.id in by_id]
+    return await _conversation_outs(session, conversations, user_id=user.id)
 
 
 async def _conversation_outs(
@@ -278,12 +246,14 @@ async def _conversation_outs(
     conversations: list[Conversation],
     *,
     user_id: UUID,
-    as_seller: bool,
 ) -> list[ConversationOut]:
+    from app.services.messaging import peer_display_names
+
     if not conversations:
         return []
 
     conversation_ids = [c.id for c in conversations]
+    peer_ids = {c.other_participant(user_id) for c in conversations}
 
     unread_rows = await session.execute(
         select(Message.conversation_id, func.count(Message.id))
@@ -296,7 +266,6 @@ async def _conversation_outs(
     )
     unread_map = {row[0]: int(row[1]) for row in unread_rows.all()}
 
-    # PostgreSQL DISTINCT ON — one latest message body per conversation.
     last_rows = await session.execute(
         select(Message.conversation_id, Message.body)
         .where(Message.conversation_id.in_(conversation_ids))
@@ -304,43 +273,57 @@ async def _conversation_outs(
         .order_by(Message.conversation_id, Message.created_at.desc())
     )
     last_map = {row[0]: (row[1] or "")[:160] for row in last_rows.all()}
+    peer_map = await peer_display_names(session, peer_ids)
 
-    if as_seller:
-        peer_ids = {c.buyer_id for c in conversations}
-        peers = (
-            await session.execute(select(User).where(User.id.in_(peer_ids)))
-        ).scalars().all()
-        peer_map = {p.id: (p.display_name or p.email or "Buyer") for p in peers}
-        return [
+    outs: list[ConversationOut] = []
+    for c in conversations:
+        peer_id = c.other_participant(user_id)
+        outs.append(
             ConversationOut(
                 id=c.id,
-                buyer_id=c.buyer_id,
-                seller_id=c.seller_id,
+                buyer_id=peer_id,
+                seller_id=c.context_seller_id,
+                peer_user_id=peer_id,
                 last_message_at=c.last_message_at,
-                peer_name=peer_map.get(c.buyer_id, "Buyer"),
+                peer_name=peer_map.get(peer_id, "User"),
                 unread_count=unread_map.get(c.id, 0),
                 last_message_preview=last_map.get(c.id, ""),
             )
-            for c in conversations
-        ]
-
-    peer_ids = {c.seller_id for c in conversations}
-    peers = (
-        await session.execute(select(SellerProfile).where(SellerProfile.id.in_(peer_ids)))
-    ).scalars().all()
-    peer_map = {p.id: p.business_name for p in peers}
-    return [
-        ConversationOut(
-            id=c.id,
-            buyer_id=c.buyer_id,
-            seller_id=c.seller_id,
-            last_message_at=c.last_message_at,
-            peer_name=peer_map.get(c.seller_id, "Seller"),
-            unread_count=unread_map.get(c.id, 0),
-            last_message_preview=last_map.get(c.id, ""),
         )
-        for c in conversations
-    ]
+    return outs
+
+
+@router.post("/messages/users/{user_id}", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
+async def start_or_send_to_user(
+    request: Request,
+    user_id: UUID,
+    payload: MessageCreate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> Message:
+    """Start or continue a peer conversation with any authenticated user."""
+    from app.services.messaging import get_or_create_conversation, send_message
+
+    peer_profile = (
+        await session.execute(select(SellerProfile).where(SellerProfile.user_id == user_id))
+    ).scalar_one_or_none()
+    context_seller_id = peer_profile.id if peer_profile is not None and peer_profile.is_active else None
+
+    conversation, is_new = await get_or_create_conversation(
+        session,
+        initiator_id=user.id,
+        peer_user_id=user_id,
+        context_seller_id=context_seller_id,
+    )
+    return await send_message(
+        session,
+        conversation=conversation,
+        sender=user,
+        body=payload.body,
+        is_new=is_new,
+        notify_title="New inquiry" if context_seller_id else "New message",
+    )
 
 
 @router.post("/messages/sellers/{seller_id}", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
@@ -352,43 +335,29 @@ async def start_or_send_to_seller(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> Message:
+    """Message a storefront. Works for buyers and sellers (including seller↔seller)."""
+    from app.services.messaging import get_or_create_conversation, send_message
+
     seller = await session.get(SellerProfile, seller_id)
     if seller is None or not seller.is_active:
         raise HTTPException(status_code=404, detail="Seller not found")
     if seller.user_id == user.id:
         raise HTTPException(status_code=400, detail="Cannot message your own store")
 
-    existing = await session.execute(
-        select(Conversation).where(Conversation.buyer_id == user.id, Conversation.seller_id == seller_id)
-    )
-    conversation = existing.scalar_one_or_none()
-    is_new = conversation is None
-    if conversation is None:
-        conversation = Conversation(id=uuid4(), buyer_id=user.id, seller_id=seller_id)
-        session.add(conversation)
-        await session.flush()
-
-    message = Message(
-        id=uuid4(),
-        conversation_id=conversation.id,
-        sender_id=user.id,
-        body=payload.body,
-    )
-    conversation.last_message_at = datetime.now(UTC)
-    session.add(message)
-    if is_new:
-        await bump_inquiry_count(session, seller_id)
-    await notify_user(
+    conversation, is_new = await get_or_create_conversation(
         session,
-        user_id=seller.user_id,
-        title="New inquiry",
-        body=payload.body[:120],
-        kind="message",
-        data={"conversation_id": str(conversation.id)},
+        initiator_id=user.id,
+        peer_user_id=seller.user_id,
+        context_seller_id=seller.id,
     )
-    await session.commit()
-    await session.refresh(message)
-    return message
+    return await send_message(
+        session,
+        conversation=conversation,
+        sender=user,
+        body=payload.body,
+        is_new=is_new,
+        notify_title="New inquiry",
+    )
 
 
 @router.get("/messages/conversations/{conversation_id}", response_model=list[MessageOut])
@@ -399,12 +368,9 @@ async def list_messages(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[Message]:
-    conversation = await session.get(Conversation, conversation_id)
-    if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    seller = await session.get(SellerProfile, conversation.seller_id)
-    if conversation.buyer_id != user.id and (seller is None or seller.user_id != user.id):
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    from app.services.messaging import require_conversation_participant
+
+    await require_conversation_participant(session, conversation_id, user.id)
 
     result = await session.execute(
         select(Message)
@@ -425,7 +391,6 @@ async def list_messages(
         for message in messages:
             if message.id in set(unread_ids):
                 message.read_at = datetime.now(UTC)
-    # Return chronological order for clients.
     messages.reverse()
     return messages
 
@@ -439,33 +404,17 @@ async def reply_message(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> Message:
-    conversation = await session.get(Conversation, conversation_id)
-    if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    seller = await session.get(SellerProfile, conversation.seller_id)
-    if conversation.buyer_id != user.id and (seller is None or seller.user_id != user.id):
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    from app.services.messaging import require_conversation_participant, send_message
 
-    message = Message(
-        id=uuid4(),
-        conversation_id=conversation.id,
-        sender_id=user.id,
-        body=payload.body,
-    )
-    conversation.last_message_at = datetime.now(UTC)
-    session.add(message)
-    recipient = seller.user_id if conversation.buyer_id == user.id and seller else conversation.buyer_id
-    await notify_user(
+    conversation = await require_conversation_participant(session, conversation_id, user.id)
+    return await send_message(
         session,
-        user_id=recipient,
-        title="New message",
-        body=payload.body[:120],
-        kind="message",
-        data={"conversation_id": str(conversation.id)},
+        conversation=conversation,
+        sender=user,
+        body=payload.body,
+        is_new=False,
+        notify_title="New message",
     )
-    await session.commit()
-    await session.refresh(message)
-    return message
 
 
 @router.get("/subscriptions/plans", response_model=list[PlanOut])

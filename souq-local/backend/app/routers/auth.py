@@ -486,24 +486,22 @@ async def delete_account(
     seller = await session.execute(select(SellerProfile).where(SellerProfile.user_id == user.id))
     profile = seller.scalar_one_or_none()
 
-    # Remove message history the user authored, then conversations they own as buyer.
+    # Remove message history the user authored, then any peer conversations they belong to.
     await session.execute(sql_delete(Message).where(Message.sender_id == user.id))
-    buyer_conversations = (
-        await session.execute(select(Conversation.id).where(Conversation.buyer_id == user.id))
+    peer_conversations = (
+        await session.execute(
+            select(Conversation.id).where(
+                (Conversation.participant_a_id == user.id) | (Conversation.participant_b_id == user.id)
+            )
+        )
     ).scalars().all()
-    if buyer_conversations:
-        await session.execute(sql_delete(Message).where(Message.conversation_id.in_(buyer_conversations)))
-        await session.execute(sql_delete(Conversation).where(Conversation.id.in_(buyer_conversations)))
+    if peer_conversations:
+        await session.execute(sql_delete(Message).where(Message.conversation_id.in_(peer_conversations)))
+        await session.execute(sql_delete(Conversation).where(Conversation.id.in_(peer_conversations)))
 
     if profile is not None:
         from app.models import Product, SellerCategory, Service
 
-        seller_conversations = (
-            await session.execute(select(Conversation.id).where(Conversation.seller_id == profile.id))
-        ).scalars().all()
-        if seller_conversations:
-            await session.execute(sql_delete(Message).where(Message.conversation_id.in_(seller_conversations)))
-            await session.execute(sql_delete(Conversation).where(Conversation.id.in_(seller_conversations)))
         # Clear association + owned rows before deleting the storefront (no ON DELETE CASCADE).
         await session.execute(sql_delete(SellerCategory).where(SellerCategory.seller_id == profile.id))
         await session.execute(sql_delete(Product).where(Product.seller_id == profile.id))

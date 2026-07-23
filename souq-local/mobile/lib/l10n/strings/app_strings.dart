@@ -248,6 +248,11 @@ abstract class AppStrings {
   String get priceNegotiable;
   String get acceptedPaymentMethods;
   String get contactSeller;
+  String get messageBusiness;
+  String get cannotMessageOwnStore;
+  String get discoverBusinesses;
+  String get discoverBusinessesSub;
+  String get findPeopleToMessage;
   String inquiryAboutListing(String listingName);
   String get callSeller;
   String get whatsapp;

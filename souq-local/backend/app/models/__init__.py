@@ -371,15 +371,32 @@ class ContactEvent(Base):
 
 class Conversation(Base):
     __tablename__ = "conversations"
-    __table_args__ = (UniqueConstraint("buyer_id", "seller_id", name="uq_conversation_buyer_seller"),)
+    __table_args__ = (
+        UniqueConstraint("participant_a_id", "participant_b_id", name="uq_conversation_participants"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    buyer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seller_profiles.id"), index=True)
+    # Canonical unordered pair: participant_a_id < participant_b_id (both users).
+    participant_a_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    participant_b_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # Optional storefront that was contacted (inquiry analytics); null for pure user↔user.
+    context_seller_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("seller_profiles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     messages: Mapped[list["Message"]] = relationship(back_populates="conversation", cascade="all, delete-orphan")
+
+    def other_participant(self, user_id: uuid.UUID) -> uuid.UUID:
+        if self.participant_a_id == user_id:
+            return self.participant_b_id
+        if self.participant_b_id == user_id:
+            return self.participant_a_id
+        raise ValueError("user is not a participant")
+
+    def involves(self, user_id: uuid.UUID) -> bool:
+        return user_id in {self.participant_a_id, self.participant_b_id}
 
 
 class Message(Base):

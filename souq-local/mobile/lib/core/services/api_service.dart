@@ -575,6 +575,18 @@ class ApiService {
     return ChatMessageModel.fromJson(data);
   }
 
+  Future<ChatMessageModel> startConversationWithUser(
+    String userId,
+    String body,
+  ) async {
+    final data = await postJson(
+      '/messages/users/$userId',
+      {'body': body},
+      auth: true,
+    );
+    return ChatMessageModel.fromJson(data);
+  }
+
   Future<List<SubscriptionPlanModel>> fetchSubscriptionPlans() async {
     final data = await getJsonList('/subscriptions/plans');
     return data

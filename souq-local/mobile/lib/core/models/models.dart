@@ -687,6 +687,7 @@ class ConversationModel {
     required this.buyerId,
     required this.sellerId,
     required this.lastMessageAt,
+    this.peerUserId = '',
     this.peerName = '',
     this.unreadCount = 0,
     this.lastMessagePreview = '',
@@ -695,6 +696,7 @@ class ConversationModel {
   final String id;
   final String buyerId;
   final String sellerId;
+  final String peerUserId;
   final String lastMessageAt;
   final String peerName;
   final int unreadCount;
@@ -707,6 +709,9 @@ class ConversationModel {
       id: json['id'] as String,
       buyerId: json['buyer_id'] as String? ?? '',
       sellerId: json['seller_id'] as String? ?? '',
+      peerUserId: json['peer_user_id'] as String? ??
+          json['buyer_id'] as String? ??
+          '',
       lastMessageAt: json['last_message_at'] as String? ?? '',
       peerName: json['peer_name'] as String? ?? '',
       unreadCount: json['unread_count'] as int? ?? 0,

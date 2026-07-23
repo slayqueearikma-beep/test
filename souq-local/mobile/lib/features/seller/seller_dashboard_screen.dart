@@ -280,6 +280,12 @@ class SellerDashboardScreen extends ConsumerWidget {
                           onTap: () => context.push('/seller/messages'),
                         ),
                         DashboardMenuTile(
+                          title: l10n.discoverBusinesses,
+                          subtitle: l10n.discoverBusinessesSub,
+                          icon: Icons.travel_explore_outlined,
+                          onTap: () => context.push('/buyer/home'),
+                        ),
+                        DashboardMenuTile(
                           title: l10n.analytics,
                           subtitle: l10n.analyticsSummary(
                             analytics?.profileViewCount ?? stats.profileViewCount,

@@ -115,12 +115,23 @@ class _MessagesInboxScreenState extends ConsumerState<MessagesInboxScreen> {
                         return Center(
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.xl),
-                            child: Text(
-                              l10n.noConversationsYet,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  l10n.noConversationsYet,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                FilledButton.icon(
+                                  onPressed: () => context.push('/search'),
+                                  icon: const Icon(Icons.search_rounded),
+                                  label: Text(l10n.findPeopleToMessage),
+                                ),
+                              ],
                             ),
                           ),
                         );

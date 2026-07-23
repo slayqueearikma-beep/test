@@ -146,12 +146,12 @@ class AppStringsEn extends AppStrings {
   String get searchConversations => 'Search conversations';
   @override
   String get noConversationsYet =>
-      'No conversations yet. Contact a business to start chatting.';
+      'No conversations yet. Message any business — including other sellers.';
   @override
-  String get signInToMessage => 'Sign in to message sellers';
+  String get signInToMessage => 'Sign in to message anyone';
   @override
   String get signInToMessageSubtitle =>
-      'Your inquiries and replies will appear here once you are signed in.';
+      'Chat with buyers and sellers here once you are signed in.';
   @override
   String get noMessagesYet => 'No messages in this conversation yet.';
   @override
@@ -516,6 +516,12 @@ class AppStringsEn extends AppStrings {
   String get acceptedPaymentMethods => 'Accepted payment methods';
   @override
   String get contactSeller => 'Contact seller';
+  String get messageBusiness => 'Message';
+  String get cannotMessageOwnStore => 'You cannot message your own store.';
+  String get discoverBusinesses => 'Discover businesses';
+  String get discoverBusinessesSub =>
+      'Browse other sellers and message them like WhatsApp';
+  String get findPeopleToMessage => 'Find someone to message';
   @override
   String inquiryAboutListing(String listingName) =>
       "Hi! I'm interested in \"$listingName\". Is it still available?";
