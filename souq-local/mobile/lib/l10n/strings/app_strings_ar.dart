@@ -568,6 +568,37 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get reviewSubmittedSuccess => 'شكراً! تم إرسال تقييمك.';
   @override
+  String get viewAllProducts => 'عرض كل المنتجات';
+  @override
+  String get allProducts => 'كل المنتجات';
+  @override
+  String get searchProductsHint => 'ابحث عن منتجات';
+  @override
+  String get sortPopular => 'الأكثر شعبية';
+  @override
+  String get sortNewest => 'الأحدث';
+  @override
+  String get sortPriceLow => 'السعر ↑';
+  @override
+  String get sortPriceHigh => 'السعر ↓';
+  @override
+  String get businessInformation => 'معلومات النشاط';
+  @override
+  String get beFirstToReview => 'كن أول من يقيّم هذا البائع.';
+  @override
+  String get seeAllReviews => 'عرض كل التقييمات';
+  @override
+  String get moreFromSeller => 'المزيد من هذا البائع';
+  @override
+  String get writeYourMessage => 'اكتب رسالتك...';
+  @override
+  String favoritesCount(int count) => '$count مفضلة';
+  @override
+  String followersCount(int count) =>
+      count == 1 ? 'متابع واحد' : '$count متابع';
+  @override
+  String memberSince(int year) => 'عضو منذ $year';
+  @override
   String inquiryAboutListing(String listingName) =>
       'مرحباً! أنا مهتم بـ "$listingName". هل ما زال متوفراً؟';
   @override

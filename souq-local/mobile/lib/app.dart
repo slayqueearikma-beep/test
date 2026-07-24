@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/models/models.dart';
 import 'core/services/app_storage.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/locale_provider.dart';
@@ -22,6 +23,7 @@ import 'features/onboarding/seller_registration_screen.dart';
 import 'features/premium/premium_screen.dart';
 import 'features/search/search_screen.dart';
 import 'features/seller/product_detail_screen.dart';
+import 'features/seller/seller_catalog_screen.dart';
 import 'features/seller/seller_dashboard_screen.dart';
 import 'features/seller/seller_detail_screen.dart';
 import 'features/seller/seller_products_screen.dart';
@@ -32,7 +34,6 @@ import 'features/wishlist/wishlist_screen.dart';
 import 'features/settings/language_selection_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'l10n/app_localizations.dart';
-import 'core/models/models.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -154,6 +155,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/seller/:id',
         builder: (_, state) =>
             SellerDetailScreen(sellerId: state.pathParameters['id']!),
+        routes: [
+          GoRoute(
+            path: 'products',
+            builder: (_, state) {
+              final extra = state.extra;
+              return SellerCatalogScreen(
+                sellerId: state.pathParameters['id']!,
+                initialSeller: extra is SellerModel ? extra : null,
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/product/:sellerId/:productId',

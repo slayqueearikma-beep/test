@@ -571,6 +571,38 @@ class AppStringsEn extends AppStrings {
   @override
   String get reviewSubmittedSuccess => 'Thanks! Your review was submitted.';
   @override
+  String get viewAllProducts => 'View all products';
+  @override
+  String get allProducts => 'All products';
+  @override
+  String get searchProductsHint => 'Search products';
+  @override
+  String get sortPopular => 'Popular';
+  @override
+  String get sortNewest => 'Newest';
+  @override
+  String get sortPriceLow => 'Price ↑';
+  @override
+  String get sortPriceHigh => 'Price ↓';
+  @override
+  String get businessInformation => 'Business information';
+  @override
+  String get beFirstToReview => 'Be the first customer to review this seller.';
+  @override
+  String get seeAllReviews => 'See all reviews';
+  @override
+  String get moreFromSeller => 'More from this seller';
+  @override
+  String get writeYourMessage => 'Write your message...';
+  @override
+  String favoritesCount(int count) =>
+      count == 1 ? '1 favorite' : '$count favorites';
+  @override
+  String followersCount(int count) =>
+      count == 1 ? '1 follower' : '$count followers';
+  @override
+  String memberSince(int year) => 'Member since $year';
+  @override
   String inquiryAboutListing(String listingName) =>
       "Hi! I'm interested in \"$listingName\". Is it still available?";
   @override

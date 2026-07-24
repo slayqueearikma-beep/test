@@ -360,6 +360,44 @@ async def start_or_send_to_seller(
     )
 
 
+@router.post("/messages/sellers/{seller_id}/open", response_model=ConversationOut, status_code=status.HTTP_200_OK)
+@limiter.limit("30/minute")
+async def open_seller_conversation(
+    request: Request,
+    seller_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> ConversationOut:
+    """Open (or resume) a storefront thread without sending a canned first message."""
+    from app.services.messaging import get_or_create_conversation
+
+    seller = await session.get(SellerProfile, seller_id)
+    if seller is None or not seller.is_active:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    if seller.user_id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot message your own store")
+
+    conversation, _ = await get_or_create_conversation(
+        session,
+        initiator_id=user.id,
+        peer_user_id=seller.user_id,
+        context_seller_id=seller.id,
+    )
+    await session.commit()
+    await session.refresh(conversation)
+
+    return ConversationOut(
+        id=conversation.id,
+        buyer_id=seller.user_id,
+        seller_id=seller.id,
+        peer_user_id=seller.user_id,
+        last_message_at=conversation.last_message_at,
+        peer_name=seller.business_name,
+        unread_count=0,
+        last_message_preview="",
+    )
+
+
 @router.get("/messages/conversations/{conversation_id}", response_model=list[MessageOut])
 async def list_messages(
     conversation_id: UUID,

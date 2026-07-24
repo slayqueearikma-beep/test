@@ -123,6 +123,26 @@ async def test_favorites_follow_contact_and_messaging(client: AsyncClient):
     assert "cash" in detail["payment_methods"]
     assert detail["whatsapp_number"]
     assert detail["website_url"] == "https://example.com"
+    assert "created_at" in detail
+    assert detail.get("follower_count", 0) >= 1
+
+    opened = await client.post(
+        f"/messages/sellers/{seller_body['id']}/open",
+        headers=buyer["headers"],
+    )
+    assert opened.status_code == 200, opened.text
+    thread = opened.json()
+    assert thread["id"]
+    assert thread.get("last_message_preview", "") == ""
+
+    thread_messages = await client.get(
+        f"/messages/conversations/{thread['id']}",
+        headers=buyer["headers"],
+    )
+    assert thread_messages.status_code == 200
+    # Prior inquiry message may exist; open must not auto-append a canned body.
+    bodies = [m["body"] for m in thread_messages.json()]
+    assert all("Is it still available?" not in b for b in bodies)
 
 
 @pytest.mark.asyncio

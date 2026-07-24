@@ -109,9 +109,11 @@ class SellerModel {
     this.inquiryCount = 0,
     this.favoriteCount = 0,
     this.contactClickCount = 0,
+    this.followerCount = 0,
     this.avgResponseMinutes = 0,
     this.isPremium = false,
     this.verificationStatus = 'unverified',
+    this.createdAt,
     this.categories = const [],
     this.products = const [],
     this.services = const [],
@@ -148,9 +150,11 @@ class SellerModel {
   final int inquiryCount;
   final int favoriteCount;
   final int contactClickCount;
+  final int followerCount;
   final int avgResponseMinutes;
   final bool isPremium;
   final String verificationStatus;
+  final DateTime? createdAt;
   final List<CategoryModel> categories;
   final List<ProductModel> products;
   final List<ServiceModel> services;
@@ -201,10 +205,14 @@ class SellerModel {
       inquiryCount: json['inquiry_count'] as int? ?? 0,
       favoriteCount: json['favorite_count'] as int? ?? 0,
       contactClickCount: json['contact_click_count'] as int? ?? 0,
+      followerCount: json['follower_count'] as int? ?? 0,
       avgResponseMinutes: json['avg_response_minutes'] as int? ?? 0,
       isPremium: json['is_premium'] as bool? ?? false,
       verificationStatus:
           json['verification_status'] as String? ?? 'unverified',
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
       categories: (json['categories'] as List<dynamic>? ?? [])
           .map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),

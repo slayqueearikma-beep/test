@@ -387,6 +387,8 @@ class SellerDetail(SellerSummary):
     inquiry_count: int = 0
     favorite_count: int = 0
     contact_click_count: int = 0
+    follower_count: int = 0
+    created_at: datetime | None = None
     products: list[ProductOut]
     services: list[ServiceOut]
 

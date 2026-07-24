@@ -482,10 +482,13 @@ class _ConversationThreadScreenState
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      autofocus: true,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
                       minLines: 1,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        hintText: l10n.typeMessage,
+                        hintText: l10n.writeYourMessage,
                         filled: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),

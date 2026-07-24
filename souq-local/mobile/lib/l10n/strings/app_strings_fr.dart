@@ -585,6 +585,39 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get reviewSubmittedSuccess => 'Merci ! Votre avis a été envoyé.';
   @override
+  String get viewAllProducts => 'Voir tous les produits';
+  @override
+  String get allProducts => 'Tous les produits';
+  @override
+  String get searchProductsHint => 'Rechercher des produits';
+  @override
+  String get sortPopular => 'Populaires';
+  @override
+  String get sortNewest => 'Plus récents';
+  @override
+  String get sortPriceLow => 'Prix ↑';
+  @override
+  String get sortPriceHigh => 'Prix ↓';
+  @override
+  String get businessInformation => 'Informations du commerce';
+  @override
+  String get beFirstToReview =>
+      'Soyez le premier client à noter ce vendeur.';
+  @override
+  String get seeAllReviews => 'Voir tous les avis';
+  @override
+  String get moreFromSeller => 'Plus de ce vendeur';
+  @override
+  String get writeYourMessage => 'Écrivez votre message...';
+  @override
+  String favoritesCount(int count) =>
+      count == 1 ? '1 favori' : '$count favoris';
+  @override
+  String followersCount(int count) =>
+      count == 1 ? '1 abonné' : '$count abonnés';
+  @override
+  String memberSince(int year) => 'Membre depuis $year';
+  @override
   String inquiryAboutListing(String listingName) =>
       'Bonjour ! Je suis intéressé(e) par « $listingName ». Est-ce toujours disponible ?';
   @override

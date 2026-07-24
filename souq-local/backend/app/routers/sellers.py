@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user, get_current_user_optional, require_seller
 from app.config import settings
 from app.database import get_db
-from app.models import Category, Product, Review, SellerProfile, Service, User
+from app.models import Category, Product, Review, SellerFollow, SellerProfile, Service, User
 from app.schemas import (
     MapPin,
     ProductCreate,
@@ -71,6 +71,12 @@ async def _load_seller_detail(session: AsyncSession, seller_id: UUID) -> SellerP
     apply_seller_premium_expiry(seller, persist=True)
     if before and not seller.is_premium:
         await session.commit()
+
+    followers = await session.scalar(
+        select(func.count(SellerFollow.id)).where(SellerFollow.seller_id == seller_id)
+    )
+    # Attached for SellerDetail.from_attributes serialization (not an ORM column).
+    setattr(seller, "follower_count", int(followers or 0))
     return seller
 
 

@@ -604,6 +604,16 @@ class ApiService {
     return ChatMessageModel.fromJson(data);
   }
 
+  /// Opens or resumes a storefront conversation without sending a message.
+  Future<ConversationModel> openSellerConversation(String sellerId) async {
+    final data = await postJson(
+      '/messages/sellers/$sellerId/open',
+      const {},
+      auth: true,
+    );
+    return ConversationModel.fromJson(data);
+  }
+
   Future<ChatMessageModel> startConversationWithUser(
     String userId,
     String body,
