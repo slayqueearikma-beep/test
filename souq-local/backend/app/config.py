@@ -16,6 +16,21 @@ def _normalize_host(host: str) -> str:
     return value.split("/")[0].split(":")[0]
 
 
+def _is_loopback_or_private_url(url: str) -> bool:
+    """True for localhost / RFC1918 LAN hosts (home-server HTTP allowed)."""
+    from ipaddress import ip_address
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").lower()
+    if not host or host == "localhost":
+        return True
+    try:
+        addr = ip_address(host)
+    except ValueError:
+        return False
+    return bool(addr.is_loopback or addr.is_private)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -139,10 +154,20 @@ class Settings(BaseSettings):
                     "ALLOW_INSECURE_EMAIL_FALLBACK enabled — password reset and verification "
                     "emails will only be logged, not delivered"
                 )
-            if self.public_api_url.startswith("http://") and "localhost" not in self.public_api_url:
-                raise ValueError("PUBLIC_API_URL must use HTTPS in production (non-localhost)")
-            if self.public_app_url.startswith("http://") and "localhost" not in self.public_app_url:
-                raise ValueError("PUBLIC_APP_URL must use HTTPS in production (non-localhost)")
+            if self.public_api_url.startswith("http://") and not _is_loopback_or_private_url(
+                self.public_api_url
+            ):
+                raise ValueError(
+                    "PUBLIC_API_URL must use HTTPS in production "
+                    "(http is only allowed for localhost / private LAN IPs)"
+                )
+            if self.public_app_url.startswith("http://") and not _is_loopback_or_private_url(
+                self.public_app_url
+            ):
+                raise ValueError(
+                    "PUBLIC_APP_URL must use HTTPS in production "
+                    "(http is only allowed for localhost / private LAN IPs)"
+                )
         return self
 
 
