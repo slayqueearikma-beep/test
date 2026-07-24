@@ -186,6 +186,8 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get somethingWentWrong => 'Une erreur est survenue';
   @override
+  String get pressBackAgainToExit => 'Appuyez à nouveau pour quitter';
+  @override
   String get search => 'Recherche';
   @override
   String get businessKeyword => 'Nom du commerce ou mot-clé';

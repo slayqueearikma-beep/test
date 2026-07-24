@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/config/app_config.dart';
 import '../../core/data/city_coordinates.dart';
 import '../../core/models/models.dart';
+import '../../core/navigation/app_back_handler.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/app_storage.dart';
 import '../../core/services/auth_service.dart';
@@ -73,37 +74,39 @@ class BuyerHomeShell extends ConsumerWidget {
     final l10n = context.l10n;
     final index = ref.watch(buyerTabIndexProvider).clamp(0, 2);
 
-    return Scaffold(
-      body: IndexedStack(
-        index: index,
-        children: [
-          const BuyerHomeScreen(),
-          SearchScreen(autofocusSearch: index == 1),
-          const MessagesInboxScreen(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        height: 68,
-        onDestinationSelected: (i) =>
-            ref.read(buyerTabIndexProvider.notifier).state = i,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home_rounded),
-            label: l10n.navHome,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.search_rounded),
-            selectedIcon: const Icon(Icons.search_rounded),
-            label: l10n.navSearch,
-          ),
-          NavigationDestination(
-            icon: const _MessagesNavIcon(selected: false),
-            selectedIcon: const _MessagesNavIcon(selected: true),
-            label: l10n.navMessages,
-          ),
-        ],
+    return RootBackScope(
+      child: Scaffold(
+        body: IndexedStack(
+          index: index,
+          children: [
+            const BuyerHomeScreen(),
+            SearchScreen(autofocusSearch: index == 1),
+            const MessagesInboxScreen(),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          height: 68,
+          onDestinationSelected: (i) =>
+              ref.read(buyerTabIndexProvider.notifier).state = i,
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home_rounded),
+              label: l10n.navHome,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.search_rounded),
+              selectedIcon: const Icon(Icons.search_rounded),
+              label: l10n.navSearch,
+            ),
+            NavigationDestination(
+              icon: const _MessagesNavIcon(selected: false),
+              selectedIcon: const _MessagesNavIcon(selected: true),
+              label: l10n.navMessages,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -225,14 +228,14 @@ class BuyerHomeScreen extends ConsumerWidget {
                             const SizedBox(width: AppSpacing.sm),
                         itemBuilder: (_, i) {
                           final isAll = i == 0;
-                          final selectedChip =
-                              isAll ? selected == null : selected == categories[i - 1].slug;
-                          final label =
-                              isAll
-                                  ? l10n.allCategories
-                                  : categories[i - 1].localizedName(
-                                      Localizations.localeOf(context).languageCode,
-                                    );
+                          final selectedChip = isAll
+                              ? selected == null
+                              : selected == categories[i - 1].slug;
+                          final label = isAll
+                              ? l10n.allCategories
+                              : categories[i - 1].localizedName(
+                                  Localizations.localeOf(context).languageCode,
+                                );
                           final icon = isAll
                               ? Icons.apps_rounded
                               : _categoryIcon(categories[i - 1].icon);
@@ -241,7 +244,9 @@ class BuyerHomeScreen extends ConsumerWidget {
                             icon: icon,
                             selected: selectedChip,
                             onTap: () {
-                              ref.read(buyerCategorySlugProvider.notifier).state =
+                              ref
+                                      .read(buyerCategorySlugProvider.notifier)
+                                      .state =
                                   isAll ? null : categories[i - 1].slug;
                             },
                           );
@@ -768,7 +773,8 @@ class _ExploreMapCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 child: Row(
                   children: [
                     Container(

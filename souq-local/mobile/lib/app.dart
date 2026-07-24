@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/models/models.dart';
+import 'core/navigation/app_back_handler.dart';
 import 'core/services/app_storage.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/locale_provider.dart';
@@ -36,8 +37,11 @@ import 'features/splash/splash_screen.dart';
 import 'l10n/app_localizations.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    // Keep the page stack for Android system-back; only splash/auth flows
+    // intentionally replace via context.go().
     redirect: (context, state) {
       final session =
           ProviderScope.containerOf(context).read(userSessionProvider);
@@ -177,6 +181,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 class MarGemApp extends ConsumerStatefulWidget {
@@ -186,8 +192,33 @@ class MarGemApp extends ConsumerStatefulWidget {
   ConsumerState<MarGemApp> createState() => _MarGemAppState();
 }
 
-class _MarGemAppState extends ConsumerState<MarGemApp> {
+class _MarGemAppState extends ConsumerState<MarGemApp>
+    with WidgetsBindingObserver {
   var _sessionBound = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Intercept Android system back before go_router exits the activity when
+    // canPop is false on a root route (and still pop the stack when it can).
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext == null) {
+      // No navigator yet (startup) — let the framework decide.
+      return false;
+    }
+    return handleAppBack(context: navContext, ref: ref);
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -182,6 +182,8 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get somethingWentWrong => 'حدث خطأ ما';
   @override
+  String get pressBackAgainToExit => 'اضغط مرة أخرى للخروج';
+  @override
   String get search => 'بحث';
   @override
   String get businessKeyword => 'اسم المحل أو كلمة مفتاحية';

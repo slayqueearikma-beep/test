@@ -76,7 +76,13 @@ class FavoritesScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     FilledButton(
-                        onPressed: () => context.go('/buyer/home'),
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/buyer/home');
+                          }
+                        },
                         child: Text(l10n.browseProducts)),
                   ],
                 ),

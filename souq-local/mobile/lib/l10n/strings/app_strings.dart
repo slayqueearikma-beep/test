@@ -87,6 +87,7 @@ abstract class AppStrings {
   String get couldNotLoadBusinesses;
   String get serverUnreachable;
   String get somethingWentWrong;
+  String get pressBackAgainToExit;
   String get search;
   String get businessKeyword;
   String get noBusinessesFound;

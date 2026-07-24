@@ -183,6 +183,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get somethingWentWrong => 'Something went wrong';
   @override
+  String get pressBackAgainToExit => 'Press back again to exit';
+  @override
   String get search => 'Search';
   @override
   String get businessKeyword => 'Business name or keyword';
