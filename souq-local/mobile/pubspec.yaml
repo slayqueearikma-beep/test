@@ -23,7 +23,8 @@ dependencies:
   shared_preferences: ^2.3.3
   image_picker: ^1.1.2
   flutter_secure_storage: ^9.2.4
-  sentry_flutter: ^8.14.2
+  # 9.3+ raises Android Kotlin languageVersion to 1.8 (required by Kotlin 2.2 / AGP 8.11).
+  sentry_flutter: ^9.3.0
 
 dev_dependencies:
   flutter_test:

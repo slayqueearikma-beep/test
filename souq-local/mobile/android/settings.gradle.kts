@@ -18,9 +18,9 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.7.3" apply false
-    // Flutter 3.29+ / AGP 8.7 require Kotlin 2.1.x (1.8.22 and 2.0.21 are rejected).
-    id("org.jetbrains.kotlin.android") version "2.1.10" apply false
+    id("com.android.application") version "8.11.1" apply false
+    // Flutter release toolchain: AGP 8.11+ / Kotlin 2.2.20+ / Gradle 8.14+.
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
 include(":app")
