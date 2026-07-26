@@ -12,6 +12,7 @@ postgres_admin_login    = "margemadmin"
 postgres_admin_password = "CHANGE_ME_DIFFERENT_PASSWORD"
 # Copied automatically from sub1 by rotate-subscription.ps1 — keeps users logged in
 jwt_secret_key          = "COPY_FROM_SUB1_OR_LEAVE_FOR_SCRIPT"
+upload_token_secret     = "COPY_FROM_SUB1_OR_LEAVE_FOR_SCRIPT"
 
 api_image                 = "margemregsub2.azurecr.io/margem-api:1.0.0"
 create_container_registry = true

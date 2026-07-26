@@ -37,8 +37,8 @@ resource "azurerm_postgresql_flexible_server" "postgres" {
   administrator_password = var.postgres_admin_password
   storage_mb             = 32768
   sku_name               = "B_Standard_B1ms"
-  backup_retention_days  = 7
-  geo_redundant_backup_enabled = false
+  backup_retention_days         = var.postgres_backup_retention_days
+  geo_redundant_backup_enabled  = var.postgres_geo_redundant_backup_enabled
 
   tags = local.common_tags
 }
@@ -160,6 +160,12 @@ resource "azurerm_container_app" "api" {
   }
 
   secret {
+    name                = "upload-token-secret"
+    key_vault_secret_id = azurerm_key_vault_secret.upload_token_secret.versionless_id
+    identity            = azurerm_user_assigned_identity.api.id
+  }
+
+  secret {
     name                = "storage-conn"
     key_vault_secret_id = azurerm_key_vault_secret.storage_connection.versionless_id
     identity            = azurerm_user_assigned_identity.api.id
@@ -200,6 +206,10 @@ resource "azurerm_container_app" "api" {
       env {
         name        = "JWT_SECRET_KEY"
         secret_name = "jwt-secret"
+      }
+      env {
+        name        = "UPLOAD_TOKEN_SECRET"
+        secret_name = "upload-token-secret"
       }
       env {
         name        = "AZURE_STORAGE_CONNECTION_STRING"

@@ -32,7 +32,15 @@ def _is_loopback_or_private_url(url: str) -> bool:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Parse comma-delimited and JSON list env values in `parse_string_list`.
+    # Disabling pydantic-settings' eager JSON decoding prevents one malformed
+    # Docker value from crashing startup before our tolerant validator runs.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        enable_decoding=False,
+    )
 
     app_name: str = "MarGem API"
     app_env: str = "development"
@@ -41,8 +49,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://souq:souq_local_dev@localhost:5432/souq_local"
 
     auth_dev_bypass: bool = False
+    # In production, verified email is required before creating a storefront,
+    # messaging users, or creating reputation signals.
+    require_verified_email: bool = True
     firebase_credentials_path: str = ""
     jwt_secret_key: str = "change-this-secret-in-production-use-key-vault"
+    # Separate key limits the blast radius of a JWT signing-key compromise.
+    # Defaults to the JWT key only in development for backwards compatibility.
+    upload_token_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_expire_minutes: int = 60
     jwt_refresh_expire_days: int = 7
@@ -136,6 +150,11 @@ class Settings(BaseSettings):
             # Reject the documented default even when it already meets length checks.
             if self.jwt_secret_key.startswith("change-this-secret"):
                 raise ValueError("JWT_SECRET_KEY must be rotated away from the default value in production")
+            if self.storage_backend == "local":
+                if not self.upload_token_secret or len(self.upload_token_secret) < 32:
+                    raise ValueError("UPLOAD_TOKEN_SECRET must be at least 32 characters in production")
+                if self.upload_token_secret == self.jwt_secret_key:
+                    raise ValueError("UPLOAD_TOKEN_SECRET must differ from JWT_SECRET_KEY in production")
             if "*" in self.cors_origins:
                 raise ValueError("CORS_ORIGINS must not include '*' in production")
             if "*" in self.allowed_hosts:

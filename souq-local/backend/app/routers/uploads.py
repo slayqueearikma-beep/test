@@ -119,7 +119,11 @@ async def presign_upload(
 
 @router.put("/local/{token}")
 @limiter.limit("30/minute")
-async def put_local_upload(token: str, request: Request) -> Response:
+async def put_local_upload(
+    token: str,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> Response:
     """Receive a PUT from the mobile client for STORAGE_BACKEND=local."""
     if settings.storage_backend != "local":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local storage disabled")
@@ -128,6 +132,8 @@ async def put_local_upload(token: str, request: Request) -> Response:
         meta = verify_upload_token(token)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    if meta["user_id"] != str(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upload token belongs to another user")
 
     content_type = (request.headers.get("content-type") or meta["content_type"]).split(";")[0].strip()
     try:

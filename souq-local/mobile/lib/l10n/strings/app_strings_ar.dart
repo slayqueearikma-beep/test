@@ -182,6 +182,8 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get somethingWentWrong => 'حدث خطأ ما';
   @override
+  String get tryAgain => 'حاول مرة أخرى';
+  @override
   String get pressBackAgainToExit => 'اضغط مرة أخرى للخروج';
   @override
   String get search => 'بحث';
@@ -526,8 +528,7 @@ class AppStringsAr extends AppStringsEn {
   @override
   String get discoverBusinesses => 'اكتشف الأعمال';
   @override
-  String get discoverBusinessesSub =>
-      'تصفّح البائعين الآخرين وراسلهم مباشرة';
+  String get discoverBusinessesSub => 'تصفّح البائعين الآخرين وراسلهم مباشرة';
   @override
   String get findPeopleToMessage => 'ابحث عمّن تراسله';
   @override

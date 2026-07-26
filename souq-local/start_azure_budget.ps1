@@ -3,7 +3,11 @@
 #        .\start_azure_budget.ps1 -InfraOnly   # terraform only, skip app deploy
 
 param(
-    [switch]$InfraOnly
+    [switch]$InfraOnly,
+    [Parameter(Mandatory = $false)][string]$SmtpHost = $env:SMTP_HOST,
+    [Parameter(Mandatory = $false)][string]$SmtpUsername = $env:SMTP_USERNAME,
+    [Parameter(Mandatory = $false)][string]$SmtpPassword = $env:SMTP_PASSWORD,
+    [Parameter(Mandatory = $false)][string]$SmtpFrom = $env:SMTP_FROM
 )
 
 $ErrorActionPreference = "Stop"
@@ -70,6 +74,7 @@ finally {
 $adminUser = Get-TfVarValue -Path $TfVars -Name "admin_username" -Default "azureuser"
 $pgPass = Get-TfVarValue -Path $TfVars -Name "postgres_password"
 $jwt = Get-TfVarValue -Path $TfVars -Name "jwt_secret_key"
+$uploadTokenSecret = Get-TfVarValue -Path $TfVars -Name "upload_token_secret"
 
 Write-Host ""
 Write-Host "  VM IP:   $vmIp"
@@ -79,6 +84,10 @@ Write-Host ""
 if ($InfraOnly) {
     Write-Host "Infra only (-InfraOnly). Deploy app later with: .\start_azure_budget.ps1"
     exit 0
+}
+
+if ([string]::IsNullOrWhiteSpace($SmtpHost)) {
+    throw "SMTP is required for a production deploy. Set SMTP_HOST/SMTP_USERNAME/SMTP_PASSWORD/SMTP_FROM environment variables or pass -SmtpHost."
 }
 
 Write-Host "[2/4] Waiting for VM + Docker (up to 3 min)..."
@@ -99,9 +108,14 @@ if (-not $sshReady) {
 $envContent = @"
 POSTGRES_PASSWORD=$pgPass
 JWT_SECRET_KEY=$jwt
+UPLOAD_TOKEN_SECRET=$uploadTokenSecret
 AZURE_STORAGE_CONNECTION_STRING=$storageConn
 CORS_ORIGINS=["http://${vmIp}:8000"]
 ALLOWED_HOSTS=["${vmIp}","${vmIp}:8000"]
+SMTP_HOST=$SmtpHost
+SMTP_USERNAME=$SmtpUsername
+SMTP_PASSWORD=$SmtpPassword
+SMTP_FROM=$SmtpFrom
 "@
 $envFile = Join-Path $Root ".budget-deploy.env"
 Set-Content -Path $envFile -Value $envContent -NoNewline

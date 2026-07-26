@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user, get_current_user_optional, require_seller
+from app.auth import get_current_user, get_current_user_optional, require_seller, require_verified_email
 from app.config import settings
 from app.database import get_db
 from app.models import Category, Product, Review, SellerFollow, SellerProfile, Service, User
@@ -268,7 +268,7 @@ async def get_my_dashboard(
 @router.post("", response_model=SellerDetail, status_code=status.HTTP_201_CREATED)
 async def create_seller(
     payload: SellerCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_email),
     session: AsyncSession = Depends(get_db),
 ) -> SellerProfile:
     """Create a storefront on the current account (buyer can upgrade in place)."""

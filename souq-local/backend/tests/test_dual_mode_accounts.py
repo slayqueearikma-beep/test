@@ -4,8 +4,11 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
+import app.database as database
 from app.main import app
+from app.models import User
 
 pytestmark = pytest.mark.usefixtures("prepare_database")
 
@@ -35,6 +38,15 @@ async def _register(client: AsyncClient, account_type: str = "buyer") -> dict:
         "headers": {"Authorization": f"Bearer {body['access_token']}"},
         "user": body["user"],
     }
+
+
+async def _verify_email(email: str) -> None:
+    from datetime import UTC, datetime
+
+    async with database.SessionLocal() as session:
+        user = (await session.execute(select(User).where(User.email == email))).scalar_one()
+        user.email_verified_at = datetime.now(UTC)
+        await session.commit()
 
 
 @pytest.mark.asyncio
@@ -74,6 +86,7 @@ async def test_buyer_can_open_storefront_on_same_account(client: AsyncClient):
 async def test_seller_can_review_another_business(client: AsyncClient):
     seller_a = await _register(client, "seller")
     seller_b = await _register(client, "seller")
+    await _verify_email(seller_a["email"])
 
     store_a = await client.post(
         "/sellers",
@@ -125,9 +138,9 @@ async def test_seller_can_review_another_business(client: AsyncClient):
     assert review.status_code == 403, review.text
 
     contact = await client.post(
-        "/contact-events",
+        f"/messages/sellers/{store_b.json()['id']}",
         headers=seller_a["headers"],
-        json={"seller_id": store_b.json()["id"], "channel": "message"},
+        json={"body": "Hello from Store A. I am interested in your service."},
     )
     assert contact.status_code == 201, contact.text
 

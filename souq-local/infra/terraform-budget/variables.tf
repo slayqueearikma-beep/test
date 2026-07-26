@@ -44,8 +44,17 @@ variable "jwt_secret_key" {
   sensitive   = true
 }
 
-variable "allowed_ssh_cidr" {
-  description = "CIDR allowed to SSH (use your IP/32 for security, or 0.0.0.0/0 for easy access)"
+variable "upload_token_secret" {
+  description = "Independent local-upload HMAC secret (32+ characters, different from jwt_secret_key)"
   type        = string
-  default     = "0.0.0.0/0"
+  sensitive   = true
+}
+
+variable "allowed_ssh_cidr" {
+  description = "CIDR allowed to SSH. Use your current public IP with /32."
+  type        = string
+  validation {
+    condition     = var.allowed_ssh_cidr != "0.0.0.0/0"
+    error_message = "allowed_ssh_cidr must be a specific trusted CIDR, never 0.0.0.0/0."
+  }
 }

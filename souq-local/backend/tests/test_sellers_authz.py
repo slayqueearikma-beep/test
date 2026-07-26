@@ -1,7 +1,10 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
+import app.database as database
 from app.main import app
+from app.models import User
 
 pytestmark = pytest.mark.usefixtures("prepare_database")
 
@@ -17,6 +20,7 @@ async def _register(client: AsyncClient, email: str, account_type: str) -> dict:
         },
     )
     assert response.status_code == 201, response.text
+    await _verify_email(email)
     return response.json()
 
 
@@ -38,6 +42,16 @@ async def _create_store(client: AsyncClient, headers: dict, name: str) -> dict:
     )
     assert created.status_code == 201, created.text
     return created.json()
+
+
+async def _verify_email(email: str) -> None:
+    """Mark the fixture account verified; verification itself is tested in auth tests."""
+    async with database.SessionLocal() as session:
+        user = (await session.execute(select(User).where(User.email == email))).scalar_one()
+        from datetime import UTC, datetime
+
+        user.email_verified_at = datetime.now(UTC)
+        await session.commit()
 
 
 @pytest.mark.asyncio
@@ -105,7 +119,7 @@ async def test_buyer_requires_completed_interaction_before_review():
 
 
 @pytest.mark.asyncio
-async def test_buyer_can_review_after_contact_with_categories():
+async def test_buyer_can_review_after_verified_storefront_message():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         seller = await _register(client, "seller-ok@example.com", "seller")
@@ -114,11 +128,14 @@ async def test_buyer_can_review_after_contact_with_categories():
         buyer_headers = {"Authorization": f"Bearer {buyer['access_token']}"}
         store = await _create_store(client, seller_headers, "Public Shop")
         seller_id = store["id"]
+        await _verify_email("buyer-ok@example.com")
 
+        # Client-reported contact events are analytics only and cannot unlock a
+        # trust signal. A server-side storefront message is required instead.
         contact = await client.post(
-            "/contact-events",
+            f"/messages/sellers/{seller_id}",
             headers=buyer_headers,
-            json={"seller_id": seller_id, "channel": "whatsapp"},
+            json={"body": "Hello, I would like to know more about this item."},
         )
         assert contact.status_code == 201, contact.text
 
@@ -160,6 +177,32 @@ async def test_buyer_can_review_after_contact_with_categories():
         assert detail.json()["review_count"] == 1
         assert detail.json()["avg_product_quality"] == 5.0
         assert detail.json()["avg_customer_service"] == 4.0
+
+
+@pytest.mark.asyncio
+async def test_contact_event_cannot_unlock_review_eligibility():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        seller = await _register(client, "seller-contact-only@example.com", "seller")
+        buyer = await _register(client, "buyer-contact-only@example.com", "buyer")
+        seller_headers = {"Authorization": f"Bearer {seller['access_token']}"}
+        buyer_headers = {"Authorization": f"Bearer {buyer['access_token']}"}
+        store = await _create_store(client, seller_headers, "Contact-only Shop")
+        await _verify_email("buyer-contact-only@example.com")
+
+        contact = await client.post(
+            "/contact-events",
+            headers=buyer_headers,
+            json={"seller_id": store["id"], "channel": "whatsapp"},
+        )
+        assert contact.status_code == 201, contact.text
+        eligibility = await client.get(
+            f"/sellers/{store['id']}/reviews/eligibility",
+            headers=buyer_headers,
+        )
+        assert eligibility.status_code == 200
+        assert eligibility.json()["can_review"] is False
+        assert eligibility.json()["reason"] == "no_completed_transaction"
 
 
 @pytest.mark.asyncio

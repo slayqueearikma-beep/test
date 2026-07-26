@@ -135,7 +135,7 @@ class CategoryOut(BaseModel):
 class ProductCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str = ""
-    price_mad: float | None = None
+    price_mad: float | None = Field(default=None, ge=0, le=10_000_000)
     price_negotiable: bool = False
     availability_note: str = Field(default="", max_length=160)
     accepted_payment_methods: list[str] = Field(default_factory=list)
@@ -161,7 +161,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
-    price_mad: float | None = None
+    price_mad: float | None = Field(default=None, ge=0, le=10_000_000)
     price_negotiable: bool | None = None
     availability_note: str | None = Field(default=None, max_length=160)
     accepted_payment_methods: list[str] | None = None
@@ -216,22 +216,34 @@ class ProductOut(BaseModel):
 class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str = ""
-    price_mad: float | None = None
+    price_mad: float | None = Field(default=None, ge=0, le=10_000_000)
     price_negotiable: bool = False
     coverage_areas: list[str] = Field(default_factory=list)
     image_url: str = ""
     is_featured: bool = False
 
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str) -> str:
+        return _validate_http_url(value)
+
 
 class ServiceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = None
-    price_mad: float | None = None
+    price_mad: float | None = Field(default=None, ge=0, le=10_000_000)
     price_negotiable: bool | None = None
     coverage_areas: list[str] | None = None
     image_url: str | None = None
     is_available: bool | None = None
     is_featured: bool | None = None
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _validate_http_url(value)
 
 
 class ServiceOut(BaseModel):

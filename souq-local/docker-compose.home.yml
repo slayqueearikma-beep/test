@@ -35,6 +35,7 @@ services:
       AUTH_DEV_BYPASS: "false"
       DATABASE_URL: postgresql+asyncpg://margemadmin:${POSTGRES_PASSWORD}@postgres:5432/margem
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      UPLOAD_TOKEN_SECRET: ${UPLOAD_TOKEN_SECRET}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
       LOCAL_MEDIA_ROOT: /data/media
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
@@ -46,7 +47,9 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-MarGem <noreply@margem.ma>}
-      ALLOW_INSECURE_EMAIL_FALLBACK: ${ALLOW_INSECURE_EMAIL_FALLBACK:-true}
+      # Never log authentication tokens as an implicit fallback. Set this
+      # explicitly to true only for an isolated development emergency.
+      ALLOW_INSECURE_EMAIL_FALLBACK: ${ALLOW_INSECURE_EMAIL_FALLBACK:-false}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8000}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
       JWT_ACCESS_EXPIRE_MINUTES: "60"

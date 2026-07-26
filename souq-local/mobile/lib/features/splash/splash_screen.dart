@@ -49,7 +49,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     await ref.read(authServiceProvider).loadStoredToken();
-    final restored = await ref.read(authServiceProvider).restoreAuthSession();
+    var restored = await ref.read(authServiceProvider).restoreAuthSession();
     if (restored != null) {
       ref.read(authSessionProvider.notifier).state = restored;
     }
@@ -75,8 +75,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         if (mounted) context.go('/login');
         return;
       }
+      // A refresh may have succeeded after the first restore attempt. Re-read
+      // /auth/me so authSessionProvider and the persisted routing session stay
+      // coherent after a cold start.
+      restored ??= await ref.read(authServiceProvider).restoreAuthSession();
+      if (restored == null) {
+        await storage.logout();
+        ref.read(userSessionProvider.notifier).state = null;
+        ref.read(authSessionProvider.notifier).state = null;
+        if (mounted) context.go('/login');
+        return;
+      }
+      ref.read(authSessionProvider.notifier).state = restored;
+      final hydrated = session.copyWith(
+        name: restored.user.displayName,
+        email: restored.user.email,
+      );
+      await storage.saveSession(hydrated);
+      ref.read(userSessionProvider.notifier).state = hydrated;
       if (mounted) {
-        context.go(storage.homeRouteFor(session));
+        context.go(storage.homeRouteFor(hydrated));
       }
       return;
     }

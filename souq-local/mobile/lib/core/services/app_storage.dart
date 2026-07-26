@@ -145,7 +145,9 @@ class AppStorage {
     }
     if (raw == AppMode.buyer.name) return AppMode.buyer;
     final s = session ?? getSession();
-    if (s != null && s.hasSellerProfile && s.accountType == AccountType.seller) {
+    if (s != null &&
+        s.hasSellerProfile &&
+        s.accountType == AccountType.seller) {
       return AppMode.seller;
     }
     return AppMode.buyer;
@@ -196,8 +198,14 @@ class AppStorage {
   Future<void> saveSession(UserSession session) async {
     await _prefs.setBool(_loggedInKey, true);
     await _prefs.setString(_accountTypeKey, session.accountType.name);
-    await _prefs.setString(_userNameKey, session.name);
-    await _prefs.setString(_userEmailKey, session.email);
+    // Tokens and authenticated profile data belong in encrypted storage / live
+    // auth state. SharedPreferences is intentionally limited to routing state.
+    if (session.isGuest) {
+      await _prefs.setString(_userNameKey, session.name);
+    } else {
+      await _prefs.remove(_userNameKey);
+    }
+    await _prefs.remove(_userEmailKey);
     if (session.city != null) {
       await _prefs.setString(_userCityKey, session.city!);
     }
@@ -235,7 +243,7 @@ class AppStorage {
     return UserSession(
       name: _prefs.getString(_userNameKey) ??
           (accountType == AccountType.guest ? 'Guest' : 'User'),
-      email: _prefs.getString(_userEmailKey) ?? '',
+      email: '',
       accountType: accountType,
       city: _prefs.getString(_userCityKey),
       businessName: _prefs.getString(_businessNameKey),
@@ -263,8 +271,8 @@ class AppStorage {
       return decoded
           .map((item) =>
               GuestFavoriteItem.fromJson(item as Map<String, dynamic>))
-          .where((item) =>
-              item.productId.isNotEmpty || item.sellerId.isNotEmpty)
+          .where(
+              (item) => item.productId.isNotEmpty || item.sellerId.isNotEmpty)
           .toList();
     } on Object {
       return const [];
@@ -315,8 +323,7 @@ class AppStorage {
   Future<List<GuestFavoriteItem>> removeGuestFavoriteSeller(
       String sellerId) async {
     final items = getGuestFavoriteItems()
-        .where((item) =>
-            !(item.sellerId == sellerId && item.productId.isEmpty))
+        .where((item) => !(item.sellerId == sellerId && item.productId.isEmpty))
         .toList();
     await saveGuestFavoriteItems(items);
     return items;

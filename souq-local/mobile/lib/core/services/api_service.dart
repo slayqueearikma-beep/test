@@ -41,6 +41,9 @@ class ApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  /// Reusable bearer headers for authenticated non-JSON uploads.
+  Map<String, String> get authHeaders => Map.unmodifiable(_authHeaders);
+
   Map<String, String> _jsonHeaders({bool auth = false}) {
     return {
       'Content-Type': 'application/json',
@@ -564,8 +567,7 @@ class ApiService {
   Future<List<ConversationModel>> fetchConversations() async {
     final data = await getJsonList('/messages/conversations', auth: true);
     return data
-        .map((item) =>
-            ConversationModel.fromJson(item as Map<String, dynamic>))
+        .map((item) => ConversationModel.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 

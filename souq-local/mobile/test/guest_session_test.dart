@@ -21,4 +21,22 @@ void main() {
     expect(loaded!.accountType, AccountType.guest);
     expect(loaded.isGuest, isTrue);
   });
+
+  test('authenticated profile PII is not persisted in SharedPreferences',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = AppStorage(prefs);
+
+    await storage.saveSession(const UserSession(
+      name: 'Private Name',
+      email: 'private@example.com',
+      accountType: AccountType.buyer,
+      sellerId: 'seller-123',
+    ));
+
+    expect(prefs.getString('user_name'), isNull);
+    expect(prefs.getString('user_email'), isNull);
+    expect(storage.getSession()!.sellerId, 'seller-123');
+  });
 }

@@ -28,6 +28,7 @@ services:
       DEBUG: "true"
       DATABASE_URL: postgresql+asyncpg://souq:souq_local_dev@postgres:5432/souq_local
       JWT_SECRET_KEY: local-dev-secret-change-in-production-min-32-chars
+      UPLOAD_TOKEN_SECRET: local-dev-upload-token-secret-change-in-production-min-32-chars
       AUTH_DEV_BYPASS: "false"
       CORS_ORIGINS: '["http://localhost:3000","http://10.0.2.2:8000"]'
     depends_on:

@@ -11,6 +11,7 @@ environment_name = "prod"
 postgres_admin_login    = "margemadmin"
 postgres_admin_password = "CHANGE_ME_STRONG_PASSWORD"
 jwt_secret_key          = "CHANGE_ME_MIN_32_CHAR_JWT_SECRET_KEY"
+upload_token_secret     = "CHANGE_ME_SEPARATE_32_CHAR_UPLOAD_TOKEN_SECRET"
 
 api_image                 = "margemregsub1.azurecr.io/margem-api:1.0.0"
 create_container_registry = true

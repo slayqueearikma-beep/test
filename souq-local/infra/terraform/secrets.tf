@@ -24,6 +24,12 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
+resource "azurerm_key_vault_secret" "upload_token_secret" {
+  name         = "upload-token-secret"
+  value        = var.upload_token_secret
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
 resource "azurerm_key_vault_secret" "storage_connection" {
   name         = "storage-connection-string"
   value        = azurerm_storage_account.media.primary_connection_string

@@ -183,6 +183,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get somethingWentWrong => 'Something went wrong';
   @override
+  String get tryAgain => 'Try again';
+  @override
   String get pressBackAgainToExit => 'Press back again to exit';
   @override
   String get search => 'Search';
@@ -543,11 +545,13 @@ class AppStringsEn extends AppStrings {
   @override
   String get switchToSellerMode => 'Seller dashboard';
   @override
-  String get switchToSellerModeSub => 'Manage your store, listings, and inquiries';
+  String get switchToSellerModeSub =>
+      'Manage your store, listings, and inquiries';
   @override
   String get switchToBuyerMode => 'Browse as shopper';
   @override
-  String get switchToBuyerModeSub => 'Discover businesses with the same account';
+  String get switchToBuyerModeSub =>
+      'Discover businesses with the same account';
   @override
   String get cannotReviewOwnStore => 'You cannot review your own business.';
   @override

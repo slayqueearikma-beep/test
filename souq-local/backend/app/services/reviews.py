@@ -1,53 +1,42 @@
 """Eligibility for leaving a multi-category seller review.
 
-MarGem has no cart/checkout. A "completed transaction" is evidenced by a real
-interaction with the seller storefront: an authenticated contact event
-(call / WhatsApp / in-app message) or a conversation with at least one message
-scoped to that storefront.
+MarGem does not process checkout, so it cannot prove an off-platform call or
+WhatsApp interaction.  Ratings therefore require an attributable, server-side
+storefront conversation containing a message from the prospective reviewer.
+Client-reported contact clicks are analytics only and must never unlock trust
+signals.
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ContactEvent, Conversation, Message, Review, SellerProfile, User
+from app.models import Conversation, Message, Review, SellerProfile, User
 from app.services.messaging import ordered_participants
 
 
 async def has_completed_interaction(
     session: AsyncSession, *, user_id: UUID, seller: SellerProfile
 ) -> bool:
-    contact = await session.scalar(
-        select(ContactEvent.id)
-        .where(
-            ContactEvent.seller_id == seller.id,
-            ContactEvent.user_id == user_id,
-            ContactEvent.channel.in_(("call", "whatsapp", "message")),
-        )
-        .limit(1)
-    )
-    if contact is not None:
-        return True
-
     a, b = ordered_participants(user_id, seller.user_id)
     conv = await session.scalar(
         select(Conversation.id).where(
             Conversation.participant_a_id == a,
             Conversation.participant_b_id == b,
-            or_(
-                Conversation.context_seller_id == seller.id,
-                Conversation.context_seller_id.is_(None),
-            ),
+            Conversation.context_seller_id == seller.id,
         )
     )
     if conv is None:
         return False
 
     message_count = await session.scalar(
-        select(func.count(Message.id)).where(Message.conversation_id == conv)
+        select(func.count(Message.id)).where(
+            Message.conversation_id == conv,
+            Message.sender_id == user_id,
+        )
     )
     return int(message_count or 0) > 0
 
@@ -59,6 +48,12 @@ async def get_review_eligibility(
         return {
             "can_review": False,
             "reason": "own_store",
+            "has_reviewed": False,
+        }
+    if user.email_verified_at is None:
+        return {
+            "can_review": False,
+            "reason": "email_unverified",
             "has_reviewed": False,
         }
 

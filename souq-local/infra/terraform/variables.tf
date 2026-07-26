@@ -50,6 +50,12 @@ variable "jwt_secret_key" {
   sensitive   = true
 }
 
+variable "upload_token_secret" {
+  description = "Independent HMAC secret for local upload tokens (min 32 characters)"
+  type        = string
+  sensitive   = true
+}
+
 variable "api_image" {
   description = "Container image for the MarGem API (ACR or Docker Hub)"
   type        = string
@@ -78,6 +84,22 @@ variable "min_replicas" {
   description = "Minimum API container replicas (use 1+ in production to avoid cold starts)"
   type        = number
   default     = 1
+}
+
+variable "postgres_backup_retention_days" {
+  description = "Managed PostgreSQL point-in-time recovery retention (7–35 days)"
+  type        = number
+  default     = 14
+  validation {
+    condition     = var.postgres_backup_retention_days >= 7 && var.postgres_backup_retention_days <= 35
+    error_message = "postgres_backup_retention_days must be between 7 and 35."
+  }
+}
+
+variable "postgres_geo_redundant_backup_enabled" {
+  description = "Enable geo-redundant PostgreSQL backups for production recovery"
+  type        = bool
+  default     = true
 }
 
 variable "allowed_hosts" {

@@ -3,6 +3,7 @@
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -145,9 +146,24 @@ async def add_favorite_product(
     fav = existing.scalar_one_or_none()
     if fav is None:
         fav = Favorite(id=uuid4(), user_id=user.id, product_id=product_id, seller_id=product.seller_id)
-        session.add(fav)
-        await bump_favorite_count(session, product.seller_id, delta=1)
-        await session.commit()
+        try:
+            async with session.begin_nested():
+                session.add(fav)
+                await bump_favorite_count(session, product.seller_id, delta=1)
+                await session.flush()
+            await session.commit()
+        except IntegrityError:
+            # Two taps/devices can pass the pre-check simultaneously. Favouriting
+            # is idempotent, so return the row committed by the winner.
+            await session.rollback()
+            fav = (
+                await session.execute(
+                    select(Favorite).where(
+                        Favorite.user_id == user.id,
+                        Favorite.product_id == product_id,
+                    )
+                )
+            ).scalar_one()
     result = await session.execute(
         select(Favorite)
         .options(selectinload(Favorite.product).selectinload(Product.seller), selectinload(Favorite.seller))
@@ -194,9 +210,23 @@ async def add_favorite_seller(
     fav = existing.scalar_one_or_none()
     if fav is None:
         fav = Favorite(id=uuid4(), user_id=user.id, seller_id=seller_id)
-        session.add(fav)
-        await bump_favorite_count(session, seller_id, delta=1)
-        await session.commit()
+        try:
+            async with session.begin_nested():
+                session.add(fav)
+                await bump_favorite_count(session, seller_id, delta=1)
+                await session.flush()
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            fav = (
+                await session.execute(
+                    select(Favorite).where(
+                        Favorite.user_id == user.id,
+                        Favorite.seller_id == seller_id,
+                        Favorite.product_id.is_(None),
+                    )
+                )
+            ).scalar_one()
     result = await session.execute(
         select(Favorite).options(selectinload(Favorite.seller)).where(Favorite.id == fav.id)
     )

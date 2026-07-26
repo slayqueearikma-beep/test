@@ -118,6 +118,20 @@ async def get_current_user_optional(
     return await _enforce_account_state(user, session)
 
 
+async def require_verified_email(user: User = Depends(get_current_user)) -> User:
+    """Gate abuse-prone production actions behind a verified email address."""
+    if (
+        settings.require_verified_email
+        and settings.app_env in {"production", "prod"}
+        and user.email_verified_at is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify your email address before performing this action",
+        )
+    return user
+
+
 async def verify_firebase_token(token: str) -> str:
     try:
         import firebase_admin

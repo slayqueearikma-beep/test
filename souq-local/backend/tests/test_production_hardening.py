@@ -47,6 +47,7 @@ def test_production_accepts_rotated_secret():
         debug=False,
         auth_dev_bypass=False,
         jwt_secret_key="a-real-production-secret-key-32chars-min",
+        upload_token_secret="a-separate-production-upload-secret-32chars",
         cors_origins=["https://margem.ma"],
         allowed_hosts=["api.margem.ma"],
         azure_storage_connection_string="DefaultEndpointsProtocol=https;AccountName=x;AccountKey=y;EndpointSuffix=core.windows.net",
@@ -55,6 +56,21 @@ def test_production_accepts_rotated_secret():
         public_api_url="https://api.margem.ma",
     )
     assert settings.app_env == "production"
+
+
+def test_host_lists_accept_comma_delimited_docker_environment_values():
+    settings = Settings(
+        _env_file=None,
+        cors_origins="https://margem.ma,https://admin.margem.ma",
+        allowed_hosts="api.margem.ma,admin-api.margem.ma",
+    )
+    assert settings.cors_origins == ["https://margem.ma", "https://admin.margem.ma"]
+    assert settings.allowed_hosts == [
+        "api.margem.ma",
+        "admin-api.margem.ma",
+        "localhost",
+        "127.0.0.1",
+    ]
 
 
 @pytest.mark.asyncio

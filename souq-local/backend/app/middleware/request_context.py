@@ -13,6 +13,13 @@ from starlette.responses import Response
 logger = logging.getLogger("margem.access")
 
 
+def _safe_log_path(path: str) -> str:
+    """Keep short-lived bearer upload tokens out of centralized access logs."""
+    if path.startswith("/uploads/local/"):
+        return "/uploads/local/[REDACTED]"
+    return path
+
+
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
@@ -26,7 +33,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             extra={
                 "request_id": request_id,
                 "method": request.method,
-                "path": request.url.path,
+                "path": _safe_log_path(request.url.path),
                 "status_code": response.status_code,
                 "duration_ms": duration_ms,
             },

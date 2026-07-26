@@ -7,7 +7,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user, require_admin, require_seller, require_staff
+from app.auth import (
+    get_current_user,
+    require_admin,
+    require_seller,
+    require_staff,
+    require_verified_email,
+)
 from app.database import get_db
 from app.limiter import limiter
 from app.models import (
@@ -299,7 +305,7 @@ async def start_or_send_to_user(
     request: Request,
     user_id: UUID,
     payload: MessageCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_email),
     session: AsyncSession = Depends(get_db),
 ) -> Message:
     """Start or continue a peer conversation with any authenticated user."""
@@ -332,7 +338,7 @@ async def start_or_send_to_seller(
     request: Request,
     seller_id: UUID,
     payload: MessageCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_email),
     session: AsyncSession = Depends(get_db),
 ) -> Message:
     """Message a storefront. Works for buyers and sellers (including seller↔seller)."""
@@ -365,7 +371,7 @@ async def start_or_send_to_seller(
 async def open_seller_conversation(
     request: Request,
     seller_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_email),
     session: AsyncSession = Depends(get_db),
 ) -> ConversationOut:
     """Open (or resume) a storefront thread without sending a canned first message."""

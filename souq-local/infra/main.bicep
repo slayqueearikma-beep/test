@@ -16,6 +16,10 @@ param postgresAdminPassword string
 @secure()
 param jwtSecretKey string
 
+@description('Independent HMAC secret for local upload tokens')
+@secure()
+param uploadTokenSecret string
+
 @description('SMTP host for transactional email')
 param smtpHost string
 
@@ -156,6 +160,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: jwtSecretKey
         }
         {
+          name: 'upload-token-secret'
+          value: uploadTokenSecret
+        }
+        {
           name: 'storage-conn'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
         }
@@ -180,6 +188,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AUTH_DEV_BYPASS', value: 'false' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'JWT_SECRET_KEY', secretRef: 'jwt-secret' }
+            { name: 'UPLOAD_TOKEN_SECRET', secretRef: 'upload-token-secret' }
             { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'storage-conn' }
             { name: 'AZURE_STORAGE_CONTAINER', value: 'margem-media' }
             { name: 'CORS_ORIGINS', value: '["https://margem.ma"]' }

@@ -150,7 +150,8 @@ class AppStringsFr extends AppStringsEn {
   String get noConversationsYet =>
       'Aucune conversation pour le moment. Envoyez un message à n’importe quel commerce — y compris d’autres vendeurs.';
   @override
-  String get signInToMessage => 'Connectez-vous pour discuter avec tout le monde';
+  String get signInToMessage =>
+      'Connectez-vous pour discuter avec tout le monde';
   @override
   String get signInToMessageSubtitle =>
       'Discutez avec acheteurs et vendeurs ici une fois connecté.';
@@ -185,6 +186,8 @@ class AppStringsFr extends AppStringsEn {
       'Impossible de joindre le serveur. Démarrez le backend et, sur un téléphone, définissez API_BASE_URL avec l\'IP de votre PC (ex. http://192.168.1.10:8000).';
   @override
   String get somethingWentWrong => 'Une erreur est survenue';
+  @override
+  String get tryAgain => 'Réessayer';
   @override
   String get pressBackAgainToExit => 'Appuyez à nouveau pour quitter';
   @override
@@ -603,8 +606,7 @@ class AppStringsFr extends AppStringsEn {
   @override
   String get businessInformation => 'Informations du commerce';
   @override
-  String get beFirstToReview =>
-      'Soyez le premier client à noter ce vendeur.';
+  String get beFirstToReview => 'Soyez le premier client à noter ce vendeur.';
   @override
   String get seeAllReviews => 'Voir tous les avis';
   @override

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../config/app_config.dart';
 import 'api_service.dart';
 
 /// Uploads images via the API presign → PUT flow.
@@ -63,12 +64,14 @@ class UploadService {
       throw ApiException('Storage did not return upload URLs');
     }
 
+    final isLocalApiUpload = uploadUrl.startsWith(AppConfig.apiBaseUrl);
     final response = await http
         .put(
           Uri.parse(uploadUrl),
           headers: {
             'Content-Type': contentType,
             'x-ms-blob-type': 'BlockBlob',
+            if (isLocalApiUpload) ..._api.authHeaders,
           },
           body: bytes,
         )

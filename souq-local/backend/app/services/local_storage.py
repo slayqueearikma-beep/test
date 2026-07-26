@@ -18,6 +18,11 @@ logger = logging.getLogger("margem.storage")
 _TOKEN_TTL_MINUTES = 15
 
 
+def _upload_signing_key() -> bytes:
+    """Use an independent signing secret outside development."""
+    return (settings.upload_token_secret or settings.jwt_secret_key).encode("utf-8")
+
+
 def media_root() -> Path:
     root = Path(settings.local_media_root).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -53,7 +58,7 @@ def sign_upload_token(*, blob_name: str, content_type: str, user_id: str) -> str
     }
     body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signature = hmac.new(
-        settings.jwt_secret_key.encode("utf-8"),
+        _upload_signing_key(),
         body.encode("ascii"),
         hashlib.sha256,
     ).digest()
@@ -67,7 +72,7 @@ def verify_upload_token(token: str) -> dict:
         raise ValueError("Invalid upload token") from exc
 
     expected = hmac.new(
-        settings.jwt_secret_key.encode("utf-8"),
+        _upload_signing_key(),
         body.encode("ascii"),
         hashlib.sha256,
     ).digest()
