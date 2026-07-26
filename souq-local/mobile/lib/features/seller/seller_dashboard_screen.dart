@@ -9,9 +9,9 @@ import '../../core/services/app_storage.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_brand_logo.dart';
 import '../../core/widgets/async_error_view.dart';
 import '../../core/widgets/content_widgets.dart';
+import '../../core/widgets/network_image_view.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/language_settings_tile.dart';
 import 'seller_account_provider.dart';
@@ -68,9 +68,32 @@ class SellerDashboardScreen extends ConsumerWidget {
                           children: [
                             Row(
                               children: [
-                                const AppBrandLogo(
-                                    variant: AppBrandLogoVariant.icon,
-                                    iconSize: 32),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: () =>
+                                        context.push('/seller/profile'),
+                                    child: CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: AppColors.cardSelected,
+                                      child: ClipOval(
+                                        child: SizedBox(
+                                          width: 44,
+                                          height: 44,
+                                          child: NetworkImageView(
+                                            url: account.profile.logoImageUrl
+                                                    .isNotEmpty
+                                                ? account.profile.logoImageUrl
+                                                : account.profile.coverImageUrl,
+                                            placeholderIcon:
+                                                Icons.storefront_rounded,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(width: AppSpacing.sm),
                                 Expanded(
                                   child: Column(

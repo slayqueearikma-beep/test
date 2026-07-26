@@ -10,7 +10,6 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_buttons.dart';
-import '../../core/widgets/app_brand_logo.dart';
 import '../../core/widgets/error_dialog.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -30,7 +29,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Never show the API URL in the UI — debug builds may log it only.
     if (kDebugMode) {
       debugPrint('MarGem API_BASE_URL=${AppConfig.apiBaseUrl}');
     }
@@ -99,7 +97,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
 
-        // Guest favorites migrate for any signed-in user (dual-mode).
         final guestItems = guestFavoritesMigrationPayload(storage);
         if (guestItems.isNotEmpty) {
           await apiServiceProvider.migrateGuestFavorites(guestItems);
@@ -107,11 +104,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
 
         await storage.saveSession(userSession);
-        // Keep previous mode when possible; default sellers to seller shell once.
         if (userSession.hasSellerProfile &&
             storage.getAppMode(session: userSession) == AppMode.buyer &&
             session.user.accountType == 'seller') {
-          // First login after seller signup — prefer seller dashboard.
           await storage.saveAppMode(AppMode.seller);
         }
         ref.read(userSessionProvider.notifier).state = userSession;
@@ -133,92 +128,163 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  InputDecoration _fieldDecoration({
+    required String label,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: AppColors.surfaceMuted.withValues(alpha: 0.65),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.screenHorizontal,
+            AppSpacing.md,
+            AppSpacing.screenHorizontal,
+            AppSpacing.lg + bottomInset,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppSpacing.illustrationRadius),
+                child: AspectRatio(
+                  aspectRatio: 1.15,
+                  child: Image.asset(
+                    'assets/images/onboarding/onboarding_01_ideas.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.cardSelected,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.waving_hand_rounded,
+                        size: 64,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.xl),
-              const Center(
-                  child: AppBrandLogo(
-                      variant: AppBrandLogoVariant.full, width: 240)),
-              const SizedBox(height: AppSpacing.lg),
               Text(
                 l10n.welcomeBack,
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 l10n.loginSubtitle,
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.textSecondary),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
               ),
               const SizedBox(height: AppSpacing.xl),
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                    labelText: l10n.email,
-                    prefixIcon: const Icon(Icons.email_outlined)),
+                textInputAction: TextInputAction.next,
+                decoration: _fieldDecoration(
+                  label: l10n.email,
+                  icon: Icons.email_outlined,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: _passwordController,
                 obscureText: _obscure,
-                decoration: InputDecoration(
-                  labelText: l10n.password,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
+                decoration: _fieldDecoration(
+                  label: l10n.password,
+                  icon: Icons.lock_outline,
+                  suffix: IconButton(
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                  label: l10n.logIn, onPressed: _login, isLoading: _loading),
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: _continueAsGuest,
-                child: Text(l10n.guestContinue),
-              ),
               Align(
-                alignment: AlignmentDirectional.centerEnd,
+                alignment: AlignmentDirectional.centerStart,
                 child: TextButton(
                   onPressed: () => context.push('/forgot-password'),
                   style: TextButton.styleFrom(
-                    minimumSize: const Size(48, 40),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                    foregroundColor: AppColors.primary,
-                    textStyle: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      height: 1.2,
-                    ),
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   ),
                   child: Text(l10n.forgotPassword),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              LinkTextButton(
-                  label: l10n.createAccount,
-                  onPressed: () => context.go('/onboarding/account-type')),
+              PrimaryButton(
+                label: l10n.logIn,
+                onPressed: _login,
+                isLoading: _loading,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () => context.go('/onboarding/account-type'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  child: Text(l10n.createAccount),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: _continueAsGuest,
+                child: Text(
+                  l10n.guestContinue,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
