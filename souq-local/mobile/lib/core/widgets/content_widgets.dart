@@ -12,53 +12,68 @@ class OnboardingIllustration extends StatelessWidget {
     required this.backgroundColor,
     required this.icon,
     this.secondaryIcon,
+    this.imageAsset,
   });
 
   final Color backgroundColor;
   final IconData icon;
   final IconData? secondaryIcon;
+  final String? imageAsset;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 280,
+      height: 300,
       width: double.infinity,
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(AppSpacing.illustrationRadius),
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 40,
-            right: 40,
-            child: Icon(
-              secondaryIcon ?? Icons.auto_awesome_rounded,
-              size: 36,
-              color: Colors.white.withValues(alpha: 0.35),
-            ),
+      clipBehavior: Clip.antiAlias,
+      child: imageAsset != null
+          ? Image.asset(
+              imageAsset!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (_, __, ___) => _iconFallback(),
+            )
+          : _iconFallback(),
+    );
+  }
+
+  Widget _iconFallback() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned(
+          top: 40,
+          right: 40,
+          child: Icon(
+            secondaryIcon ?? Icons.auto_awesome_rounded,
+            size: 36,
+            color: Colors.white.withValues(alpha: 0.35),
           ),
-          Positioned(
-            bottom: 36,
-            left: 36,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 28,
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
+        ),
+        Positioned(
+          bottom: 36,
+          left: 36,
+          child: Icon(
+            Icons.location_on_rounded,
+            size: 28,
+            color: Colors.white.withValues(alpha: 0.3),
           ),
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 56, color: Colors.white),
+        ),
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
           ),
-        ],
-      ),
+          child: Icon(icon, size: 56, color: Colors.white),
+        ),
+      ],
     );
   }
 }

@@ -13,31 +13,36 @@ class OnboardingWelcomeScreen extends StatefulWidget {
   const OnboardingWelcomeScreen({super.key});
 
   @override
-  State<OnboardingWelcomeScreen> createState() => _OnboardingWelcomeScreenState();
+  State<OnboardingWelcomeScreen> createState() =>
+      _OnboardingWelcomeScreenState();
 }
 
 class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
 
+  /// Order requested: former 3rd → 1st, former 1st → 2nd, former middle → 3rd.
   List<_SlideData> _slides(AppStrings l10n) => [
         _SlideData(
           title: l10n.discoverTitle,
           subtitle: l10n.discoverSubtitle,
-          backgroundColor: AppColors.illustrationBurgundy,
-          icon: Icons.storefront_rounded,
+          backgroundColor: const Color(0xFFE8F1FA),
+          icon: Icons.lightbulb_outline_rounded,
+          imageAsset: 'assets/images/onboarding/onboarding_01_ideas.png',
         ),
         _SlideData(
           title: l10n.exploreMapTitle,
           subtitle: l10n.exploreMapSubtitle,
-          backgroundColor: AppColors.illustrationGreen,
-          icon: Icons.map_rounded,
+          backgroundColor: const Color(0xFF0B0B0B),
+          icon: Icons.headset_mic_rounded,
+          imageAsset: 'assets/images/onboarding/onboarding_02_support.png',
         ),
         _SlideData(
           title: l10n.trustedReviewsTitle,
           subtitle: l10n.trustedReviewsSubtitle,
-          backgroundColor: AppColors.illustrationOrange,
-          icon: Icons.star_rounded,
+          backgroundColor: const Color(0xFF0B0B0B),
+          icon: Icons.volunteer_activism_rounded,
+          imageAsset: 'assets/images/onboarding/onboarding_03_community.png',
         ),
       ];
 
@@ -49,7 +54,10 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
 
   void _next(int slideCount) {
     if (_currentPage < slideCount - 1) {
-      _pageController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
     } else {
       context.push('/onboarding/account-type');
     }
@@ -83,25 +91,33 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
                         OnboardingIllustration(
                           backgroundColor: slide.backgroundColor,
                           icon: slide.icon,
+                          imageAsset: slide.imageAsset,
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         if (index == 0) ...[
-                          const AppBrandLogo(variant: AppBrandLogoVariant.full, width: 220),
+                          const AppBrandLogo(
+                            variant: AppBrandLogoVariant.full,
+                            width: 220,
+                          ),
                           const SizedBox(height: AppSpacing.md),
                         ],
                         Text(
                           slide.title,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           slide.subtitle,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: AppColors.textSecondary,
-                                height: 1.45,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    height: 1.45,
+                                  ),
                         ),
                       ],
                     ),
@@ -112,13 +128,20 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
             PageDots(count: slides.length, currentIndex: _currentPage),
             const SizedBox(height: AppSpacing.lg),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.screenHorizontal,
+              ),
               child: PrimaryButton(
-                label: _currentPage == slides.length - 1 ? l10n.getStarted : l10n.next,
+                label: _currentPage == slides.length - 1
+                    ? l10n.getStarted
+                    : l10n.next,
                 onPressed: () => _next(slides.length),
               ),
             ),
-            LinkTextButton(label: l10n.login, onPressed: () => context.go('/login')),
+            LinkTextButton(
+              label: l10n.login,
+              onPressed: () => context.go('/login'),
+            ),
             const SizedBox(height: AppSpacing.lg),
           ],
         ),
@@ -133,10 +156,12 @@ class _SlideData {
     required this.subtitle,
     required this.backgroundColor,
     required this.icon,
+    this.imageAsset,
   });
 
   final String title;
   final String subtitle;
   final Color backgroundColor;
   final IconData icon;
+  final String? imageAsset;
 }
