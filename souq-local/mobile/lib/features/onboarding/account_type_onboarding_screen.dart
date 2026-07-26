@@ -23,12 +23,27 @@ class _AccountTypeOnboardingScreenState
     extends ConsumerState<AccountTypeOnboardingScreen> {
   AccountType? _selected;
 
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    // Stack was replaced (e.g. Login used go()) — land somewhere useful.
+    final storage = ref.read(appStorageProvider);
+    if (storage?.isOnboardingComplete == true) {
+      context.go('/login');
+    } else {
+      context.go('/onboarding');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
     return OnboardingScaffold(
       showBack: true,
+      onBack: _handleBack,
       bottom: Column(
         children: [
           PrimaryButton(
@@ -45,7 +60,7 @@ class _AccountTypeOnboardingScreenState
           ),
           SecondaryTextButton(
               label: l10n.guestContinue, onPressed: _continueAsGuest),
-          SecondaryTextButton(label: l10n.back, onPressed: () => context.pop()),
+          SecondaryTextButton(label: l10n.back, onPressed: _handleBack),
         ],
       ),
       child: Column(

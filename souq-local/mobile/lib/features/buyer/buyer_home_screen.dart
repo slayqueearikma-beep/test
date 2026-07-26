@@ -193,8 +193,9 @@ class BuyerHomeScreen extends ConsumerWidget {
                     _GuestModeBanner(
                       title: l10n.guestMode,
                       subtitle: l10n.guestModeSubtitle,
-                      loginLabel: l10n.logIn,
-                      onLogin: () => context.push('/login'),
+                      loginLabel: l10n.createAccount,
+                      onLogin: () =>
+                          context.push('/onboarding/account-type'),
                     ),
                   ],
                 ],
@@ -1074,12 +1075,17 @@ class BuyerProfileScreen extends ConsumerWidget {
                 onTap: () => _confirmDeleteAccount(context, ref),
               ),
             const SizedBox(height: AppSpacing.xl),
-            if (isGuest)
+            if (isGuest) ...[
               FilledButton(
-                onPressed: () => context.go('/login'),
+                onPressed: () => context.push('/onboarding/account-type'),
+                child: Text(l10n.createAccount),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: () => context.push('/login'),
                 child: Text(l10n.logIn),
-              )
-            else
+              ),
+            ] else
               OutlinedButton(
                 onPressed: () async {
                   final prefs =
