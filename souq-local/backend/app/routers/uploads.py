@@ -14,7 +14,11 @@ from app.services.local_storage import (
     verify_upload_token,
     write_local_blob,
 )
-from app.services.upload_security import sanitize_upload_filename, validate_upload_content_type
+from app.services.upload_security import (
+    sanitize_upload_filename,
+    validate_image_bytes,
+    validate_upload_content_type,
+)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -146,6 +150,10 @@ async def put_local_upload(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty upload body")
     if len(body) > settings.max_upload_bytes:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Image too large")
+    try:
+        validate_image_bytes(body, content_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     try:
         write_local_blob(meta["blob_name"], body)

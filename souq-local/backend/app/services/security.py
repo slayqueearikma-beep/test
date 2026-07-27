@@ -94,7 +94,13 @@ async def issue_refresh_token(session: AsyncSession, user_id: UUID) -> str:
 
 async def rotate_refresh_token(session: AsyncSession, plain_token: str) -> tuple[UUID, str] | None:
     token_hash = _hash_refresh_token(plain_token)
-    result = await session.execute(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
+    # Lock the token row so parallel refresh requests cannot both rotate the
+    # same bearer credential before either transaction commits.
+    result = await session.execute(
+        select(RefreshToken)
+        .where(RefreshToken.token_hash == token_hash)
+        .with_for_update()
+    )
     stored = result.scalar_one_or_none()
     if stored is None:
         return None

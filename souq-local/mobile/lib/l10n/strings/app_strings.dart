@@ -88,6 +88,7 @@ abstract class AppStrings {
   String get serverUnreachable;
   String get somethingWentWrong;
   String get tryAgain;
+  String get verifyEmailToContinue;
   String get pressBackAgainToExit;
   String get search;
   String get businessKeyword;

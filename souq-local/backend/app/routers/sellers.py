@@ -1,14 +1,16 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth import get_current_user, get_current_user_optional, require_seller, require_verified_email
 from app.config import settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Category, Product, Review, SellerFollow, SellerProfile, Service, User
 from app.schemas import (
     MapPin,
@@ -600,7 +602,9 @@ async def list_reviews(
 
 
 @router.post("/{seller_id}/reviews", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def create_review(
+    request: Request,
     seller_id: UUID,
     payload: ReviewCreate,
     user: User = Depends(get_current_user),
@@ -651,7 +655,16 @@ async def create_review(
         )
         session.add(review)
 
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        # A parallel first review won the unique seller/buyer race. Do not
+        # silently overwrite it with the losing request.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A review for this seller was submitted concurrently; refresh and try again.",
+        ) from exc
     await refresh_seller_ratings(session, seller_id)
     await session.refresh(review)
 

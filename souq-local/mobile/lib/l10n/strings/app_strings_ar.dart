@@ -178,11 +178,13 @@ class AppStringsAr extends AppStringsEn {
   String get couldNotLoadBusinesses => 'تعذر تحميل المحلات';
   @override
   String get serverUnreachable =>
-      'تعذر الاتصال بالخادم. شغّل الخادم الخلفي وعلى الهاتف عيّن API_BASE_URL بعنوان IP لجهازك (مثل http://192.168.1.10:8000).';
+      'تعذر الاتصال بالخادم. تحقق من اتصالك وحاول مرة أخرى.';
   @override
   String get somethingWentWrong => 'حدث خطأ ما';
   @override
   String get tryAgain => 'حاول مرة أخرى';
+  @override
+  String get verifyEmailToContinue => 'تحقق من بريدك الإلكتروني قبل المتابعة.';
   @override
   String get pressBackAgainToExit => 'اضغط مرة أخرى للخروج';
   @override

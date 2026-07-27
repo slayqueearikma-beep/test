@@ -52,11 +52,13 @@ Edit `.env.home`:
 |----------|---------|
 | `POSTGRES_PASSWORD` | Strong password |
 | `JWT_SECRET_KEY` | 32+ random chars |
+| `UPLOAD_TOKEN_SECRET` | Different 32+ random chars; required for secure local image uploads |
 | `STORAGE_BACKEND` | `local` (default) or `azure` |
 | `PUBLIC_API_URL` | `http://192.168.1.50:8000` — **must** be the LAN IP your phone uses |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1,192.168.1.50` |
 | `CORS_ORIGINS` | `http://192.168.1.50:8000` |
 | `AZURE_STORAGE_CONNECTION_STRING` | Only if `STORAGE_BACKEND=azure` |
+| `SMTP_HOST` / credentials | Required in production for verification and password-reset email |
 
 Find laptop IP:
 
@@ -107,8 +109,16 @@ docker compose -f docker-compose.home.yml --env-file .env.home down
 ```bash
 chmod +x scripts/backup_home_db.sh
 ./scripts/backup_home_db.sh
-# writes backups/margem-YYYYMMDD….sql.gz — copy off-site
+# writes matching database and local-media archives — copy both off-site
+
+# Restore a matching backup pair (asks for confirmation)
+chmod +x scripts/restore_home_backup.sh
+./scripts/restore_home_backup.sh backups/margem-YYYYMMDD….sql.gz
 ```
+
+For an isolated LAN-only test without SMTP, set
+`ALLOW_INSECURE_EMAIL_FALLBACK=true` explicitly in `.env.home`. Do not use
+that mode for public access: reset and verification links are not delivered.
 
 ## Connect from phone
 

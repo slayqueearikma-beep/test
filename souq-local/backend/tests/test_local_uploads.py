@@ -42,7 +42,7 @@ async def test_local_presign_and_put_roundtrip(tmp_path, monkeypatch):
         assert body["upload_url"].startswith("http://testserver/uploads/local/")
         assert "/media/" in body["public_url"]
 
-        jpeg = b"\xff\xd8\xff\xd9" + b"fake-jpeg-bytes"
+        jpeg = b"\xff\xd8\xff" + b"fake-jpeg-bytes" + b"\xff\xd9"
         put = await client.put(
             body["upload_url"],
                 headers={

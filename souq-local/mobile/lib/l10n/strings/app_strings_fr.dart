@@ -183,11 +183,14 @@ class AppStringsFr extends AppStringsEn {
   String get couldNotLoadBusinesses => 'Impossible de charger les commerces';
   @override
   String get serverUnreachable =>
-      'Impossible de joindre le serveur. Démarrez le backend et, sur un téléphone, définissez API_BASE_URL avec l\'IP de votre PC (ex. http://192.168.1.10:8000).';
+      'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.';
   @override
   String get somethingWentWrong => 'Une erreur est survenue';
   @override
   String get tryAgain => 'Réessayer';
+  @override
+  String get verifyEmailToContinue =>
+      'Vérifiez votre adresse e-mail avant de continuer.';
   @override
   String get pressBackAgainToExit => 'Appuyez à nouveau pour quitter';
   @override

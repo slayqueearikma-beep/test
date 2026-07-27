@@ -179,11 +179,13 @@ class AppStringsEn extends AppStrings {
   String get couldNotLoadBusinesses => 'Could not load businesses';
   @override
   String get serverUnreachable =>
-      'Cannot reach the server. Start the backend and, on a physical phone, set API_BASE_URL to your PC IP (e.g. http://192.168.1.10:8000).';
+      'Cannot reach the server. Check your connection and try again.';
   @override
   String get somethingWentWrong => 'Something went wrong';
   @override
   String get tryAgain => 'Try again';
+  @override
+  String get verifyEmailToContinue => 'Verify your email before continuing.';
   @override
   String get pressBackAgainToExit => 'Press back again to exit';
   @override

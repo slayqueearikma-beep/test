@@ -71,7 +71,9 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
       return;
     }
     final mySellerId = session.sellerId;
-    if (mySellerId != null && mySellerId.isNotEmpty && mySellerId == seller.id) {
+    if (mySellerId != null &&
+        mySellerId.isNotEmpty &&
+        mySellerId == seller.id) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.cannotMessageOwnStore)),
@@ -88,10 +90,10 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
           await apiServiceProvider.openSellerConversation(seller.id);
       if (!mounted) return;
       context.push('/messages/${conversation.id}', extra: conversation);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       await showAppErrorDialog(context,
-          title: l10n.somethingWentWrong, message: error.toString());
+          title: l10n.somethingWentWrong, message: l10n.somethingWentWrong);
     } finally {
       if (mounted) setState(() => _messaging = false);
     }
@@ -132,10 +134,10 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
         SnackBar(content: Text(l10n.nowFollowing(seller.businessName))),
       );
       _reload();
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       await showAppErrorDialog(context,
-          title: l10n.somethingWentWrong, message: error.toString());
+          title: l10n.somethingWentWrong, message: l10n.somethingWentWrong);
     } finally {
       if (mounted) setState(() => _following = false);
     }
@@ -165,6 +167,7 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
       if (!eligibility.canReview) {
         final message = switch (eligibility.reason) {
           'own_store' => l10n.cannotReviewOwnStore,
+          'email_unverified' => l10n.verifyEmailToContinue,
           'no_completed_transaction' => l10n.reviewRequiresCompletedTransaction,
           _ => l10n.somethingWentWrong,
         };
@@ -187,10 +190,10 @@ class _SellerDetailScreenState extends ConsumerState<SellerDetailScreen> {
           ),
         );
       }
-    } on Object catch (error) {
+    } on Object catch (_) {
       if (!mounted) return;
       await showAppErrorDialog(context,
-          title: l10n.somethingWentWrong, message: error.toString());
+          title: l10n.somethingWentWrong, message: l10n.somethingWentWrong);
     }
   }
 
@@ -571,10 +574,11 @@ class _SellerHeader extends StatelessWidget {
                   Expanded(
                     child: Text(
                       seller.businessName,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.15,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                height: 1.15,
+                              ),
                     ),
                   ),
                   if (seller.verificationStatus == 'verified')

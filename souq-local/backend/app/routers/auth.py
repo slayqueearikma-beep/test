@@ -400,7 +400,7 @@ async def confirm_email_verification(
         select(AuthToken).where(
             AuthToken.token_hash == _hash_token(payload.token),
             AuthToken.purpose == "email_verify",
-        )
+        ).with_for_update()
     )
     token = result.scalar_one_or_none()
     if token is None or token.used_at is not None or token.expires_at < datetime.now(UTC):
@@ -454,7 +454,7 @@ async def confirm_password_reset(
         select(AuthToken).where(
             AuthToken.token_hash == _hash_token(payload.token),
             AuthToken.purpose == "password_reset",
-        )
+        ).with_for_update()
     )
     token = result.scalar_one_or_none()
     if token is None or token.used_at is not None or token.expires_at < datetime.now(UTC):

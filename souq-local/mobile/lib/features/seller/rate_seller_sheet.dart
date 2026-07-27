@@ -94,12 +94,12 @@ class _RateSellerSheetState extends State<_RateSellerSheet> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
-    } on Object catch (error) {
+    } on Object catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error.toString()),
+          content: Text(context.l10n.somethingWentWrong),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -141,7 +141,8 @@ class _RateSellerSheetState extends State<_RateSellerSheet> {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: theme.brightness == Brightness.dark
                       ? AppColors.darkCard
@@ -174,8 +175,8 @@ class _RateSellerSheetState extends State<_RateSellerSheet> {
                     else ...[
                       RatingBarIndicator(
                         rating: overall,
-                        itemBuilder: (_, __) =>
-                            const Icon(Icons.star_rounded, color: AppColors.star),
+                        itemBuilder: (_, __) => const Icon(Icons.star_rounded,
+                            color: AppColors.star),
                         itemCount: 5,
                         itemSize: 22,
                       ),
@@ -258,8 +259,9 @@ class _RateSellerSheetState extends State<_RateSellerSheet> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed:
-                          _submitting ? null : () => Navigator.of(context).pop(false),
+                      onPressed: _submitting
+                          ? null
+                          : () => Navigator.of(context).pop(false),
                       child: Text(l10n.cancel),
                     ),
                   ),

@@ -30,6 +30,22 @@ def validate_upload_content_type(content_type: str) -> None:
         raise ValueError(f"Unsupported content type: {content_type}")
 
 
+def validate_image_bytes(data: bytes, content_type: str) -> None:
+    """Reject mislabeled/non-image uploads without trusting the HTTP header."""
+    if content_type == "image/jpeg":
+        valid = data.startswith(b"\xff\xd8\xff") and data.rstrip().endswith(b"\xff\xd9")
+    elif content_type == "image/png":
+        valid = data.startswith(b"\x89PNG\r\n\x1a\n")
+    elif content_type == "image/gif":
+        valid = data.startswith((b"GIF87a", b"GIF89a"))
+    elif content_type == "image/webp":
+        valid = len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP"
+    else:
+        valid = False
+    if not valid:
+        raise ValueError("Upload bytes do not match the declared image type")
+
+
 def validate_media_url(
     url: str,
     *,

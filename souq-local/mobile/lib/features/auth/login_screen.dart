@@ -172,7 +172,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(AppSpacing.illustrationRadius),
+                borderRadius:
+                    BorderRadius.circular(AppSpacing.illustrationRadius),
                 child: AspectRatio(
                   aspectRatio: 1.15,
                   child: Image.asset(
@@ -213,6 +214,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email
+                ],
                 decoration: _fieldDecoration(
                   label: l10n.email,
                   icon: Icons.email_outlined,
@@ -223,6 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _passwordController,
                 obscureText: _obscure,
                 textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
                 onSubmitted: (_) => _login(),
                 decoration: _fieldDecoration(
                   label: l10n.password,
@@ -262,7 +268,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.push('/onboarding/account-type'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary, width: 1.4),
+                    side:
+                        const BorderSide(color: AppColors.primary, width: 1.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
