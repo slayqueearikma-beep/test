@@ -30,6 +30,13 @@ resource "azurerm_key_vault_secret" "upload_token_secret" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
+resource "azurerm_key_vault_secret" "redis_url" {
+  count        = trimspace(var.redis_url) == "" ? 0 : 1
+  name         = "redis-url"
+  value        = var.redis_url
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
 resource "azurerm_key_vault_secret" "storage_connection" {
   name         = "storage-connection-string"
   value        = azurerm_storage_account.media.primary_connection_string

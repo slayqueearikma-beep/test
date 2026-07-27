@@ -114,6 +114,13 @@ chmod +x scripts/backup_home_db.sh
 # Restore a matching backup pair (asks for confirmation)
 chmod +x scripts/restore_home_backup.sh
 ./scripts/restore_home_backup.sh backups/margem-YYYYMMDD….sql.gz
+
+# Install a daily 02:17 backup job (keeps 14 days locally)
+chmod +x scripts/install_home_backup_cron.sh
+./scripts/install_home_backup_cron.sh
+
+# Optional: encrypted/off-site rclone remote (configure rclone first)
+RCLONE_REMOTE="b2:margem-backups" ./scripts/install_home_backup_cron.sh
 ```
 
 For an isolated LAN-only test without SMTP, set

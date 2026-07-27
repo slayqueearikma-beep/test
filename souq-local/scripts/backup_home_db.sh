@@ -6,6 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-$ROOT/backups}"
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT_DIR"
 FILE="$OUT_DIR/margem-$STAMP.sql.gz"
@@ -34,3 +35,15 @@ fi
 
 echo "Done. Copy both database and media archives off-site for disaster recovery."
 ls -lh "$FILE" "$MEDIA_FILE" 2>/dev/null || ls -lh "$FILE"
+
+if [[ -n "${RCLONE_REMOTE:-}" ]]; then
+  command -v rclone >/dev/null 2>&1 || {
+    echo "RCLONE_REMOTE is set but rclone is not installed." >&2
+    exit 1
+  }
+  rclone copy "$OUT_DIR" "$RCLONE_REMOTE" --include 'margem*.gz' --immutable
+  echo "Copied archives to $RCLONE_REMOTE."
+fi
+
+find "$OUT_DIR" -type f \( -name 'margem-*.sql.gz' -o -name 'margem-media-*.tar.gz' \) \
+  -mtime "+$RETENTION_DAYS" -delete

@@ -86,6 +86,23 @@ variable "min_replicas" {
   default     = 1
 }
 
+variable "max_replicas" {
+  description = "Maximum API replicas. Values above 1 require redis_url for shared rate limiting."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.max_replicas >= var.min_replicas
+    error_message = "max_replicas must be greater than or equal to min_replicas."
+  }
+}
+
+variable "redis_url" {
+  description = "Optional managed Redis URL for distributed rate limits; required when max_replicas > 1."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "postgres_backup_retention_days" {
   description = "Managed PostgreSQL point-in-time recovery retention (7–35 days)"
   type        = number

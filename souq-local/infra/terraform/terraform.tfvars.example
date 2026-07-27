@@ -24,6 +24,9 @@ api_image = "margemregsub1.azurecr.io/margem-api:1.0.0"
 create_container_registry = true
 
 min_replicas = 1
+# Keep max_replicas at 1 unless a managed Redis URL is configured.
+max_replicas = 1
+# redis_url = "rediss://:PASSWORD@your-managed-redis:6380/0"
 enable_key_vault_purge_protection = true
 
 # Set to your Container App FQDN after first deploy, e.g. ["margem-prod-sub1-api.xxx.azurecontainerapps.io"]

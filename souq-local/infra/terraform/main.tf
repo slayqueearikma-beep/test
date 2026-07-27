@@ -132,6 +132,13 @@ resource "azurerm_container_app" "api" {
   resource_group_name          = azurerm_resource_group.rg.name
   revision_mode                = "Single"
 
+  lifecycle {
+    precondition {
+      condition     = var.max_replicas == 1 || trimspace(var.redis_url) != ""
+      error_message = "Set redis_url before scaling max_replicas above 1 so rate limits stay consistent."
+    }
+  }
+
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.api.id]
@@ -177,9 +184,18 @@ resource "azurerm_container_app" "api" {
     identity            = azurerm_user_assigned_identity.api.id
   }
 
+  dynamic "secret" {
+    for_each = trimspace(var.redis_url) == "" ? [] : [azurerm_key_vault_secret.redis_url[0]]
+    content {
+      name                = "redis-url"
+      key_vault_secret_id = secret.value.versionless_id
+      identity            = azurerm_user_assigned_identity.api.id
+    }
+  }
+
   template {
     min_replicas = var.min_replicas
-    max_replicas = 1
+    max_replicas = var.max_replicas
 
     container {
       name   = "margem-api"
@@ -242,6 +258,13 @@ resource "azurerm_container_app" "api" {
       env {
         name  = "RATE_LIMIT"
         value = "300/minute"
+      }
+      dynamic "env" {
+        for_each = trimspace(var.redis_url) == "" ? [] : [1]
+        content {
+          name        = "REDIS_URL"
+          secret_name = "redis-url"
+        }
       }
       env {
         name  = "PUBLIC_APP_URL"
