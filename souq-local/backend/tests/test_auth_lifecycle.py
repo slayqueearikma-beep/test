@@ -123,9 +123,11 @@ async def test_email_verify_request_and_confirm(client: AsyncClient):
         from app.models import User as UserModel
 
         db_user = (await session.execute(select(UserModel).where(UserModel.email == user["email"]))).scalar_one()
-        plain = await _issue_auth_token(session, db_user.id, "email_verify", hours=48)
+        plain = await _issue_auth_token(session, db_user.id, "email_verify", hours=0.25)
         await session.commit()
         assert _hash_token(plain)
+        assert plain.isdigit()
+        assert len(plain) == 6
 
     confirm = await client.post("/auth/verify-email/confirm", json={"token": plain})
     assert confirm.status_code == 204, confirm.text

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user, new_local_firebase_uid
@@ -58,7 +59,9 @@ class EmailRequest(BaseModel):
 
 
 class TokenConfirmRequest(BaseModel):
-    token: str = Field(min_length=20, max_length=256)
+    # Email verification uses a six-digit code; legacy deep-link tokens remain
+    # accepted until they expire.
+    token: str = Field(min_length=6, max_length=256)
 
 
 class PasswordResetConfirm(BaseModel):
@@ -81,18 +84,31 @@ def _hash_token(token: str) -> str:
 
 
 async def _issue_auth_token(session: AsyncSession, user_id: UUID, purpose: str, hours: int = 24) -> str:
-    plain = secrets.token_urlsafe(32)
-    session.add(
-        AuthToken(
-            id=uuid4(),
-            user_id=user_id,
-            purpose=purpose,
-            token_hash=_hash_token(plain),
-            expires_at=datetime.now(UTC) + timedelta(hours=hours),
+    # A short code is convenient for users, but the token hash is globally
+    # unique. Generate and reserve it inside a savepoint to safely retry the
+    # rare six-digit collision without rolling back the caller's transaction.
+    for _ in range(20):
+        plain = (
+            f"{secrets.randbelow(1_000_000):06d}"
+            if purpose == "email_verify"
+            else secrets.token_urlsafe(32)
         )
-    )
-    await session.flush()
-    return plain
+        try:
+            async with session.begin_nested():
+                session.add(
+                    AuthToken(
+                        id=uuid4(),
+                        user_id=user_id,
+                        purpose=purpose,
+                        token_hash=_hash_token(plain),
+                        expires_at=datetime.now(UTC) + timedelta(hours=hours),
+                    )
+                )
+                await session.flush()
+            return plain
+        except IntegrityError:
+            continue
+    raise RuntimeError("Could not allocate a unique authentication token")
 
 
 async def _token_response(session: AsyncSession, user: User, request: Request | None = None) -> TokenResponse:
@@ -162,7 +178,7 @@ async def register(
     session.add(user)
     await session.flush()
 
-    verify_token = await _issue_auth_token(session, user.id, "email_verify", hours=48)
+    verify_token = await _issue_auth_token(session, user.id, "email_verify", hours=0.25)
     delivery = email_service.send(
         to=user.email,
         subject="Verify your MarGem email",
@@ -376,7 +392,7 @@ async def request_email_verification(
 ) -> None:
     if user.email_verified_at is not None:
         return
-    token = await _issue_auth_token(session, user.id, "email_verify", hours=48)
+    token = await _issue_auth_token(session, user.id, "email_verify", hours=0.25)
     await session.commit()
     email_service.send(
         to=user.email,
@@ -390,7 +406,7 @@ async def request_email_verification(
 
 
 @router.post("/verify-email/confirm", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit(settings.auth_rate_limit)
+@limiter.limit("5/minute")
 async def confirm_email_verification(
     request: Request,
     payload: TokenConfirmRequest,

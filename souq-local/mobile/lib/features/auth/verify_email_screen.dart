@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -161,6 +162,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
               else ...[
                 TextField(
                   controller: _tokenController,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onSubmitted: (_) => _confirm(),
                   decoration: InputDecoration(
                     labelText: l10n.verificationCode,
                     prefixIcon: const Icon(Icons.vpn_key_outlined),
