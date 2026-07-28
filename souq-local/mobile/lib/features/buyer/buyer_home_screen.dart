@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -194,8 +195,7 @@ class BuyerHomeScreen extends ConsumerWidget {
                       title: l10n.guestMode,
                       subtitle: l10n.guestModeSubtitle,
                       loginLabel: l10n.createAccount,
-                      onLogin: () =>
-                          context.push('/onboarding/account-type'),
+                      onLogin: () => context.push('/onboarding/account-type'),
                     ),
                   ],
                 ],
@@ -1106,51 +1106,22 @@ class BuyerProfileScreen extends ConsumerWidget {
 
   Future<void> _changePasswordDialog(BuildContext context) async {
     final l10n = context.l10n;
-    final current = TextEditingController();
-    final next = TextEditingController();
     try {
-      final confirmed = await showDialog<bool>(
+      final passwords = await showDialog<_PasswordChangeValues>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.changePassword),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: current,
-                obscureText: true,
-                decoration: InputDecoration(labelText: l10n.currentPassword),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: next,
-                obscureText: true,
-                decoration: InputDecoration(labelText: l10n.newPassword),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.saveChanges),
-            ),
-          ],
-        ),
+        builder: (_) => const _ChangePasswordDialog(),
       );
-      if (confirmed != true || !context.mounted) return;
-      if (current.text.isEmpty || next.text.length < 8) {
+      if (passwords == null || !context.mounted) return;
+      if (passwords.currentPassword.isEmpty ||
+          passwords.newPassword.length < 8) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.completeRequiredStep)),
         );
         return;
       }
       await apiServiceProvider.changePassword(
-        currentPassword: current.text,
-        newPassword: next.text,
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1165,9 +1136,6 @@ class BuyerProfileScreen extends ConsumerWidget {
           message: error.message,
         );
       }
-    } finally {
-      current.dispose();
-      next.dispose();
     }
   }
 
@@ -1176,40 +1144,13 @@ class BuyerProfileScreen extends ConsumerWidget {
     WidgetRef ref,
   ) async {
     final l10n = context.l10n;
-    final controller = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final password = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteAccount),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(l10n.deleteAccountConfirm),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              decoration: InputDecoration(labelText: l10n.password),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.deleteAccount),
-          ),
-        ],
-      ),
+      builder: (_) => const _DeleteAccountDialog(),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (password == null || !context.mounted) return;
     try {
-      await ref
-          .read(authServiceProvider)
-          .deleteAccount(password: controller.text);
+      await ref.read(authServiceProvider).deleteAccount(password: password);
       await ref.read(appStorageProvider)?.logout();
       ref.read(userSessionProvider.notifier).state = null;
       ref.read(authSessionProvider.notifier).state = null;
@@ -1223,5 +1164,137 @@ class BuyerProfileScreen extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _PasswordChangeValues {
+  const _PasswordChangeValues({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  final String currentPassword;
+  final String newPassword;
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.changePassword),
+      content: AutofillGroup(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _current,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(labelText: l10n.currentPassword),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _next,
+              obscureText: true,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: InputDecoration(labelText: l10n.newPassword),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(onPressed: _submit, child: Text(l10n.saveChanges)),
+      ],
+    );
+  }
+
+  void _submit() {
+    TextInput.finishAutofillContext();
+    Navigator.pop(
+      context,
+      _PasswordChangeValues(
+        currentPassword: _current.text,
+        newPassword: _next.text,
+      ),
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.deleteAccount),
+      content: AutofillGroup(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.deleteAccountConfirm),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: InputDecoration(labelText: l10n.password),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(onPressed: _submit, child: Text(l10n.deleteAccount)),
+      ],
+    );
+  }
+
+  void _submit() {
+    TextInput.finishAutofillContext();
+    Navigator.pop(context, _password.text);
   }
 }
