@@ -35,6 +35,19 @@ flutter run
 
 API docs: http://localhost:8000/docs
 
+### Realistic demo marketplace data
+
+For development and UI review only, seed an idempotent Casablanca marketplace:
+
+```bash
+cd backend
+PYTHONPATH=. python scripts/seed_marketplace_demo.py
+```
+
+It creates 80 storefronts, 240 listings, reviews, conversations/messages,
+notifications, favorites, recently viewed items, and saved searches. Do not
+run it against a production customer database.
+
 ## Production deployment
 
 See [.azure/deployment-plan.md](.azure/deployment-plan.md) for Azure (PostgreSQL, Key Vault, Container Apps).
