@@ -93,7 +93,8 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
       child: Row(
         children: [
           Text(
@@ -163,12 +164,12 @@ class FeaturedBusinessCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          width: 236,
+          width: 232,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                height: 128,
+                height: 164,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
@@ -510,7 +511,8 @@ class DashboardMenuTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(context.l10n.soon,
-                    style: const TextStyle(fontSize: 10, color: AppColors.warning)),
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.warning)),
               ),
             ],
           ],
