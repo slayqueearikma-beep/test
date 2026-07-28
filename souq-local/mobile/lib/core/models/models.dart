@@ -173,8 +173,7 @@ class SellerModel {
       goldenCrowns: json['golden_crowns'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0,
       reviewCount: json['review_count'] as int? ?? 0,
-      avgProductQuality:
-          (json['avg_product_quality'] as num?)?.toDouble() ?? 0,
+      avgProductQuality: (json['avg_product_quality'] as num?)?.toDouble() ?? 0,
       avgCustomerService:
           (json['avg_customer_service'] as num?)?.toDouble() ?? 0,
       avgCommunication: (json['avg_communication'] as num?)?.toDouble() ?? 0,
@@ -371,6 +370,89 @@ class ProductModel {
   }
 }
 
+class SearchProductModel {
+  const SearchProductModel({
+    required this.id,
+    required this.sellerId,
+    required this.sellerName,
+    required this.sellerCity,
+    required this.sellerVerified,
+    required this.sellerPremium,
+    required this.sellerRating,
+    required this.name,
+    required this.description,
+    required this.priceMad,
+    required this.imageUrl,
+    required this.isAvailable,
+  });
+
+  final String id;
+  final String sellerId;
+  final String sellerName;
+  final String sellerCity;
+  final bool sellerVerified;
+  final bool sellerPremium;
+  final double sellerRating;
+  final String name;
+  final String description;
+  final double? priceMad;
+  final String imageUrl;
+  final bool isAvailable;
+
+  factory SearchProductModel.fromJson(Map<String, dynamic> json) {
+    return SearchProductModel(
+      id: json['id'] as String,
+      sellerId: json['seller_id'] as String,
+      sellerName: json['seller_name'] as String? ?? '',
+      sellerCity: json['seller_city'] as String? ?? '',
+      sellerVerified: json['seller_verified'] as bool? ?? false,
+      sellerPremium: json['seller_premium'] as bool? ?? false,
+      sellerRating: (json['seller_rating'] as num?)?.toDouble() ?? 0,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      priceMad: (json['price_mad'] as num?)?.toDouble(),
+      imageUrl: json['image_url'] as String? ?? '',
+      isAvailable: json['is_available'] as bool? ?? true,
+    );
+  }
+}
+
+class MarketplaceSearchPage {
+  const MarketplaceSearchPage({
+    required this.sellers,
+    required this.products,
+    required this.totalSellers,
+    required this.totalProducts,
+    required this.limit,
+    required this.offset,
+    required this.hasMore,
+  });
+
+  final List<SellerModel> sellers;
+  final List<SearchProductModel> products;
+  final int totalSellers;
+  final int totalProducts;
+  final int limit;
+  final int offset;
+  final bool hasMore;
+
+  factory MarketplaceSearchPage.fromJson(Map<String, dynamic> json) {
+    return MarketplaceSearchPage(
+      sellers: (json['sellers'] as List<dynamic>? ?? [])
+          .map((e) => SellerModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      products: (json['products'] as List<dynamic>? ?? [])
+          .map((e) => SearchProductModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalSellers: json['total_sellers'] as int? ?? 0,
+      totalProducts: json['total_products'] as int? ?? 0,
+      limit: json['limit'] as int? ?? 20,
+      offset: json['offset'] as int? ?? 0,
+      hasMore: json['has_more'] as bool? ?? false,
+    );
+  }
+}
+
 class ServiceModel {
   const ServiceModel({
     required this.id,
@@ -426,7 +508,8 @@ class ReviewModel {
   final String createdAt;
 
   factory ReviewModel.fromJson(Map<String, dynamic> json) {
-    final productQuality = json['product_quality'] as int? ?? json['rating'] as int? ?? 0;
+    final productQuality =
+        json['product_quality'] as int? ?? json['rating'] as int? ?? 0;
     final customerService = json['customer_service'] as int? ?? productQuality;
     final communication = json['communication'] as int? ?? productQuality;
     final trustworthiness = json['trustworthiness'] as int? ?? productQuality;
@@ -783,9 +866,8 @@ class ConversationModel {
       id: json['id'] as String,
       buyerId: json['buyer_id'] as String? ?? '',
       sellerId: json['seller_id'] as String? ?? '',
-      peerUserId: json['peer_user_id'] as String? ??
-          json['buyer_id'] as String? ??
-          '',
+      peerUserId:
+          json['peer_user_id'] as String? ?? json['buyer_id'] as String? ?? '',
       lastMessageAt: json['last_message_at'] as String? ?? '',
       peerName: json['peer_name'] as String? ?? '',
       unreadCount: json['unread_count'] as int? ?? 0,

@@ -25,8 +25,9 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   String _debounced = '';
   Timer? _timer;
-  Future<List<SellerModel>>? _future;
+  Future<MarketplaceSearchPage>? _future;
   final _focusNode = FocusNode();
+  var _mode = 'products';
 
   @override
   void dispose() {
@@ -47,9 +48,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
-  Future<List<SellerModel>> _load() {
+  Future<MarketplaceSearchPage> _load() {
     final city = ref.read(buyerCityProvider);
-    return apiServiceProvider.fetchSellers(city: city, query: _debounced);
+    return apiServiceProvider.searchMarketplace(
+      query: _debounced,
+      mode: _mode,
+      city: city,
+    );
   }
 
   void _onQueryChanged(String value) {
@@ -82,7 +87,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.search, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                Text(l10n.search,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   city,
@@ -100,11 +109,33 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                   onChanged: _onQueryChanged,
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'products',
+                      label: Text(l10n.products),
+                      icon: const Icon(Icons.inventory_2_outlined),
+                    ),
+                    ButtonSegment(
+                      value: 'sellers',
+                      label: Text(l10n.seller),
+                      icon: const Icon(Icons.storefront_outlined),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (values) {
+                    setState(() {
+                      _mode = values.first;
+                      _future = _load();
+                    });
+                  },
+                ),
               ],
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<SellerModel>>(
+            child: FutureBuilder<MarketplaceSearchPage>(
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -120,18 +151,59 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     },
                   );
                 }
-                final sellers = snapshot.data ?? [];
-                if (sellers.isEmpty) {
+                final page = snapshot.data;
+                final isProducts = _mode == 'products';
+                final count = isProducts
+                    ? (page?.products.length ?? 0)
+                    : (page?.sellers.length ?? 0);
+                if (count == 0) {
                   return Center(child: Text(l10n.noBusinessesFound));
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                  itemCount: sellers.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal),
+                  itemCount: count,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (_, index) {
-                    final seller = sellers[index];
+                    if (isProducts) {
+                      final product = page!.products[index];
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        tileColor: Theme.of(context).cardTheme.color,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: NetworkImageView(
+                              url: product.imageUrl,
+                              placeholderIcon: Icons.inventory_2_outlined,
+                            ),
+                          ),
+                        ),
+                        title: Text(product.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(
+                            '${product.sellerName} · ${product.sellerCity}'),
+                        trailing: Text(
+                          product.priceMad == null
+                              ? '—'
+                              : '${product.priceMad!.toStringAsFixed(0)} MAD',
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800),
+                        ),
+                        onTap: () => context
+                            .push('/product/${product.sellerId}/${product.id}'),
+                      );
+                    }
+                    final seller = page!.sellers[index];
                     return ListTile(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       tileColor: Theme.of(context).cardTheme.color,
                       leading: ClipOval(
                         child: SizedBox(
@@ -143,9 +215,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                         ),
                       ),
-                      title: Text(seller.businessName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${seller.city} · ${seller.averageRating} ★'),
-                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                      title: Text(seller.businessName,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle:
+                          Text('${seller.city} · ${seller.averageRating} ★'),
+                      trailing: const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary),
                       onTap: () => context.push('/seller/${seller.id}'),
                     );
                   },

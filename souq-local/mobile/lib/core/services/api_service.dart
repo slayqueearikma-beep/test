@@ -347,6 +347,34 @@ class ApiService {
         .toList();
   }
 
+  Future<MarketplaceSearchPage> searchMarketplace({
+    required String query,
+    required String mode,
+    String? city,
+    String? category,
+    String sort = 'relevance',
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    final params = <String, String>{
+      'q': query,
+      'mode': mode,
+      'sort': sort,
+      'offset': '$offset',
+      'limit': '$limit',
+      if (city != null && city.isNotEmpty) 'city': city,
+      if (category != null && category.isNotEmpty) 'category': category,
+    };
+    final response = await _request(
+      () => _get(_uri('/search', params), headers: _authHeaders),
+      auth: _authHeaders.isNotEmpty,
+    );
+    _ensureSuccess(response);
+    return MarketplaceSearchPage.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<SellerModel> fetchSeller(String id, {bool auth = false}) async {
     final response = await _request(
       () => _get(_uri('/sellers/$id'), headers: auth ? _authHeaders : null),

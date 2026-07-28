@@ -72,6 +72,21 @@ async def _create_seller_with_product(client: AsyncClient) -> tuple[dict, dict, 
 
 
 @pytest.mark.asyncio
+async def test_global_search_returns_paginated_products_and_sellers(client: AsyncClient):
+    _, seller, product = await _create_seller_with_product(client)
+    response = await client.get("/search", params={"q": "ceramic", "mode": "all", "limit": 10})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total_products"] == 1
+    assert body["products"][0]["id"] == product["id"]
+    assert body["products"][0]["seller_id"] == seller["id"]
+
+    seller_response = await client.get("/search", params={"q": "atlas", "mode": "sellers"})
+    assert seller_response.status_code == 200, seller_response.text
+    assert seller_response.json()["sellers"][0]["id"] == seller["id"]
+
+
+@pytest.mark.asyncio
 async def test_favorites_follow_contact_and_messaging(client: AsyncClient):
     seller, seller_body, product = await _create_seller_with_product(client)
     buyer = await _register(client, "buyer")
